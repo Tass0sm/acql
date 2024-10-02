@@ -1,6 +1,7 @@
 import os
 import torch
 import mlflow
+import pickle
 
 from corallab_lib import Gym
 from corallab_policies import Policy, Dataset
@@ -29,7 +30,13 @@ if __name__ == '__main__':
 
     run = mlflow.start_run()
 
-    policy.train(gym=gym, dataset=dataset, max_iters=1)
+    policy.train(gym=gym, dataset=dataset, max_iters=10)
+
+    with open("state_mean.pkl", "wb") as f:
+        pickle.dump(policy.state_mean, f)
+
+    with open("state_std.pkl", "wb") as f:
+        pickle.dump(policy.state_std, f)
 
     # Tracking the trained model
     mlflow.pytorch.log_model(policy.policy_impl.model, "model")
