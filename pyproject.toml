@@ -3,7 +3,7 @@ name = "task-aware-skill-composition"
 version = "0.1.0"
 description = ""
 authors = ["Tassos Manganaris <tassos.manganaris@gmail.com>"]
-readme = "README.md"
+readme = "README.org"
 packages = [{include = "task_aware_skill_composition"}]
 
 [tool.poetry.dependencies]
