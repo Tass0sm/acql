@@ -15,7 +15,11 @@ if __name__ == '__main__':
 
     mlflow.set_tracking_uri(f"file://{TRACKING_DIR}")
 
-    gym = Gym("AntMaze_UMaze-v4", render_mode="human", backend="gymnasium_robotics")
+    # gym = Gym("AntMaze_UMaze-v4", render_mode="human", backend="gymnasium_robotics")
+    # gym = Gym("Hopper-v5", render_mode="human", backend="gymnasium")
+    # gym = Gym("HalfCheetah-v5", render_mode="human", backend="gymnasium")
+    gym = Gym("Walker2d-v5", render_mode="human", backend="gymnasium")
+
     policy = Policy(
         "DecisionTransformer",
         gym.state_dim,
@@ -24,12 +28,21 @@ if __name__ == '__main__':
         backend="decision_transformer"
     )
 
-    training_run_id = "b1cf7258fa4a4c5fa872b3dda375446d"
+    # hopper 1 iteration: b5bbd91002754b959b379c7a832f21fa
+    # half cheetah 1 iteration: d53ee7e5f7024956b46c7c77fcd95cc5
+    # walker 2d 1 iteration: 1fb4392f93fc47fa897241428c665205
+    # walker 2d 2 iteration: 8cc139d943ac4f959eb897416f225dfe
+    # walker 2d 5 iteration: b9f0db232d594ee0b92892e043ff4378
+
+    training_run_id = "b9f0db232d594ee0b92892e043ff4378"
     logged_model_path = f'runs:/{training_run_id}/model'
     model = mlflow.pytorch.load_model(logged_model_path)
-    policy.policy_impl.model = torch.compile(model)
+    # policy.policy_impl.model = torch.compile(model)
+    policy.entity_impl.model = model
 
     scale = 1000
+    # target_rew = 3600
+    # target_rew = 12000
     target_rew = 5000
     mode = "normal"
 
@@ -39,8 +52,10 @@ if __name__ == '__main__':
     with open("state_std.pkl", "rb") as f:
         policy.state_std = pickle.load(f)
 
+    breakpoint()
+
     ret, length = evaluate_episode_rtg(
-        gym.gym_impl.gym_impl,
+        gym.gym_impl,
         gym.state_dim,
         gym.action_dim,
         model,
@@ -52,6 +67,3 @@ if __name__ == '__main__':
         state_std=policy.state_std,
         device="cuda",
     )
-
-
-    breakpoint()

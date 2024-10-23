@@ -112,6 +112,7 @@ class DSCRL(OnPolicyAlgorithm):
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
     ):
+
         super().__init__(
             policy,
             env,
@@ -175,6 +176,7 @@ class DSCRL(OnPolicyAlgorithm):
         self.target_kl = target_kl
 
         # Spec
+        self.rho_coef = 0.1
         self.specification = specification
 
         if _init_setup_model:
@@ -293,7 +295,7 @@ class DSCRL(OnPolicyAlgorithm):
 
                 rho_losses.append(rho_loss.item())
 
-                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + 3.0 * rho_loss
+                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + self.rho_coef * rho_loss
 
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417

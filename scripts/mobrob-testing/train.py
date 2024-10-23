@@ -12,8 +12,8 @@ from stable_baselines3.common.logger import configure
 
 from mobrob.rl_control.ppo import PPOCtrl
 
-from task_aware_skill_composition.dscrl_ctrl import DSCRLCtrl
-from task_aware_skill_composition.dscrl import DSCRL
+from task_aware_skill_composition.sb.dscrl_ctrl import DSCRLCtrl
+from task_aware_skill_composition.sb.dscrl import DSCRL
 from task_aware_skill_composition.utils import DATA_DIR
 
 # for fast inference
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     policy_name = "dscrl"
     env_name = "turtlebot3"
     save_freq = 1_000_000
-    finetune = True
+    finetune = False
 
     config = yaml.load(
         open(f"{DATA_DIR}/configs/{env_name}-{policy_name}.yaml", "r"), Loader=yaml.FullLoader

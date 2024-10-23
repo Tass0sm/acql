@@ -9,16 +9,49 @@ version = "0.1.0"
 [tasks]
 
 [dependencies]
-python = ">=3.12.6,<4"
+python = ">=3.12.6,<3.13"
+spot = ">=2.12.1,<3"
 
 [pypi-dependencies]
-corallab-lib = { path = "/home/tassos/phd/research/corallab-lib", extras = ["gymnasium-robotics"], editable = true }
-corallab-policies = { path = "/home/tassos/phd/research/corallab-policies", editable = true }
-decision-transformer = { path = "/home/tassos/phd/research/second-project/decision-transformer", editable = true }
-gymnasium-robotics = { git = "https://github.com/Farama-Foundation/Gymnasium-Robotics" }
-gymnasium = ">=1.0.0a2"
+task-aware-skill-composition = { path = "/home/tassos/phd/research/second-project/task-aware-skill-composition", editable = true }
+
+# corallab-lib = { path = "/home/tassos/phd/research/corallab-lib", extras = ["gymnasium-robotics"], editable = true }
+# corallab-policies = { path = "/home/tassos/phd/research/corallab-policies", editable = true }
+# decision-transformer = { path = "/home/tassos/phd/research/second-project/decision-transformer", editable = true }
+# gymnasium-robotics = { git = "https://github.com/Farama-Foundation/Gymnasium-Robotics" }
+
+gymnasium = { version = ">=1.0.0a2", extras = ["mujoco"] }
 torch = ">=2.4.1, <3"
 numpy = ">=2.1.1, <3"
 scipy = ">=1.14.1, <2"
 minari = { version = ">=0.5.0, <0.6", extras = ["all"] }
 mlflow = ">=2.16.2, <3"
+mobrob = { path = "/home/tassos/phd/research/second-project/mobrob", editable = true }
+pybullet = ">=3.2.6, <4"
+diff-spec = { path = "/home/tassos/phd/research/second-project/diff-spec" }
+reward-machines = { path = "/home/tassos/phd/research/second-project/reward-machines", editable = true }
+corallab-stl = { path = "/home/tassos/phd/research/corallab-stl", editable = true }
+ipython = ">=8.28.0, <9"
+ipykernel = ">=6.29.5, <7"
+
+corallab-lib = { path = "/home/tassos/phd/research/corallab-lib", extras = ["torch-robotics"], editable = true }
+torch-robotics = { path = "/home/tassos/phd/research/first-project/torch_robotics", editable = true }
+xmltodict = ">=0.14.1, <0.15"
+stable-baselines3 = { path = "/home/tassos/phd/research/second-project/stable-baselines3", editable = true }
+tensorboard = ">=2.18.0, <3"
+
+brax = { path = "/home/tassos/phd/research/second-project/brax", editable = true }
+jax = { version = ">=0.4.34, <0.5", extras = ["cuda12"] }
+jaxgcrl = { path = "/home/tassos/phd/research/second-project/JaxGCRL", editable = true }
+wandb = ">=0.18.5, <0.19"
+pyinstrument = ">=5.0.0, <6"
+
+mujoco = ">=3.2.4, <4"
+mujoco-mjx = ">=3.2.4, <4"
+
+mediapy = ">=1.2.2, <2"
+gym = ">=0.26.2, <0.27"
+flax = ">=0.10.0, <0.11"
+dm-env = ">=1.6, <2"
+hydra-core = ">=1.3.2, <2"
+robot-descriptions = ">=1.12.0, <2"
