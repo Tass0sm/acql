@@ -1,4 +1,21 @@
 <mujoco model="CF2 scene">
+  <!-- <compiler angle="degree" coordinate="local" inertiafromgeom="true"/> -->
+  <option timestep="0.01" iterations="4"/>
+
+  <custom>
+    <!-- brax custom params -->
+    <!-- <numeric data="0.0 0.0 0.55 1.0 0.0 0.0 0.0 0.0 1.0 0.0 -1.0 0.0 -1.0 0.0 1.0" name="init_qpos"/> -->
+    <!-- <numeric data="10000" name="constraint_limit_stiffness"/> -->
+    <!-- <numeric data="10000" name="constraint_stiffness"/> -->
+    <!-- <numeric data="20" name="constraint_ang_damping"/> -->
+    <!-- <numeric data="20" name="constraint_vel_damping"/> -->
+    <!-- <numeric data="1" name="vel_damping"/> -->
+    <!-- <numeric data="-0.05" name="ang_damping"/> -->
+    <!-- <numeric data="1" name="spring_mass_scale"/> -->
+    <!-- <numeric data="1" name="spring_inertia_scale"/> -->
+    <!-- <numeric data="15" name="solver_maxls"/> -->
+  </custom>
+
   <include file="cf2.xml"/>
 
   <statistic center="0 0 0.1" extent="0.2" meansize=".05"/>

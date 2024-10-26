@@ -51,7 +51,7 @@ class Drone(PipelineEnv):
             backend='generalized',
             **kwargs,
     ):
-        path = epath.resource_path('task_aware_skill_composition') / 'brax/envs/assets/car.xml'
+        path = epath.resource_path('task_aware_skill_composition') / 'brax/envs/assets/cf2/cf2_scene.xml'
         sys = mjcf.load(path)
 
         n_frames = 5
