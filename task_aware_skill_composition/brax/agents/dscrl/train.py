@@ -85,6 +85,7 @@ def train(
     num_eval_envs: int = 128,
     learning_rate: float = 1e-4,
     entropy_cost: float = 1e-4,
+    specification_cost: float = 1e-1,
     discounting: float = 0.9,
     seed: int = 0,
     unroll_length: int = 10,
@@ -255,7 +256,8 @@ def train(
       clipping_epsilon=clipping_epsilon,
       normalize_advantage=normalize_advantage,
       # pass spec
-      specification = specification
+      specification = specification,
+      specification_cost=specification_cost,
   )
 
   gradient_update_fn = gradients.gradient_update_fn(

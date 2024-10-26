@@ -100,6 +100,7 @@ def compute_dscrl_loss(
     rng: jnp.ndarray,
     ppo_network: ppo_networks.PPONetworks,
     specification: Callable = None,
+    specification_cost: float = 1e-1,
     entropy_cost: float = 1e-4,
     discounting: float = 0.9,
     reward_scaling: float = 1.0,
@@ -127,13 +128,12 @@ def compute_dscrl_loss(
     A tuple (loss, metrics)
   """
 
-  from IPython.core.debugger import Pdb; Pdb().set_trace()
-
   parametric_action_distribution = ppo_network.parametric_action_distribution
   policy_apply = ppo_network.policy_network.apply
   value_apply = ppo_network.value_network.apply
 
   # Put the time dimension first.
+  orig_data = data
   data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
   policy_logits = policy_apply(normalizer_params, params.policy,
                                data.observation)
@@ -177,18 +177,17 @@ def compute_dscrl_loss(
   entropy = jnp.mean(parametric_action_distribution.entropy(policy_logits, rng))
   entropy_loss = entropy_cost * -entropy
 
-
   # STL Loss
-  # specification
+  # robustness per trajectory in batch.
+  robustness = jnp.mean(specification({"state": orig_data.observation,
+                                       "action": orig_data.action}))
+  specification_loss = specification_cost * jax.nn.relu(-robustness)
 
-
-
-
-
-  total_loss = policy_loss + v_loss + entropy_loss
+  total_loss = policy_loss + v_loss + entropy_loss + specification_loss
   return total_loss, {
       'total_loss': total_loss,
       'policy_loss': policy_loss,
       'v_loss': v_loss,
-      'entropy_loss': entropy_loss
+      'entropy_loss': entropy_loss,
+      'specification_loss': specification_loss,
   }
