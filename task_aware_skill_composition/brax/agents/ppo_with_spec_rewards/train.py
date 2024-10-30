@@ -1,20 +1,4 @@
-# Copyright 2024 The Brax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""Proximal policy optimization training.
-
-See: https://arxiv.org/pdf/1707.06347.pdf
+"""PPO with specification rewards.
 """
 
 import functools
@@ -30,6 +14,7 @@ from brax.training import pmap
 from brax.training import types
 from brax.training.acme import running_statistics
 from brax.training.acme import specs
+from brax.training.agents.ppo import losses as ppo_losses
 from brax.training.agents.ppo import networks as ppo_networks
 from brax.training.types import Params
 from brax.training.types import PRNGKey
@@ -42,23 +27,13 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
+from brax.training.agents.ppo.train import *
+
 from task_aware_skill_composition.brax.training.evaluator_with_specification import EvaluatorWithSpecification
-from . import losses as dscrl_losses
+from task_aware_skill_composition.brax.envs.wrappers.specification_reward_wrapper import SpecificationRewardWrapper
 
-
-InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
-Metrics = types.Metrics
 
 _PMAP_AXIS_NAME = 'i'
-
-
-@flax.struct.dataclass
-class TrainingState:
-  """Contains training state for the learner."""
-  optimizer_state: optax.OptState
-  params: dscrl_losses.DSCRLNetworkParams
-  normalizer_params: running_statistics.RunningStatisticsState
-  env_steps: jnp.ndarray
 
 
 def _unpmap(v):
@@ -77,6 +52,7 @@ def _strip_weak_type(tree):
 def train(
     environment: Union[envs_v1.Env, envs.Env],
     specification: Callable[..., jnp.ndarray],
+    state_var,
     num_timesteps: int,
     episode_length: int,
     wrap_env: bool = True,
@@ -86,7 +62,6 @@ def train(
     num_eval_envs: int = 128,
     learning_rate: float = 1e-4,
     entropy_cost: float = 1e-4,
-    specification_cost: float = 1e-1,
     discounting: float = 0.9,
     seed: int = 0,
     unroll_length: int = 10,
@@ -230,6 +205,8 @@ def train(
         randomization_fn=v_randomization_fn,
     )
 
+    env = SpecificationRewardWrapper(env, specification, state_var)
+
   reset_fn = jax.jit(jax.vmap(env.reset))
   key_envs = jax.random.split(key_env, num_envs // process_count)
   key_envs = jnp.reshape(key_envs,
@@ -248,18 +225,14 @@ def train(
   optimizer = optax.adam(learning_rate=learning_rate)
 
   loss_fn = functools.partial(
-      dscrl_losses.compute_dscrl_loss,
+      ppo_losses.compute_ppo_loss,
       ppo_network=ppo_network,
       entropy_cost=entropy_cost,
       discounting=discounting,
       reward_scaling=reward_scaling,
       gae_lambda=gae_lambda,
       clipping_epsilon=clipping_epsilon,
-      normalize_advantage=normalize_advantage,
-      # pass spec
-      specification = specification,
-      specification_cost=specification_cost,
-  )
+      normalize_advantage=normalize_advantage)
 
   gradient_update_fn = gradients.gradient_update_fn(
       loss_fn, optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
@@ -381,7 +354,7 @@ def train(
     return training_state, env_state, metrics  # pytype: disable=bad-return-type  # py311-upgrade
 
   # Initialize model params and training state.
-  init_params = dscrl_losses.DSCRLNetworkParams(
+  init_params = ppo_losses.PPONetworkParams(
       policy=ppo_network.policy_network.init(key_policy),
       value=ppo_network.value_network.init(key_value),
   )
@@ -436,6 +409,7 @@ def train(
       eval_env,
       functools.partial(make_policy, deterministic=deterministic_eval),
       specification=specification,
+      state_var=state_var,
       num_eval_envs=num_eval_envs,
       episode_length=episode_length,
       action_repeat=action_repeat,
