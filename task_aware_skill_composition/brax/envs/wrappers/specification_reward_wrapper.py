@@ -14,12 +14,19 @@ from corallab_stl import Expression
 class SpecificationRewardWrapper(Wrapper):
     """Adds specification robustness to envs's reward"""
 
-    def __init__(self, env: Env, specification: Expression, state_var):
+    def __init__(
+            self,
+            env: Env,
+            specification: Expression,
+            state_var,
+            rho_weight: float = 1.0
+    ):
         super().__init__(env)
 
         self.specification = specification
         self.state_var = state_var
         # self.action_var = action_var
+        self.rho_weight = rho_weight
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
@@ -65,7 +72,8 @@ class SpecificationRewardWrapper(Wrapper):
             "reward_contact",
         ]]
 
-        new_reward = rhos + reward_survive + reward_ctrl + reward_contact
+        new_reward = (self.rho_weight * rhos) + \
+            reward_forward + reward_survive + reward_ctrl + reward_contact
 
         # replace reward with rho
         nstate = nstate.replace(reward=new_reward)

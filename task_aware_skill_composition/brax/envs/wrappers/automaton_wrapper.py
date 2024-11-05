@@ -44,12 +44,16 @@ class JaxAutomaton:
     def init_state(self):
         return self.automaton.get_init_state_number()
 
+    @property
+    def num_states(self):
+        return self.automaton.num_states()
+
     # Labelling function in the reward machine paper is the following
     # L :: S x A x S -> 2^P
     # We instead just use the current action and next state.
     # L :: A x S -> 2^P
     def eval_aps(self, action, nstate):
-        bit_vector = jnp.zeros((4096,), dtype=int)
+        bit_vector = jnp.zeros((action.shape[0],), dtype=int)
 
         for i, ap in self.aps.items():
             # If ap_i is true for an env, flip the i-th bit in its
@@ -65,25 +69,42 @@ class JaxAutomaton:
 
         return jax.vmap(step_i, in_axes=(0, 0))(aut_state, ap_bit_vector)
 
+    def one_hot_encode(self, state: jax.Array) -> jax.Array:
+        return jax.nn.one_hot(state, self.num_states)
 
 
 class AutomatonWrapper(Wrapper):
     """Adds specification robustness to envs's reward"""
 
-    def __init__(self, env: Env, specification: Expression, state_var):
+    def __init__(
+            self,
+            env: Env,
+            specification: Expression,
+            state_var,
+            augment_obs: bool = True
+    ):
         super().__init__(env)
 
         self.automaton = JaxAutomaton(specification, state_var)
+        self.augment_obs = augment_obs
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
 
-        automata_state = jnp.ones((4096,), dtype=int) * self.automaton.init_state
+        automata_state = jnp.ones((rng.shape[0],), dtype=int) * self.automaton.init_state
         state.info["automata_state"] = automata_state
+
+        if self.augment_obs:
+            new_obs = jnp.concatenate((state.obs, self.automaton.one_hot_encode(automata_state)), axis=-1)
+            state = state.replace(obs=new_obs)
 
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
+
+        if self.augment_obs:
+            state = state.replace(obs=state.obs[..., :-self.automaton.num_states])
+
         nstate = self.env.step(state, action)
 
         labels = self.automaton.eval_aps(action, nstate.obs)
@@ -93,5 +114,9 @@ class AutomatonWrapper(Wrapper):
         nautomata_state = self.automaton.step(automata_state, labels)
 
         state.info.update(automata_state=nautomata_state)
+
+        if self.augment_obs:
+            new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomata_state)), axis=-1)
+            nstate = nstate.replace(obs=new_obs)
 
         return nstate
