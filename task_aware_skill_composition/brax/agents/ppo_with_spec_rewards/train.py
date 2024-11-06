@@ -62,6 +62,7 @@ def train(
     num_eval_envs: int = 128,
     learning_rate: float = 1e-4,
     entropy_cost: float = 1e-4,
+    rho_weight: float = 1.0,
     discounting: float = 0.9,
     seed: int = 0,
     unroll_length: int = 10,
@@ -205,7 +206,12 @@ def train(
         randomization_fn=v_randomization_fn,
     )
 
-    env = SpecificationRewardWrapper(env, specification, state_var)
+    env = SpecificationRewardWrapper(
+      env,
+      specification,
+      state_var,
+      rho_weight=rho_weight
+    )
 
   reset_fn = jax.jit(jax.vmap(env.reset))
   key_envs = jax.random.split(key_env, num_envs // process_count)

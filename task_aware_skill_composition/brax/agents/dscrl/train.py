@@ -20,11 +20,11 @@ See: https://arxiv.org/pdf/1707.06347.pdf
 import functools
 import time
 from typing import Callable, Optional, Tuple, Union
+from operator import mul
 
 from absl import logging
 from brax import base
 from brax import envs
-from brax.training import acting
 from brax.training import gradients
 from brax.training import pmap
 from brax.training import types
@@ -42,6 +42,8 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
+from task_aware_skill_composition.brax.training import types as my_types
+from task_aware_skill_composition.brax.training import acting
 from task_aware_skill_composition.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 from . import losses as dscrl_losses
 
@@ -77,6 +79,7 @@ def _strip_weak_type(tree):
 def train(
     environment: Union[envs_v1.Env, envs.Env],
     specification: Callable[..., jnp.ndarray],
+    state_var,
     num_timesteps: int,
     episode_length: int,
     wrap_env: bool = True,
@@ -86,7 +89,7 @@ def train(
     num_eval_envs: int = 128,
     learning_rate: float = 1e-4,
     entropy_cost: float = 1e-4,
-    specification_cost: float = 1e-1,
+    specification_cost: float = 1e-9,
     discounting: float = 0.9,
     seed: int = 0,
     unroll_length: int = 10,
@@ -259,13 +262,24 @@ def train(
       # pass spec
       specification = specification,
       specification_cost=specification_cost,
+      state_var = state_var,
+      # pass information for computing differentiable rho
+      make_policy = make_policy,
+      env = env,
+      reset_fn = reset_fn,
+      num_envs = num_envs,
+      process_count = process_count,
+      local_devices_to_use = local_devices_to_use,
   )
 
   gradient_update_fn = gradients.gradient_update_fn(
       loss_fn, optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
 
+
+  # TESTING
+
   def minibatch_step(
-      carry, data: types.Transition,
+      carry, data: my_types.MyTransition,
       normalizer_params: running_statistics.RunningStatisticsState):
     optimizer_state, params, key = carry
     key, key_loss = jax.random.split(key)
@@ -278,14 +292,14 @@ def train(
 
     return (optimizer_state, params, key), metrics
 
-  def sgd_step(carry, unused_t, data: types.Transition,
+  def sgd_step(carry, unused_t, data: my_types.MyTransition,
                normalizer_params: running_statistics.RunningStatisticsState):
     optimizer_state, params, key = carry
     key, key_perm, key_grad = jax.random.split(key, 3)
 
     def convert_data(x: jnp.ndarray):
       x = jax.random.permutation(key_perm, x)
-      x = jnp.reshape(x, (num_minibatches, -1) + x.shape[1:])
+      x = jnp.reshape(x, (num_minibatches, x.shape[0] // num_minibatches) + x.shape[1:])
       return x
 
     shuffled_data = jax.tree_util.tree_map(convert_data, data)
@@ -320,10 +334,22 @@ def train(
     (state, _), data = jax.lax.scan(
         f, (state, key_generate_unroll), (),
         length=batch_size * num_minibatches // num_envs)
+
+    # (nstate, _), trans = f((state, key_generate_unroll), None)
+    # step_grad_fn = jax.grad(env.step, argnums=1)
+    # s_prime_grad = step_grad_fn(state, policy(action[:, 0])
+    # jax.debug.breakpoint()
+
     # Have leading dimensions (batch_size * num_minibatches, unroll_length)
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 1, 2), data)
-    data = jax.tree_util.tree_map(lambda x: jnp.reshape(x, (-1,) + x.shape[2:]),
-                                  data)
+
+    def reshape_f(x):
+      if 0 in x.shape:
+        return jnp.reshape(x, (functools.reduce(mul, x.shape[:2]), *x.shape[2:]))
+      else:
+        return jnp.reshape(x, (-1,) + x.shape[2:])
+
+    data = jax.tree_util.tree_map(reshape_f, data)
     assert data.discount.shape[1:] == (unroll_length,)
 
     # Update normalization params and normalize observations.
@@ -436,6 +462,7 @@ def train(
       eval_env,
       functools.partial(make_policy, deterministic=deterministic_eval),
       specification=specification,
+      state_var=state_var,
       num_eval_envs=num_eval_envs,
       episode_length=episode_length,
       action_repeat=action_repeat,

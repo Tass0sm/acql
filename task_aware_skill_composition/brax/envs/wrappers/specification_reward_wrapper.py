@@ -19,6 +19,7 @@ class SpecificationRewardWrapper(Wrapper):
             env: Env,
             specification: Expression,
             state_var,
+            history_length: int = 1000,
             rho_weight: float = 1.0
     ):
         super().__init__(env)
@@ -26,15 +27,16 @@ class SpecificationRewardWrapper(Wrapper):
         self.specification = specification
         self.state_var = state_var
         # self.action_var = action_var
+        self.history_length = history_length
         self.rho_weight = rho_weight
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
 
-        state_history_buffer = jnp.zeros((4096, self.episode_length, self.observation_size))
-        # action_history_buffer = jnp.zeros((4096, self.episode_length, self.action_size))
+        state_history_buffer = jnp.zeros((self.history_length, self.observation_size))
+        # action_history_buffer = jnp.zeros((self.history_length, self.action_size))
 
-        state_history_buffer = state_history_buffer.at[:, 0].set(state.obs)
+        state_history_buffer = state_history_buffer.at[0].set(state.obs)
 
         state.info["state_history_buffer"] = state_history_buffer
         # state.info["action_history_buffer"] = action_history_buffer
@@ -52,18 +54,13 @@ class SpecificationRewardWrapper(Wrapper):
         # action_history_buffer = state.info["action_history_buffer"]
 
         nstep_idx = nstate.info["steps"].astype(int)
-
-        def set_state_at_i(buffer, i, state):
-            return buffer.at[i].set(state)
-
-        p_set_state_at_i = jax.vmap(set_state_at_i, in_axes=(0, 0, 0))
-        state_history_buffer = p_set_state_at_i(state_history_buffer, nstep_idx, nstate.obs)
+        state_history_buffer = state_history_buffer.at[nstep_idx].set(nstate.obs)
 
         state.info.update(state_history_buffer=state_history_buffer)
         # state.info.update(action_history_buffer=action_history_buffer)
 
-        taus = self.specification({ self.state_var.idx: state_history_buffer }, end_time=nstep_idx+1)
-        rhos = taus[:, 0]
+        tau = self.specification({ self.state_var.idx: state_history_buffer }, end_time=nstep_idx+1)
+        rho = tau[0]
 
         reward_forward, reward_survive, reward_ctrl, reward_contact = [state.metrics.get(s) for s in [
             "reward_forward",
@@ -72,7 +69,7 @@ class SpecificationRewardWrapper(Wrapper):
             "reward_contact",
         ]]
 
-        new_reward = (self.rho_weight * rhos) + \
+        new_reward = (self.rho_weight * rho) + \
             reward_forward + reward_survive + reward_ctrl + reward_contact
 
         # replace reward with rho

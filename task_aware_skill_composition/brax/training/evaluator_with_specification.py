@@ -72,9 +72,10 @@ class EvaluatorWithSpecification(Evaluator):
     eval_metrics = eval_state.info['eval_metrics']
 
     # From data, calculate robustness
-    robustness = self.specification({ self.state_var.idx: data.observation,
-                                      # "action": data.action
-                                     })
+    robustness_traces = jax.vmap(self.specification)({ self.state_var.idx: data.observation,
+                                                       # "action": data.action
+                                                      })
+    robustness = robustness_traces[..., 0]
     eval_metrics.episode_metrics["robustness"] = robustness
 
     eval_metrics.active_episodes.block_until_ready()

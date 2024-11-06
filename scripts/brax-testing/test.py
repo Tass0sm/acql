@@ -12,8 +12,6 @@ backend="positional"
 
 assert backend in ['generalized', 'positional', 'spring']
 
-from brax.envs.wrappers
-
 env = envs.get_environment(env_name=env_name, backend=backend)
 state = jax.jit(env.reset)(rng=jax.random.PRNGKey(seed=0))
 

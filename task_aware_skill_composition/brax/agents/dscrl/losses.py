@@ -17,9 +17,11 @@
 See: https://arxiv.org/pdf/1707.06347.pdf
 """
 
+import functools
 from typing import Any, Tuple, Callable
 
-from brax.training import types
+from brax import envs
+from brax.training import types, acting
 from brax.training.agents.ppo import networks as ppo_networks
 from brax.training.types import Params
 import flax
@@ -93,6 +95,36 @@ def compute_gae(truncation: jnp.ndarray,
   return jax.lax.stop_gradient(vs), jax.lax.stop_gradient(advantages)
 
 
+def compute_specification_loss(
+    parametric_action_distribution,
+    policy_logits,
+    data,
+    env,
+    specification,
+    state_var,
+    specification_cost,
+):
+  mu = parametric_action_distribution.mode(policy_logits)
+  std = parametric_action_distribution.create_dist(policy_logits).scale
+  eps = (data.action - mu) / std
+
+  actions_with_grad = mu + jax.lax.stop_gradient(eps) * std
+
+  # Entirely isolated state gradients
+  states_with_grad = jax.vmap(env.step)(data.state, actions_with_grad)
+  # OR: Related recurrent state gradients
+  # states_with_grad, _ = jax.scan(vmap(env.step), data.state[0], actions_with_grad)
+
+  # TODO: start from current position
+  robustness = jnp.mean(specification({ state_var.idx: states_with_grad.obs,
+                                        # "action": orig_data.action
+                                       }))
+  # specification_loss = specification_cost * jax.nn.relu(-robustness)
+  specification_loss = specification_cost * -robustness
+
+  return specification_loss
+
+
 def compute_dscrl_loss(
     params: DSCRLNetworkParams,
     normalizer_params: Any,
@@ -100,13 +132,22 @@ def compute_dscrl_loss(
     rng: jnp.ndarray,
     ppo_network: ppo_networks.PPONetworks,
     specification: Callable = None,
-    specification_cost: float = 1e-1,
+    specification_cost: float = 1e-3,
+    state_var = None,
     entropy_cost: float = 1e-4,
     discounting: float = 0.9,
     reward_scaling: float = 1.0,
     gae_lambda: float = 0.95,
     clipping_epsilon: float = 0.3,
-    normalize_advantage: bool = True) -> Tuple[jnp.ndarray, types.Metrics]:
+    normalize_advantage: bool = True,
+    # Rho Loss Utils
+    make_policy: Callable = None,
+    env = None,
+    reset_fn = None,
+    num_envs = 1,
+    process_count = 1,
+    local_devices_to_use = 1,
+) -> Tuple[jnp.ndarray, types.Metrics]:
   """Computes PPO loss.
 
   Args:
@@ -128,12 +169,15 @@ def compute_dscrl_loss(
     A tuple (loss, metrics)
   """
 
+  # rng, rng_entropy, rng_envs = jax.random.split(rng, 3)
+
   parametric_action_distribution = ppo_network.parametric_action_distribution
   policy_apply = ppo_network.policy_network.apply
   value_apply = ppo_network.value_network.apply
 
-  # Put the time dimension first.
   orig_data = data
+
+  # Put the time dimension first.
   data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
   policy_logits = policy_apply(normalizer_params, params.policy,
                                data.observation)
@@ -178,12 +222,21 @@ def compute_dscrl_loss(
   entropy_loss = entropy_cost * -entropy
 
   # STL Loss
-  # robustness per trajectory in batch.
-  robustness = jnp.mean(specification({"state": orig_data.observation,
-                                       "action": orig_data.action}))
-  specification_loss = specification_cost * jax.nn.relu(-robustness)
 
+  specification_loss = compute_specification_loss(
+    parametric_action_distribution,
+    policy_logits,
+    data,
+    env,
+    specification,
+    state_var,
+    specification_cost,
+  )
+
+  # total_loss = policy_loss + v_loss + entropy_loss
   total_loss = policy_loss + v_loss + entropy_loss + specification_loss
+  # total_loss = specification_loss
+
   return total_loss, {
       'total_loss': total_loss,
       'policy_loss': policy_loss,
