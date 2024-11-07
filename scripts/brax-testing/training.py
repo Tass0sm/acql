@@ -25,7 +25,7 @@ from task_aware_skill_composition.brax.agents.ppo_with_spec_rewards import train
 from task_aware_skill_composition.brax.tasks import get_task
 
 
-task = get_task("ant", "positive_y")
+task = get_task("point", "turn_seq")
 env = task.env
 
 spec = task.lo_spec
@@ -38,7 +38,7 @@ jit_step = jax.jit(env.step)
 def progress_fn(num_steps, metrics, df=None):
     pass
 
-train_fn = functools.partial(ppo.train,
+train_fn = functools.partial(tasc.train,
                              num_timesteps=50_000_000,
                              num_evals=10,
                              reward_scaling=10,
@@ -56,23 +56,42 @@ train_fn = functools.partial(ppo.train,
                              batch_size=512,
                              seed=1)
 
-# TRAIN
+# TRAIN WITH SPEC REWARDS
 
-from task_aware_skill_composition.brax.envs.wrappers.specification_reward_wrapper import SpecificationRewardWrapper
+# from task_aware_skill_composition.brax.envs.wrappers.specification_reward_wrapper import SpecificationRewardWrapper
 
-spec_wrapped_env = SpecificationRewardWrapper(
+# spec_wrapped_env = SpecificationRewardWrapper(
+#     env,
+#     task.lo_spec,
+#     task.obs_var,
+#     rho_weight=1.0
+# )
+
+# make_inference_fn, params, _ = train_fn(
+#     environment=spec_wrapped_env,
+#     progress_fn=functools.partial(progress_fn),
+#     specification=task.lo_spec,
+#     state_var=task.obs_var,
+# )
+
+# TRAIN WITH AUTOMATON
+
+from task_aware_skill_composition.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
+
+automaton_wrapped_env = AutomatonWrapper(
     env,
-    task.lo_spec,
+    spec,
     task.obs_var,
-    rho_weight=1.0
+    augment_obs = True
 )
 
 make_inference_fn, params, _ = train_fn(
-    environment=spec_wrapped_env,
+    environment=automaton_wrapped_env,
     progress_fn=functools.partial(progress_fn),
     specification=task.lo_spec,
     state_var=task.obs_var,
 )
+
 
 # print(f'time to jit: {times[1] - times[0]}')
 # print(f'time to train: {times[-1] - times[1]}')

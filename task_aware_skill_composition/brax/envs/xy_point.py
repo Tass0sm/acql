@@ -128,7 +128,7 @@ class XYPoint(GoalConditionedEnv):
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
         velocity = (pipeline_state.x.pos[0] - pipeline_state0.x.pos[0]) / self.dt
-        forward_reward = jp.dot(velocity, jp.array([1.0, 0.0, 0.0]))
+        forward_reward = velocity[0]
 
         min_z, max_z = self._healthy_z_range
         is_healthy = jp.where(pipeline_state.x.pos[0, 2] < min_z, 0.0, 1.0)

@@ -34,13 +34,12 @@
     <body name="robot" pos="0 0 .1">
       <camera name="track" mode="trackcom" pos="0 -3 0.3" xyaxes="1 0 0 0 0 1"/>
       <geom name="torso" type="sphere" size=".1" friction="1 0.1 0.1"/>
-      <geom name="pointarrow" pos="0.1 0 0" size="0.05 0.05 0.05" type="box"/>
-      <joint axis="1 0 0" limited="false" name="x" damping="1" frictionloss="0.0" type="slide"/>
-      <joint axis="0 1 0" limited="false" name="y" damping="1" frictionloss="0.0" type="slide"/>
+      <joint axis="1 0 0" limited="false" name="x" damping="1" frictionloss="0.5" type="slide"/>
+      <joint axis="0 1 0" limited="false" name="y" damping="1" frictionloss="0.5" type="slide"/>
     </body>
   </worldbody>
   <actuator>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="3.0" joint="x"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="3.0" joint="y"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="10.0" joint="x"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="10.0" joint="y"/>
   </actuator>
 </mujoco>

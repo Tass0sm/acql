@@ -53,28 +53,37 @@ class JaxAutomaton:
     # We instead just use the current action and next state.
     # L :: A x S -> 2^P
     def eval_aps(self, action, nstate):
-        bit_vector = jnp.zeros((action.shape[0],), dtype=int)
+        bit_vector = 0
 
         for i, ap in self.aps.items():
             # If ap_i is true for an env, flip the i-th bit in its
             # bit-vector. vectorize over all envs.
-            bit_vector = jnp.bitwise_or(bit_vector, (ap({ self.state_var.idx: nstate }) > 0.0).squeeze() * 2**i)
+            bit_vector = jnp.bitwise_or(bit_vector, (ap({ self.state_var.idx: jnp.expand_dims(nstate, 0) }) > 0.0).squeeze() * 2**i)
 
         return bit_vector
 
+    def quantitative_eval_aps(self, state):
+        aps_vector = jnp.zeros((self.n_aps,))
+
+        for i, ap in self.aps.items():
+            # If ap_i is true for an env, flip the i-th bit in its
+            # bit-vector. vectorize over all envs.
+            aps_vector = aps_vector.at[i].set(ap({ self.state_var.idx: jnp.expand_dims(state, 0) }).squeeze())
+
+        return aps_vector
+
     def step(self, aut_state, ap_bit_vector):
-
-        def step_i(state, bitvec):
-            return self.delta_u[state, bitvec]
-
-        return jax.vmap(step_i, in_axes=(0, 0))(aut_state, ap_bit_vector)
+        return self.delta_u[aut_state, ap_bit_vector]
 
     def one_hot_encode(self, state: jax.Array) -> jax.Array:
         return jax.nn.one_hot(state, self.num_states)
 
+    def one_hot_decode(self, state: jax.Array) -> jax.Array:
+        return jnp.argmax(state, axis=1)
+
 
 class AutomatonWrapper(Wrapper):
-    """Adds specification robustness to envs's reward"""
+    """Tracks automaton state during interaction with environment"""
 
     def __init__(
             self,
@@ -91,7 +100,7 @@ class AutomatonWrapper(Wrapper):
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
 
-        automata_state = jnp.ones((rng.shape[0],), dtype=int) * self.automaton.init_state
+        automata_state = self.automaton.init_state
         state.info["automata_state"] = automata_state
 
         if self.augment_obs:
