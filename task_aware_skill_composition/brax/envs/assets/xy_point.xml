@@ -1,0 +1,46 @@
+<mujoco model="xy_point">
+  <compiler angle="radian" inertiafromgeom="true"/>
+  <default>
+    <joint armature="1" limited="true"/>
+    <geom conaffinity="0" contype="0" friction="1 0.1 0.1" rgba="0.4 0.33 0.26 1.0"/>
+  </default>
+  <!-- Removed RK4 integrator for brax. -->
+  <option gravity="0 0 -9.81" timestep="0.01" />
+  <custom>
+    <!-- brax custom params -->
+    <numeric data="0 0" name="init_qpos"/>
+    <numeric data="1000" name="constraint_stiffness"/>
+    <numeric data="1000" name="constraint_limit_stiffness"/>
+    <numeric data="3" name="constraint_vel_damping"/>
+    <numeric data="0.1" name="constraint_ang_damping"/>
+    <numeric data="0.0" name="ang_damping"/>
+    <numeric data="0" name="spring_mass_scale"/>
+    <numeric data="1" name="spring_inertia_scale"/>
+    <numeric data="5" name="solver_maxls"/>
+  </custom>
+  <asset>
+    <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100"/>
+    <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
+    <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100"/>
+    <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane"/>
+    <material name="geom" texture="texgeom" texuniform="true"/>
+  </asset>
+  <worldbody>
+    <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+    <camera name="overview" pos="0 -5 2" xyaxes="1 0 0 0 .4 1" fovy="90"/>
+    <!-- Arena -->
+    <geom conaffinity="0" contype="0" material="MatPlane" name="ground" pos="0 0 0" size="5 5 0.1" type="plane" rgba="0.5 0.5 0.5 1.0"/>
+    <!-- Arm -->
+    <body name="robot" pos="0 0 .1">
+      <camera name="track" mode="trackcom" pos="0 -3 0.3" xyaxes="1 0 0 0 0 1"/>
+      <geom name="torso" type="sphere" size=".1" friction="1 0.1 0.1"/>
+      <geom name="pointarrow" pos="0.1 0 0" size="0.05 0.05 0.05" type="box"/>
+      <joint axis="1 0 0" limited="false" name="x" damping="1" frictionloss="0.0" type="slide"/>
+      <joint axis="0 1 0" limited="false" name="y" damping="1" frictionloss="0.0" type="slide"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="3.0" joint="x"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="3.0" joint="y"/>
+  </actuator>
+</mujoco>
