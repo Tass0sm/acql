@@ -1,26 +1,25 @@
 <mujoco model="point">
-  <size njmax="3000" nconmax="1000"/>
-  <option timestep="0.01" iterations="4"/>
+  <compiler angle="radian" inertiafromgeom="true"/>
+  <default>
+    <geom condim="3" density="1" rgba="0.4 0.33 0.26 1.0"/>
+    <joint damping="1"/>
+    <motor ctrlrange="-1 1" ctrllimited="true" forcerange="-.05 .05" forcelimited="true"/>
+    <velocity ctrlrange="-1 1" ctrllimited="true" forcerange="-.05 .05" forcelimited="true"/>
+  </default>
+  <!-- Removed RK4 integrator for brax. -->
+  <option gravity="0 0 -9.81" timestep="0.01" />
   <custom>
     <!-- brax custom params -->
     <!-- <numeric data="0.0 0.0 0.55 1.0 0.0 0.0 0.0 0.0 1.0 0.0 -1.0 0.0 -1.0 0.0 1.0" name="init_qpos"/> -->
-    <numeric data="10000" name="constraint_limit_stiffness"/>
-    <numeric data="10000" name="constraint_stiffness"/>
-    <numeric data="20" name="constraint_ang_damping"/>
-    <numeric data="20" name="constraint_vel_damping"/>
-    <numeric data="1" name="vel_damping"/>
-    <numeric data="-0.05" name="ang_damping"/>
-    <numeric data="1" name="spring_mass_scale"/>
+    <numeric data="1000" name="constraint_limit_stiffness"/>
+    <numeric data="1000" name="constraint_stiffness"/>
+    <numeric data="0.1" name="constraint_vel_damping"/>
+    <numeric data="0.1" name="constraint_ang_damping"/>
+    <numeric data="0.0" name="ang_damping"/>
+    <numeric data="0" name="spring_mass_scale"/>
     <numeric data="1" name="spring_inertia_scale"/>
-    <numeric data="15" name="solver_maxls"/>
+    <numeric data="5" name="solver_maxls"/>
   </custom>
-  <default>
-    <geom condim="3" density="1" rgba="0.4 0.33 0.26 1.0"/>
-    <joint damping=".001"/>
-    <motor ctrlrange="-1 1" ctrllimited="true" forcerange="-.05 .05" forcelimited="true"/>
-    <velocity ctrlrange="-1 1" ctrllimited="true" forcerange="-.05 .05" forcelimited="true"/>
-    <site size="0.032" type="sphere"/>
-  </default>
   <asset>
     <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100"/>
     <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
@@ -41,7 +40,7 @@
       <joint type="hinge" axis="0 0 1" name="z" damping="0.005"/>
       <geom name="robot" type="sphere" size=".1" friction="1 0.01 0.01"/>
       <geom name="pointarrow" pos="0.1 0 0" size="0.05 0.05 0.05" type="box"/>
-      <site name="robot" rgba="1 0 0 .1"/>
+      <site name="robot" size="0.032" type="sphere" rgba="1 0 0 .1"/>
     </body>
   </worldbody>
   <sensor>
@@ -58,9 +57,9 @@
   </sensor>
   <actuator>
     <!-- forward velocity -->
-    <motor gear="0.3 0 0 0 0 0" site="robot" name="x"/>
+    <motor gear="0.03 0 0 0 0 0" site="robot" name="x"/>
 
     <!-- turning velocity -->
-    <velocity gear="0.3" jointinparent="z" name="z"/>
+    <velocity gear="0.06" jointinparent="z" name="z"/>
   </actuator>
 </mujoco>
