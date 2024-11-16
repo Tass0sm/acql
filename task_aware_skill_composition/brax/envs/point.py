@@ -97,7 +97,8 @@ class Point(GoalConditionedEnv):
         """Resets the environment to an initial state."""
         rng, rng1, rng2 = jax.random.split(rng, 3)
 
-        low, hi = -self._reset_noise_scale, self._reset_noise_scale
+        low = jp.array([-self._reset_noise_scale, -self._reset_noise_scale, -jp.pi])
+        hi = jp.array([self._reset_noise_scale, self._reset_noise_scale, jp.pi])
         q = self.sys.init_q + jax.random.uniform(
                 rng1, (self.sys.q_size(),), minval=low, maxval=hi
         )
@@ -128,7 +129,7 @@ class Point(GoalConditionedEnv):
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
         velocity = (pipeline_state.x.pos[0] - pipeline_state0.x.pos[0]) / self.dt
-        forward_reward = jp.dot(velocity, jp.array([0.5, 0.5, 0.0]))
+        forward_reward = jp.dot(velocity, jp.array([1.0, 0.0, 0.0]))
 
         min_z, max_z = self._healthy_z_range
         is_healthy = jp.where(pipeline_state.x.pos[0, 2] < min_z, 0.0, 1.0)

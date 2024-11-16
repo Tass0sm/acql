@@ -4,7 +4,7 @@ from typing import Callable, Dict, Optional, Tuple
 
 from brax.base import System
 from brax.envs.base import Env, State, Wrapper
-from flax import struct
+from flax import struct, nnx
 import jax
 from jax import numpy as jnp
 
@@ -25,8 +25,8 @@ class JaxAutomaton:
         self.n_states = self.automaton.num_states()
         self.n_edges = self.automaton.num_edges()
 
-        delta_u = jnp.ones((2**self.n_aps, self.n_states), dtype=int)
-        delta_u = delta_u * jnp.arange(self.n_states)
+        delta_u = jnp.ones((2**self.n_aps, self.n_states), dtype=jnp.uint32)
+        delta_u = delta_u * jnp.arange(self.n_states, dtype=jnp.uint32)
 
         bdd_dict = self.automaton.get_dict()
         for edge in self.automaton.edges():
@@ -39,6 +39,12 @@ class JaxAutomaton:
         self.delta_u = delta_u.T
 
         self.state_var = state_var
+
+        self.embedding = nnx.Embed(
+            num_embeddings=self.n_states,
+            features=self.n_states,
+            rngs=nnx.Rngs(0),
+        )
 
     @property
     def init_state(self):
@@ -81,6 +87,9 @@ class JaxAutomaton:
     def one_hot_decode(self, state: jax.Array) -> jax.Array:
         return jnp.argmax(state, axis=1)
 
+    def embed(self, state: jax.Array) -> jax.Array:
+        return self.embedding(state)
+
 
 class AutomatonWrapper(Wrapper):
     """Tracks automaton state during interaction with environment"""
@@ -100,11 +109,13 @@ class AutomatonWrapper(Wrapper):
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
 
-        automata_state = self.automaton.init_state
+        automata_state = jnp.uint32(self.automaton.init_state)
         state.info["automata_state"] = automata_state
+        state.info["made_transition"] = jnp.uint32(0)
 
         if self.augment_obs:
-            new_obs = jnp.concatenate((state.obs, self.automaton.one_hot_encode(automata_state)), axis=-1)
+            new_obs = jnp.concatenate((state.obs, self.automaton.embed(automata_state)), axis=-1)
+            # new_obs = jnp.concatenate((state.obs, self.automaton.one_hot_encode(automata_state)), axis=-1)
             state = state.replace(obs=new_obs)
 
         return state
@@ -122,10 +133,16 @@ class AutomatonWrapper(Wrapper):
 
         nautomata_state = self.automaton.step(automata_state, labels)
 
-        state.info.update(automata_state=nautomata_state)
+        made_transition = jnp.where(automata_state != nautomata_state, jnp.uint32(1), jnp.uint32(0))
+
+        state.info.update(
+            automata_state=nautomata_state,
+            made_transition=made_transition
+        )
 
         if self.augment_obs:
-            new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomata_state)), axis=-1)
+            new_obs = jnp.concatenate((nstate.obs, self.automaton.embed(nautomata_state)), axis=-1)
+            # new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomata_state)), axis=-1)
             nstate = nstate.replace(obs=new_obs)
 
         return nstate

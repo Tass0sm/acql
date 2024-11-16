@@ -1,4 +1,4 @@
-<mujoco model="xy_point">
+<mujoco model="skate">
   <compiler angle="radian" inertiafromgeom="true"/>
   <default>
     <joint armature="1" limited="true"/>
@@ -8,7 +8,7 @@
   <option gravity="0 0 -9.81" timestep="0.01" />
   <custom>
     <!-- brax custom params -->
-    <numeric data="0 0" name="init_qpos"/>
+    <numeric data="0 0 .1 0" name="init_qpos"/>
     <numeric data="1000" name="constraint_stiffness"/>
     <numeric data="1000" name="constraint_limit_stiffness"/>
     <numeric data="3" name="constraint_vel_damping"/>
@@ -30,16 +30,24 @@
     <camera name="overview" pos="0 -5 2" xyaxes="1 0 0 0 .4 1" fovy="90"/>
     <!-- Arena -->
     <geom conaffinity="0" contype="0" material="MatPlane" name="ground" pos="0 0 0" size="5 5 0.1" type="plane" rgba="0.5 0.5 0.5 1.0"/>
-    <!-- Arm -->
-    <body name="robot" pos="0 0 .1">
+
+    <body name="leg" pos="0 0 .3">
       <camera name="track" mode="trackcom" pos="0 -3 0.3" xyaxes="1 0 0 0 0 1"/>
-      <geom name="torso" type="sphere" size=".1" friction="1 0.1 0.1"/>
-      <joint axis="1 0 0" limited="false" name="x" damping="2" frictionloss="0.5" type="slide"/>
-      <joint axis="0 1 0" limited="false" name="y" damping="2" frictionloss="0.5" type="slide"/>
+      <geom name="shin" type="box" size=".03 .02 .2"/>
+      <geom name="skate" type="capsule" fromto=".02 0 -.25 .1 0 -.25" size=".02"/>
+      <joint type="slide" limited="false" axis="1 0 0"/>
+      <joint type="slide" limited="false" axis="0 1 0"/>
+      <joint type="slide" limited="false" axis="0 0 1"/>
+      <joint type="hinge" limited="false" name="z_hinge" axis="0 0 1"/>
+      <site name="thruster_site" size="0.032" type="sphere" rgba="1 0 0 .1"/>
     </body>
   </worldbody>
   <actuator>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="10.0" joint="x"/>
-    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="10.0" joint="y"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="10.0" site="thruster_site" name="x"/>
+    <motor ctrllimited="true" ctrlrange="-1.0 1.0" gear="30.0" joint="z_hinge"/>
   </actuator>
+
+  <contact>
+    <pair name="non-isotropic" geom1="ground" geom2="skate" condim="3" friction="0.1 1"/>
+  </contact>
 </mujoco>

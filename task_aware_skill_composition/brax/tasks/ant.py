@@ -5,80 +5,74 @@ import jax.numpy as jnp
 
 from gymnasium.spaces.utils import flatdim
 
-from task_aware_skill_composition.brax.envs.xy_point import XYPoint
+from task_aware_skill_composition.brax.envs.ant import Ant
 from task_aware_skill_composition.brax.envs.base import GoalConditionedEnv
 from task_aware_skill_composition.brax.tasks.base import TaskBase
-from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle
+from task_aware_skill_composition.brax.tasks.templates import inside_circle
 
 from corallab_stl import Expression, Var
 import corallab_stl.expression_jax2 as stl
 
 
-class XYPointTaskBase(TaskBase):
+class AntTaskBase(TaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=2)
+
+        # In our ant environment, the the x and y position of the ant is
+        # included in the observation, so the default dimension of an
+        # observation is 29.
+        # The y_velocity of the torso is the 16th feature of this
+        # observation.
         self.obs_var = Var("obs", idx=0, dim=flatdim(self.env.observation_space),
-                           position=(0, 2))
+                           position=(0, 2),
+                           y_velocity=16)
+
+    @property
+    def ppo_hps(self):
+        return {
+            "num_timesteps": 50_000_000,
+            "num_evals": 20,
+            "reward_scaling": 5,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "unroll_length": 5,
+            "num_minibatches": 32,
+            "num_updates_per_batch": 4,
+            "discounting": 0.95,
+            "learning_rate": 3e-4,
+            "entropy_cost": 1e-2,
+            "num_envs": 4096,
+            "batch_size": 2048,
+        }
 
 
-class XYPointStraight(XYPointTaskBase):
+class AntPositiveY(AntTaskBase):
+    """
+    Always(y_velocity > 0)
+    """
+
     def __init__(self, backend="mjx"):
         super().__init__(None, 1000, backend=backend)
 
     def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = XYPoint(backend=backend,
-                      target_velocity_vec=jnp.array([0.0, 0.0, 0.0]),
-                      target_disp_vec=jnp.array([1.0, 0.0, 0.0]))
+        env = Ant(backend=backend)
+        # for pos in self.goals:
+        #     env.add_goal_mark(pos, color=(0, 1, 1, 0.5))
         return env
 
     def _build_hi_spec(self, wp_var: Var) -> Expression:
         pass
 
     def _build_lo_spec(self, obs_var: Var) -> Expression:
-        true = stl.STLPredicate(obs_var, lambda s: 999, lower_bound=0.0)
-        return true
+        phi = stl.STLUntimedAlways(stl.STLPredicate(obs_var.y_velocity, lambda s: s[0], 0.0))
+        return phi
 
 
-class XYPointDiagonal1(XYPointTaskBase):
-    def __init__(self, backend="mjx"):
-        super().__init__(None, 1000, backend=backend)
-
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = XYPoint(backend=backend,
-                      target_velocity_vec=jnp.array([0.0, 0.0, 0.0]),
-                      target_disp_vec=jnp.array([1.0, 1.0, 0.0]))
-        return env
-
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        true = stl.STLPredicate(obs_var, lambda s: 999, lower_bound=0.0)
-        return true
-
-
-class XYPointDiagonal2(XYPointTaskBase):
-    def __init__(self, backend="mjx"):
-        super().__init__(None, 1000, backend=backend)
-
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = XYPoint(backend=backend,
-                      target_velocity_vec=jnp.array([0.0, 0.0, 0.0]),
-                      target_disp_vec=jnp.array([1.0, -1.0, 0.0]))
-        return env
-
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        true = stl.STLPredicate(obs_var, lambda s: 999, lower_bound=0.0)
-        return true
-
-
-class XYPointStraightSequence(XYPointTaskBase):
+class AntStraightSequence(AntTaskBase):
     """
     F(region1 ^ X(F(region2)))
     """
@@ -91,7 +85,9 @@ class XYPointStraightSequence(XYPointTaskBase):
         super().__init__(None, 1000, backend=backend)
 
     def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = XYPoint(backend=backend)
+        env = Ant(backend=backend)
+        # for pos in self.goals:
+        #     env.add_goal_mark(pos, color=(0, 1, 1, 0.5))
         return env
 
     def _build_hi_spec(self, wp_var: Var) -> Expression:
@@ -108,7 +104,7 @@ class XYPointStraightSequence(XYPointTaskBase):
         return phi
 
 
-class XYPointTurnSequence(XYPointTaskBase):
+class AntTurnSequence(AntTaskBase):
     """
     F(region1 ^ X(F(region2)))
     """
@@ -121,7 +117,10 @@ class XYPointTurnSequence(XYPointTaskBase):
         super().__init__(None, 1000, backend=backend)
 
     def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = XYPoint(backend=backend)
+        env = Ant(
+            terminate_when_unhealthy=True,
+            backend=backend
+        )
         return env
 
     def _build_hi_spec(self, wp_var: Var) -> Expression:
@@ -140,18 +139,18 @@ class XYPointTurnSequence(XYPointTaskBase):
     @property
     def ppo_hps(self):
         return {
-            "num_timesteps": 50_000_000,
+            "num_timesteps": 10_000_000, # 200_000_000
             "num_evals": 20,
             "reward_scaling": 5,
             "episode_length": 1000,
             "normalize_observations": True,
             "action_repeat": 1,
-            "unroll_length": 64,
+            "unroll_length": 5,
             "num_minibatches": 32,
             "num_updates_per_batch": 4,
             "discounting": 0.95,
             "learning_rate": 3e-4,
-            "entropy_cost": 1e-1,
-            "num_envs": 2048,
-            "batch_size": 256,
+            "entropy_cost": 1e-2,
+            "num_envs": 4096,
+            "batch_size": 2048,
         }

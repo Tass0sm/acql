@@ -10,8 +10,18 @@ from .point import (
     PointSequence
 ) # , PointCover, PointBranch, PointLoop, PointSignal
 from .xy_point import (
+    # XYPointMazeNav,
+    XYPointStraight,
+    XYPointDiagonal1,
+    XYPointDiagonal2,
     XYPointStraightSequence,
     XYPointTurnSequence,
+)
+from .xy_point_maze import (
+    XYPointMazeNav,
+)
+from .ant_maze import (
+    AntMazeNav,
 )
 from .skate import (
     SkateStraightSequence,
@@ -19,7 +29,8 @@ from .skate import (
 )
 from .ant import (
     AntPositiveY,
-    AntStraightSequence
+    AntStraightSequence,
+    AntTurnSequence
 )
 
 
@@ -35,14 +46,24 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         "ant": {
             "positive_y": AntPositiveY,
             "straight_seq": AntStraightSequence,
+            "turn_seq": AntTurnSequence,
         },
         "skate": {
             "straight_seq": SkateStraightSequence,
             "turn_seq": SkateTurnSequence,
         },
         "xy_point": {
+            "diagonal1": XYPointDiagonal1,
+            "diagonal2": XYPointDiagonal2,
+            "straight": XYPointStraight,
             "straight_seq": XYPointStraightSequence,
             "turn_seq": XYPointTurnSequence,
+        },
+        "xy_point_maze": {
+            "true": XYPointMazeNav,
+        },
+        "ant_maze": {
+            "true": AntMazeNav,
         },
         "point": {
             "straight_seq": PointStraightSequence,

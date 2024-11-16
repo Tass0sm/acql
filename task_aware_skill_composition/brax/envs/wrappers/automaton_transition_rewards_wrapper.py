@@ -29,6 +29,7 @@ class AutomatonTransitionRewardsWrapper(Wrapper):
 
         # [num_aps x num_possible_edges]
         binary_matrix = jnp.unpackbits(jnp.expand_dims(jnp.arange(2**num_bits, dtype=jnp.uint8), 0), axis=0)[-num_bits:]
+        binary_matrix = jnp.flip(binary_matrix, 0)
 
         # [num_aps]
         aut_vector = jnp.expand_dims(self.automaton.quantitative_eval_aps(state.obs), 1)
@@ -65,9 +66,9 @@ class AutomatonTransitionRewardsWrapper(Wrapper):
 
         delta_good_edge_satisfaction = good_edge_satisfaction_prime - good_edge_satisfaction
 
-        # from IPython.core.debugger import set_trace; set_trace()
-
-        new_reward = jnp.sign(delta_good_edge_satisfaction) * nstate.reward
+        # new_reward = jnp.sign(delta_good_edge_satisfaction) * nstate.reward
+        new_reward = jnp.where(delta_good_edge_satisfaction > 0.0, nstate.reward + 0.1, -0.1)
+        new_reward = jnp.where(nstate.info["made_transition"] > 0.0, new_reward + 100.0, new_reward)
 
         nstate = nstate.replace(
             reward=new_reward

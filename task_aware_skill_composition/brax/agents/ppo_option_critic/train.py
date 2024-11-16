@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Proximal policy optimization training.
+"""Hierarchical Proximal policy optimization training.
 
 See: https://arxiv.org/pdf/1707.06347.pdf
 """
@@ -30,7 +30,6 @@ from brax.training import pmap
 from brax.training import types
 from brax.training.acme import specs
 from brax.training.agents.ppo import losses as ppo_losses
-from brax.training.agents.ppo import networks as ppo_networks
 from brax.training.types import Params
 from brax.training.types import PRNGKey
 from brax.v1 import envs as envs_v1
@@ -43,7 +42,12 @@ import optax
 from orbax import checkpoint as ocp
 
 from task_aware_skill_composition.brax.training.acme import running_statistics
-from task_aware_skill_composition.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+
+from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from task_aware_skill_composition.hierarchy.option_critic import networks as oc_networks
+from task_aware_skill_composition.hierarchy.option_critic import losses as oc_losses
+from task_aware_skill_composition.hierarchy.state import OptionState
+from task_aware_skill_composition.hierarchy.training import acting as hierarchical_acting
 
 
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
@@ -102,8 +106,9 @@ def train(
     gae_lambda: float = 0.95,
     deterministic_eval: bool = False,
     network_factory: types.NetworkFactory[
-        ppo_networks.PPONetworks
-    ] = ppo_networks.make_ppo_networks,
+        oc_networks.OptionCriticNetworks
+    ] = oc_networks.make_option_critic_networks,
+    options=[],
     progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
     normalize_advantage: bool = True,
     eval_env: Optional[envs.Env] = None,
@@ -237,20 +242,25 @@ def train(
                          (local_devices_to_use, -1) + key_envs.shape[1:])
   env_state = reset_fn(key_envs)
 
+  option_state = OptionState(jnp.zeros_like(env_state.reward, dtype=jnp.int32),
+                             jnp.ones_like(env_state.reward, dtype=jnp.int32))
+
   normalize = lambda x, y: x
   if normalize_observations:
     normalize = functools.partial(running_statistics.normalize, mask=normalization_mask)
-  ppo_network = network_factory(
+  oc_network = network_factory(
       env_state.obs.shape[-1],
       env.action_size,
+      options=options,
       preprocess_observations_fn=normalize)
-  make_policy = ppo_networks.make_inference_fn(ppo_network)
+  make_policy = oc_networks.make_inference_fn(oc_network)
 
   optimizer = optax.adam(learning_rate=learning_rate)
 
   loss_fn = functools.partial(
-      ppo_losses.compute_ppo_loss,
-      ppo_network=ppo_network,
+      oc_losses.compute_option_critic_loss,
+      oc_network=oc_network,
+      num_options=len(options),
       entropy_cost=entropy_cost,
       discounting=discounting,
       reward_scaling=reward_scaling,
@@ -262,8 +272,10 @@ def train(
       loss_fn, optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
 
   def minibatch_step(
-      carry, data: types.Transition,
-      normalizer_params: running_statistics.RunningStatisticsState):
+      carry,
+      data: types.Transition,
+      normalizer_params: running_statistics.RunningStatisticsState
+  ):
     optimizer_state, params, key = carry
     key, key_loss = jax.random.split(key)
     (_, metrics), params, optimizer_state = gradient_update_fn(
@@ -275,8 +287,12 @@ def train(
 
     return (optimizer_state, params, key), metrics
 
-  def sgd_step(carry, unused_t, data: types.Transition,
-               normalizer_params: running_statistics.RunningStatisticsState):
+  def sgd_step(
+      carry,
+      unused_t,
+      data: types.Transition,
+      normalizer_params: running_statistics.RunningStatisticsState
+  ):
     optimizer_state, params, key = carry
     key, key_perm, key_grad = jax.random.split(key, 3)
 
@@ -294,28 +310,31 @@ def train(
     return (optimizer_state, params, key), metrics
 
   def training_step(
-      carry: Tuple[TrainingState, envs.State, PRNGKey],
-      unused_t) -> Tuple[Tuple[TrainingState, envs.State, PRNGKey], Metrics]:
-    training_state, state, key = carry
+      carry: Tuple[TrainingState, envs.State, OptionState, PRNGKey],
+      unused_t
+  ) -> Tuple[Tuple[TrainingState, envs.State, OptionState, PRNGKey], Metrics]:
+    training_state, state, option_state, key = carry
     key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
     policy = make_policy(
         (training_state.normalizer_params, training_state.params.policy))
 
     def f(carry, unused_t):
-      current_state, current_key = carry
+      current_state, option_state, current_key = carry
       current_key, next_key = jax.random.split(current_key)
-      next_state, data = acting.generate_unroll(
+      next_state, next_option_state, data = hierarchical_acting.generate_unroll(
           env,
           current_state,
+          option_state,
           policy,
+          options,
           current_key,
           unroll_length,
           extra_fields=('truncation',))
-      return (next_state, next_key), data
+      return (next_state, next_option_state, next_key), data
 
-    (state, _), data = jax.lax.scan(
-        f, (state, key_generate_unroll), (),
+    (state, option_state, _), data = jax.lax.scan(
+        f, (state, option_state, key_generate_unroll), (),
         length=batch_size * num_minibatches // num_envs)
     # Have leading dimensions (batch_size * num_minibatches, unroll_length)
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 1, 2), data)
@@ -340,27 +359,38 @@ def train(
         params=params,
         normalizer_params=normalizer_params,
         env_steps=training_state.env_steps + env_step_per_training_step)
-    return (new_training_state, state, new_key), metrics
 
-  def training_epoch(training_state: TrainingState, state: envs.State,
-                     key: PRNGKey) -> Tuple[TrainingState, envs.State, Metrics]:
-    (training_state, state, _), loss_metrics = jax.lax.scan(
-        training_step, (training_state, state, key), (),
-        length=num_training_steps_per_epoch)
+    return (new_training_state, state, option_state, new_key), metrics
+
+
+  def training_epoch(
+      training_state: TrainingState,
+      state: envs.State,
+      option_state: OptionState,
+      key: PRNGKey
+  ) -> Tuple[TrainingState, envs.State, Metrics]:
+    (training_state, state, option_state, _), loss_metrics = jax.lax.scan(
+        training_step, (training_state, state, option_state, key), (),
+        length=num_training_steps_per_epoch
+    )
     loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
-    return training_state, state, loss_metrics
+    return training_state, state, option_state, loss_metrics
 
   training_epoch = jax.pmap(training_epoch, axis_name=_PMAP_AXIS_NAME)
 
+
   # Note that this is NOT a pure jittable method.
   def training_epoch_with_timing(
-      training_state: TrainingState, env_state: envs.State,
-      key: PRNGKey) -> Tuple[TrainingState, envs.State, Metrics]:
+      training_state: TrainingState,
+      env_state: envs.State,
+      option_state: OptionState,
+      key: PRNGKey
+  ) -> Tuple[TrainingState, envs.State, Metrics]:
     nonlocal training_walltime
     t = time.time()
     training_state, env_state = _strip_weak_type((training_state, env_state))
-    result = training_epoch(training_state, env_state, key)
-    training_state, env_state, metrics = _strip_weak_type(result)
+    result = training_epoch(training_state, env_state, option_state, key)
+    training_state, env_state, option_state, metrics = _strip_weak_type(result)
 
     metrics = jax.tree_util.tree_map(jnp.mean, metrics)
     jax.tree_util.tree_map(lambda x: x.block_until_ready(), metrics)
@@ -375,12 +405,13 @@ def train(
         'training/walltime': training_walltime,
         **{f'training/{name}': value for name, value in metrics.items()}
     }
-    return training_state, env_state, metrics  # pytype: disable=bad-return-type  # py311-upgrade
+    return training_state, env_state, option_state, metrics  # pytype: disable=bad-return-type  # py311-upgrade
 
   # Initialize model params and training state.
-  init_params = ppo_losses.PPONetworkParams(
-      policy=ppo_network.policy_network.init(key_policy),
-      value=ppo_network.value_network.init(key_value),
+  # TODO: Initialize options
+  init_params = oc_losses.OptionCriticNetworkParams(
+      policy=oc_network.hi_policy_network.init(key_policy),
+      value=oc_network.option_value_network.init(key_value),
   )
 
   training_state = TrainingState(  # pytype: disable=wrong-arg-types  # jax-ndarray
@@ -429,15 +460,17 @@ def train(
         randomization_fn=v_randomization_fn,
     )
 
-  evaluator = EvaluatorWithSpecification(
+  evaluator = HierarchicalEvaluatorWithSpecification(
     eval_env,
     functools.partial(make_policy, deterministic=deterministic_eval),
+    options,
     specification=specification,
     state_var=state_var,
     num_eval_envs=num_eval_envs,
     episode_length=episode_length,
     action_repeat=action_repeat,
-    key=eval_key)
+    key=eval_key
+  )
 
   # Run initial eval
   metrics = {}
@@ -459,16 +492,19 @@ def train(
       # optimization
       epoch_key, local_key = jax.random.split(local_key)
       epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-      (training_state, env_state, training_metrics) = (
-          training_epoch_with_timing(training_state, env_state, epoch_keys)
+      (training_state, env_state, option_state, training_metrics) = (
+          training_epoch_with_timing(training_state, env_state, option_state, epoch_keys)
       )
       current_step = int(_unpmap(training_state.env_steps))
 
       key_envs = jax.vmap(
           lambda x, s: jax.random.split(x[0], s),
           in_axes=(0, None))(key_envs, key_envs.shape[1])
+
       # TODO: move extra reset logic to the AutoResetWrapper.
       env_state = reset_fn(key_envs) if num_resets_per_eval > 0 else env_state
+      option_state = OptionState(jnp.zeros_like(env_state.reward, dtype=jnp.int32),
+                                 jnp.ones_like(env_state.reward, dtype=jnp.int32))
 
     if process_id == 0:
       # Run evals.

@@ -16,8 +16,7 @@ import mujoco
 
 from task_aware_skill_composition.brax.envs.base import GoalConditionedEnv, load_and_configure_xml
 
-
-class XYPoint(GoalConditionedEnv):
+class Skate(GoalConditionedEnv):
 
     # pyformat: disable
     """
@@ -38,12 +37,10 @@ class XYPoint(GoalConditionedEnv):
             reset_noise_scale=0.1,
             exclude_current_positions_from_observation=False,
             backend='generalized',
-            target_velocity_vec=jp.array([1.0, 0.0, 0.0]),
-            target_disp_vec=None,
             wall_config=None,
             **kwargs,
     ):
-        path = epath.resource_path('task_aware_skill_composition') / 'brax/envs/assets/xy_point.xml'
+        path = epath.resource_path('task_aware_skill_composition') / 'brax/envs/assets/skate.xml'
         xml = load_and_configure_xml(path, wall_config=wall_config)
         sys = mjcf.loads(xml)
 
@@ -73,9 +70,6 @@ class XYPoint(GoalConditionedEnv):
 
         super().__init__(sys=sys, backend=backend, **kwargs)
 
-        self._target_velocity_vec = target_velocity_vec
-        self._target_disp_vec = target_disp_vec
-
         self._ctrl_cost_weight = ctrl_cost_weight
         self._use_contact_forces = use_contact_forces
         self._contact_cost_weight = contact_cost_weight
@@ -93,7 +87,7 @@ class XYPoint(GoalConditionedEnv):
 
     @property
     def observation_space(self) -> Space:
-        return spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32)
+        return spaces.Box(low=-np.inf, high=np.inf, shape=(6,), dtype=np.float32)
 
     @property
     def action_space(self) -> Space:
@@ -103,7 +97,8 @@ class XYPoint(GoalConditionedEnv):
         """Resets the environment to an initial state."""
         rng, rng1, rng2 = jax.random.split(rng, 3)
 
-        low, hi = -self._reset_noise_scale, self._reset_noise_scale
+        low = jp.array([-self._reset_noise_scale] * 3 + [-jp.pi])
+        hi = jp.array([self._reset_noise_scale] * 3 + [jp.pi])
         q = self.sys.init_q + jax.random.uniform(
                 rng1, (self.sys.q_size(),), minval=low, maxval=hi
         )
@@ -115,10 +110,9 @@ class XYPoint(GoalConditionedEnv):
         reward, done, zero = jp.zeros(3)
         metrics = {
                 'reward_forward': zero,
-                # 'reward_survive': zero,
+                'reward_survive': zero,
                 'reward_ctrl': zero,
-                # 'reward_contact': zero,
-                'reward_displacement_direction': zero,
+                'reward_contact': zero,
                 'x_position': zero,
                 'y_position': zero,
                 'distance_from_origin': zero,
@@ -134,35 +128,27 @@ class XYPoint(GoalConditionedEnv):
         assert pipeline_state0 is not None
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
-        if self._target_disp_vec is not None:
-            displacement_from_origin = pipeline_state.x.pos[0]
-            displacement_direction_reward = jp.dot(displacement_from_origin, self._target_disp_vec)
-        else:
-            displacement_direction_reward = 0
-
         velocity = (pipeline_state.x.pos[0] - pipeline_state0.x.pos[0]) / self.dt
-        forward_reward = jp.dot(velocity, self._target_velocity_vec)
+        forward_reward = jp.dot(velocity, jp.array([1.0, 0.0, 0.0]))
 
-        # min_z, max_z = self._healthy_z_range
-        # is_healthy = jp.where(pipeline_state.x.pos[0, 2] < min_z, 0.0, 1.0)
-        # is_healthy = jp.where(pipeline_state.x.pos[0, 2] > max_z, 0.0, is_healthy)
-        # if self._terminate_when_unhealthy:
-        #     healthy_reward = self._healthy_reward
-        # else:
-        #     healthy_reward = self._healthy_reward * is_healthy
+        min_z, max_z = self._healthy_z_range
+        is_healthy = jp.where(pipeline_state.x.pos[0, 2] < min_z, 0.0, 1.0)
+        is_healthy = jp.where(pipeline_state.x.pos[0, 2] > max_z, 0.0, is_healthy)
+        if self._terminate_when_unhealthy:
+            healthy_reward = self._healthy_reward
+        else:
+            healthy_reward = self._healthy_reward * is_healthy
         ctrl_cost = self._ctrl_cost_weight * jp.sum(jp.square(action))
-        # contact_cost = 0.0
+        contact_cost = 0.0
 
         obs = self._get_obs(pipeline_state)
-        reward = displacement_direction_reward + forward_reward - ctrl_cost #  + healthy_reward - contact_cost
-        # done = 1.0 - is_healthy if self._terminate_when_unhealthy else 0.0
-        done = 0.0
+        reward = forward_reward + healthy_reward - ctrl_cost - contact_cost
+        done = 1.0 - is_healthy if self._terminate_when_unhealthy else 0.0
         state.metrics.update(
                 reward_forward=forward_reward,
-                # reward_survive=healthy_reward,
+                reward_survive=healthy_reward,
                 reward_ctrl=-ctrl_cost,
-                # reward_contact=-contact_cost,
-                reward_displacement_direction=displacement_direction_reward,
+                reward_contact=-contact_cost,
                 x_position=pipeline_state.x.pos[0, 0],
                 y_position=pipeline_state.x.pos[0, 1],
                 distance_from_origin=math.safe_norm(pipeline_state.x.pos[0]),

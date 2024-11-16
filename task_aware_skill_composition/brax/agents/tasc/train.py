@@ -1,20 +1,4 @@
-# Copyright 2024 The Brax Authors.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""Proximal policy optimization training.
-
-See: https://arxiv.org/pdf/1707.06347.pdf
+"""TASC
 """
 
 import functools
@@ -28,6 +12,7 @@ from brax.training import acting
 from brax.training import gradients
 from brax.training import pmap
 from brax.training import types
+from brax.training.acme import running_statistics
 from brax.training.acme import specs
 from brax.training.agents.ppo import losses as ppo_losses
 from brax.training.agents.ppo import networks as ppo_networks
@@ -42,8 +27,8 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
-from task_aware_skill_composition.brax.training.acme import running_statistics
 from task_aware_skill_composition.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from task_aware_skill_composition.brax.envs.wrappers.automaton_transition_rewards_wrapper import AutomatonTransitionRewardsWrapper
 
 
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
@@ -96,7 +81,6 @@ def train(
     num_evals: int = 1,
     num_resets_per_eval: int = 0,
     normalize_observations: bool = False,
-    normalization_mask: Optional[jnp.ndarray] = None,
     reward_scaling: float = 1.0,
     clipping_epsilon: float = 0.3,
     gae_lambda: float = 0.95,
@@ -211,6 +195,11 @@ def train(
   assert num_envs % device_count == 0
 
   env = environment
+
+  assert hasattr(environment, "automaton"), "Env for TASC must be wrapped with automaton"
+
+  environment = AutomatonTransitionRewardsWrapper(environment)
+
   if wrap_env:
     v_randomization_fn = None
     if randomization_fn is not None:
@@ -239,7 +228,7 @@ def train(
 
   normalize = lambda x, y: x
   if normalize_observations:
-    normalize = functools.partial(running_statistics.normalize, mask=normalization_mask)
+    normalize = running_statistics.normalize
   ppo_network = network_factory(
       env_state.obs.shape[-1],
       env.action_size,
