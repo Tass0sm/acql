@@ -23,7 +23,7 @@ from brax.training.types import PRNGKey
 
 from task_aware_skill_composition.brax.envs.xy_point import XYPoint
 from task_aware_skill_composition.hierarchy.xy_point import options
-from task_aware_skill_composition.hierarchy.option import Option
+from task_aware_skill_composition.hierarchy.option import Option, BernoulliTerminationPolicy
 
 
 def load_xy_point_options(adapter: Optional[Callable] = None):
@@ -54,7 +54,10 @@ def load_xy_point_options(adapter: Optional[Callable] = None):
     return options_l
 
 
-def load_hard_coded_xy_point_options(adapter: Optional[Callable] = None):
+def load_hard_coded_xy_point_options(
+        termination_prob: float = 1.0,
+        adapter: Optional[Callable] = None,
+):
 
     # In training environment, not in goal conditioned maze env
     XY_POINT_OBS_SIZE = 4
@@ -81,6 +84,12 @@ def load_hard_coded_xy_point_options(adapter: Optional[Callable] = None):
 
     for name, ctrl in ctrl_dict.items():
         print(name, ctrl)
-        options_l.append(Option(name, None, None, functools.partial(hard_policy, ctrl), adapter=adapter))
+        options_l.append(
+            Option(
+                name, None, None, functools.partial(hard_policy, ctrl),
+                termination_policy=BernoulliTerminationPolicy(termination_prob),
+                adapter=adapter
+            )
+        )
 
     return options_l

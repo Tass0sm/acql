@@ -146,3 +146,10 @@ class AutomatonWrapper(Wrapper):
             nstate = nstate.replace(obs=new_obs)
 
         return nstate
+
+    @property
+    def observation_size(self) -> int:
+        if self.augment_obs:
+            return self.env.observation_size + self.automaton.n_states
+        else:
+            return self.env.observation_size

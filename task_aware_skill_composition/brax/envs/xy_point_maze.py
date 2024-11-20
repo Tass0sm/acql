@@ -217,7 +217,6 @@ class XYPointMaze(PipelineEnv):
             exclude_current_positions_from_observation
         )
 
-        self.state_dim = 6
         self.goal_indices = jp.array([0, 1])
 
         if self._use_contact_forces:

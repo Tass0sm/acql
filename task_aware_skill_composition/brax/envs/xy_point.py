@@ -138,7 +138,7 @@ class XYPoint(GoalConditionedEnv):
             displacement_from_origin = pipeline_state.x.pos[0]
             displacement_direction_reward = jp.dot(displacement_from_origin, self._target_disp_vec)
         else:
-            displacement_direction_reward = 0
+            displacement_direction_reward = 0.0
 
         velocity = (pipeline_state.x.pos[0] - pipeline_state0.x.pos[0]) / self.dt
         forward_reward = jp.dot(velocity, self._target_velocity_vec)

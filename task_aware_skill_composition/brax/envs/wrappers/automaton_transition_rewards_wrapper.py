@@ -20,12 +20,10 @@ class AutomatonTransitionRewardsWrapper(Wrapper):
     ):
         super().__init__(env)
 
-    def _get_good_edge_satisfaction(self, state: State):
+    def _get_good_edge_satisfaction(self, aut_state: int, state: State):
         """Returns the degree to which this state is close to causing a transition in the automaton."""
 
         num_bits = self.automaton.n_aps
-
-        aut_state = state.info["automata_state"]
 
         # [num_aps x num_possible_edges]
         binary_matrix = jnp.unpackbits(jnp.expand_dims(jnp.arange(2**num_bits, dtype=jnp.uint8), 0), axis=0)[-num_bits:]
@@ -50,7 +48,7 @@ class AutomatonTransitionRewardsWrapper(Wrapper):
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
-        good_edge_satisfaction = self._get_good_edge_satisfaction(state)
+        good_edge_satisfaction = self._get_good_edge_satisfaction(state.info["automata_state"], state)
 
         state.info.update(
             good_edge_satisfaction=good_edge_satisfaction,
@@ -60,11 +58,16 @@ class AutomatonTransitionRewardsWrapper(Wrapper):
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
-        good_edge_satisfaction = state.info["good_edge_satisfaction"]
-        nstate = self.env.step(state, action)
-        good_edge_satisfaction_prime = self._get_good_edge_satisfaction(nstate)
+        current_aut_state = state.info["automata_state"]
+        current_good_edge_satisfaction = state.info["good_edge_satisfaction"]
 
-        delta_good_edge_satisfaction = good_edge_satisfaction_prime - good_edge_satisfaction
+        nstate = self.env.step(state, action)
+
+        # Calculate satisfaction of previous state's good edges for new state,
+        # instead of nstate's good edges
+        new_good_edge_satisfaction = self._get_good_edge_satisfaction(current_aut_state, nstate)
+
+        delta_good_edge_satisfaction = new_good_edge_satisfaction - current_good_edge_satisfaction
 
         # new_reward = jnp.sign(delta_good_edge_satisfaction) * nstate.reward
         new_reward = jnp.where(delta_good_edge_satisfaction > 0.0, nstate.reward + 0.1, -0.1)
@@ -73,9 +76,12 @@ class AutomatonTransitionRewardsWrapper(Wrapper):
         nstate = nstate.replace(
             reward=new_reward
         )
+        
+        next_aut_state = nstate.info["automata_state"]
+        next_state_good_edge_satisfaction = self._get_good_edge_satisfaction(next_aut_state, nstate)
 
         nstate.info.update(
-            good_edge_satisfaction=good_edge_satisfaction_prime,
+            good_edge_satisfaction=next_state_good_edge_satisfaction,
             delta_good_edge_satisfaction=delta_good_edge_satisfaction,
         )
 

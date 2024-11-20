@@ -22,12 +22,12 @@ from brax.io import html
 from task_aware_skill_composition.hierarchy.state import OptionState
 
 
-def get_rollout(env, hierarchical_policy, n_steps=200, render_every=1):
+def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, seed=0):
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
 
     # reset the environment
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.PRNGKey(seed)
     state = jit_reset(rng)
 
     initial_option_state = OptionState(option=jnp.ones((1,), dtype=jnp.int32) * 0,
@@ -35,7 +35,7 @@ def get_rollout(env, hierarchical_policy, n_steps=200, render_every=1):
     option_state = initial_option_state
 
     rollout = [state]
-    options = []
+    rollout_options = []
     actions = []
 
     for i in range(n_steps):
@@ -50,14 +50,20 @@ def get_rollout(env, hierarchical_policy, n_steps=200, render_every=1):
         if state.done:
             break
 
+        # TODO: Figure out centralized way to handle the option state / termination...
         option = extras["option"]
-        # termination = jnp.zeros_like(option_state.option_beta)
-        # termination = jax.random.bernoulli(act_rng, p=jnp.float32(0.2), shape=option_state.option_beta.shape).astype(jnp.int32)
-        termination = jnp.ones_like(option_state.option_beta)
+
+        def get_beta(s_t, o_t, beta_key):
+            return jax.lax.switch(o_t, [o.termination for o in options], s_t, beta_key)
+
+        # calculate b_t+1 from s_t+1, o_t
+        beta_keys = jax.random.split(rng, option.shape[0])
+        termination = jax.vmap(get_beta)(jnp.expand_dims(state.obs, 0), option, beta_keys)
+
         option_state = OptionState(option, termination)
 
-        options.append(option)
+        rollout_options.append(option)
         actions.append(ctrl)
         rollout.append(state)
 
-    return rollout, options, actions
+    return rollout, jnp.concatenate(rollout_options), jnp.stack(actions)

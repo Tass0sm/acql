@@ -20,12 +20,12 @@ from brax.io import json
 from brax.io import html
 
 
-def get_rollout(env, flat_policy, n_steps=200, render_every=1):
+def get_rollout(env, flat_policy, n_steps=200, render_every=1, seed=0):
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
 
     # reset the environment
-    rng = jax.random.PRNGKey(1)
+    rng = jax.random.PRNGKey(seed)
     state = jit_reset(rng)
 
     rollout = [state]
@@ -36,7 +36,7 @@ def get_rollout(env, flat_policy, n_steps=200, render_every=1):
         obs = jnp.expand_dims(state.obs, 0)
 
         ctrl, _ = flat_policy(obs, act_rng)
-        # ctrl = ctrl.squeeze(0)
+        ctrl = ctrl.squeeze(0)
 
         state = jit_step(state, ctrl)
 
@@ -46,4 +46,4 @@ def get_rollout(env, flat_policy, n_steps=200, render_every=1):
         actions.append(ctrl)
         rollout.append(state)
 
-    return rollout, actions
+    return rollout, jnp.stack(actions)

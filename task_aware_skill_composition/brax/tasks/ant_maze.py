@@ -19,7 +19,7 @@ class AntMazeTaskBase(TaskBase):
 
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=2)
-        self.obs_var = Var("obs", idx=0, dim=self.env.state_dim + 2, position=(0, 2))
+        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
 
 
 class AntMazeNav(AntMazeTaskBase):
@@ -29,6 +29,7 @@ class AntMazeNav(AntMazeTaskBase):
     def _build_env(self, backend: str) -> GoalConditionedEnv:
         env = AntMaze(
             terminate_when_unhealthy=False,
+            dense_reward=True,
             backend=backend
         )
         return env

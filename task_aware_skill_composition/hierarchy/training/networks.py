@@ -35,3 +35,42 @@ def make_option_value_network(
   dummy_obs = jnp.zeros((1, obs_size+num_options))
   return FeedForwardNetwork(
       init=lambda key: value_module.init(key, dummy_obs), apply=apply)
+
+
+def make_option_q_network(
+    obs_size: int,
+    num_options: int,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+    hidden_layer_sizes: Sequence[int] = (256, 256),
+    activation: ActivationFn = linen.relu,
+    n_critics: int = 2) -> FeedForwardNetwork:
+  """Creates a value network."""
+
+  # Q function for discrete space of options.
+  class DiscreteQModule(linen.Module):
+    """Q Module."""
+    n_critics: int
+
+    @linen.compact
+    def __call__(self, obs: jnp.ndarray):
+      hidden = jnp.concatenate([obs], axis=-1)
+      res = []
+      for _ in range(self.n_critics):
+        critic_option_qs = MLP(
+          layer_sizes=list(hidden_layer_sizes) + [num_options],
+          activation=activation,
+          kernel_init=jax.nn.initializers.lecun_uniform()
+        )(hidden)
+        res.append(critic_option_qs)
+
+      return jnp.stack(res, axis=-1)
+
+  q_module = DiscreteQModule(n_critics=n_critics)
+
+  def apply(processor_params, q_params, obs):
+    obs = preprocess_observations_fn(obs, processor_params)
+    return q_module.apply(q_params, obs)
+
+  dummy_obs = jnp.zeros((1, obs_size))
+  return FeedForwardNetwork(
+      init=lambda key: q_module.init(key, dummy_obs), apply=apply)

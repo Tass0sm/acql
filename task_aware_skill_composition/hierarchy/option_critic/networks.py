@@ -87,8 +87,7 @@ def make_inference_fn(option_critic_networks: OptionCriticNetworks):
 def make_option_critic_networks(
     observation_size: int,
     action_size: int,
-    preprocess_observations_fn: types.PreprocessObservationFn = types
-    .identity_observation_preprocessor,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     policy_hidden_layer_sizes: Sequence[int] = (32,) * 4,
     value_hidden_layer_sizes: Sequence[int] = (256,) * 5,
     activation: networks.ActivationFn = linen.swish,

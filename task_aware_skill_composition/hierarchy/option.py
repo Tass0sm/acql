@@ -24,7 +24,7 @@ class Option:
             networks,
             params,
             inference_fn,
-            termination_policy: Callable = BernoulliTerminationPolicy(1.0),
+            termination_policy: Callable = BernoulliTerminationPolicy(0.2),
             adapter: Optional[Callable] = None,
     ):
         self.name = name

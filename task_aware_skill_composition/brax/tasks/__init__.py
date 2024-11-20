@@ -16,6 +16,7 @@ from .xy_point import (
     XYPointDiagonal2,
     XYPointStraightSequence,
     XYPointTurnSequence,
+    XYPointObstacle,
 )
 from .xy_point_maze import (
     XYPointMazeNav,
@@ -23,11 +24,18 @@ from .xy_point_maze import (
 from .ant_maze import (
     AntMazeNav,
 )
+from .ant_push import (
+    AntPushDefault,
+)
+from .simple_maze import (
+    SimpleMazeNav,
+)
 from .skate import (
     SkateStraightSequence,
     SkateTurnSequence,
 )
 from .ant import (
+    AntRun,
     AntPositiveY,
     AntStraightSequence,
     AntTurnSequence
@@ -44,6 +52,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         #     "signal": DroneSignal
         # },
         "ant": {
+            "run": AntRun,
             "positive_y": AntPositiveY,
             "straight_seq": AntStraightSequence,
             "turn_seq": AntTurnSequence,
@@ -58,12 +67,19 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "straight": XYPointStraight,
             "straight_seq": XYPointStraightSequence,
             "turn_seq": XYPointTurnSequence,
+            "obstacle": XYPointObstacle,
         },
         "xy_point_maze": {
             "true": XYPointMazeNav,
         },
         "ant_maze": {
             "true": AntMazeNav,
+        },
+        "ant_push": {
+            "true": AntPushDefault,
+        },
+        "simple_maze": {
+            "true": SimpleMazeNav,
         },
         "point": {
             "straight_seq": PointStraightSequence,

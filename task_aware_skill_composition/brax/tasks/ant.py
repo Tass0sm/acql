@@ -26,9 +26,7 @@ class AntTaskBase(TaskBase):
         # observation is 29.
         # The y_velocity of the torso is the 16th feature of this
         # observation.
-        self.obs_var = Var("obs", idx=0, dim=flatdim(self.env.observation_space),
-                           position=(0, 2),
-                           y_velocity=16)
+        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2), y_velocity=16)
 
     @property
     def ppo_hps(self):
@@ -48,6 +46,29 @@ class AntTaskBase(TaskBase):
             "num_envs": 4096,
             "batch_size": 2048,
         }
+
+
+class AntRun(AntTaskBase):
+    def __init__(self, backend="mjx"):
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = Ant(
+            exclude_current_positions_from_observation=True,
+            backend=backend,
+        )
+        return env
+
+    def _create_vars(self):
+        self.wp_var = Var("wp", idx=0, dim=2)
+        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, y_velocity=14)
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        true = stl.STLPredicate(obs_var, lambda s: 999, lower_bound=0.0)
+        return true
 
 
 class AntPositiveY(AntTaskBase):
