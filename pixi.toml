@@ -42,7 +42,7 @@ tensorboard = ">=2.18.0, <3"
 
 brax = { path = "/home/tassos/phd/research/second-project/brax", editable = true }
 jax = { version = ">=0.4.34, <0.5", extras = ["cuda12"] }
-jaxgcrl = { path = "/home/tassos/phd/research/second-project/JaxGCRL", editable = true }
+jaxgcrl = { path = "/home/tassos/phd/research/second-project/jaxgcrl", editable = true }
 wandb = ">=0.18.5, <0.19"
 pyinstrument = ">=5.0.0, <6"
 
@@ -55,3 +55,10 @@ flax = ">=0.10.0, <0.11"
 dm-env = ">=1.6, <2"
 hydra-core = ">=1.3.2, <2"
 robot-descriptions = ">=1.12.0, <2"
+seaborn = ">=0.13.2, <0.14"
+aim = ">=3.25.0, <4"
+navix = { path = "/home/tassos/phd/research/second-project/navix", editable = true }
+gymnax = ">=0.0.8, <0.0.9"
+distrax = ">=0.1.5, <0.2"
+evosax = ">=0.1.6, <0.2"
+jupyternotify = ">=0.1.15, <0.2"
