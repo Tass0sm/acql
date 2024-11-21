@@ -277,6 +277,9 @@ def train(
     normalize_observations: bool = False,
     max_devices_per_host: Optional[int] = None,
     reward_scaling: float = 1.0,
+    cost_scaling: float = 1.0,
+    cost_budget: float = 0.1,
+    lambda_update_interval: int = 12,
     tau: float = 0.005,
     min_replay_size: int = 0,
     max_replay_size: Optional[int] = None,
@@ -372,6 +375,7 @@ def train(
             "state_extras": {
                 "truncation": 0.0,
                 "seed": 0.0,
+                "cost": 0.0,
             },
             "policy_extras": {},
         },
@@ -387,23 +391,59 @@ def train(
     )
 
     alpha_loss, lambda_loss, critic_loss, cost_critic_loss, actor_loss = sac_lagrangian_losses.make_losses(
-        sac_lagrangian_network=sac_lagrangian_network, reward_scaling=reward_scaling, discounting=discounting, action_size=action_size
+        sac_lagrangian_network=sac_lagrangian_network,
+        reward_scaling=reward_scaling,
+        cost_scaling=cost_scaling,
+        cost_budget=cost_budget,
+        discounting=discounting,
+        action_size=action_size
     )
+
     alpha_update = gradients.gradient_update_fn(  # pytype: disable=wrong-arg-types  # jax-ndarray
         alpha_loss, alpha_optimizer, pmap_axis_name=_PMAP_AXIS_NAME
     )
     lambda_update = gradients.gradient_update_fn(  # pytype: disable=wrong-arg-types  # jax-ndarray
-        lambda_loss, lambda_optimizer, pmap_axis_name=_PMAP_AXIS_NAME
+        lambda_loss, lambda_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True
     )
     critic_update = gradients.gradient_update_fn(  # pytype: disable=wrong-arg-types  # jax-ndarray
         critic_loss, q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME
     )
     cost_critic_update = gradients.gradient_update_fn(  # pytype: disable=wrong-arg-types  # jax-ndarray
-        cost_critic_loss, cost_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME
+        cost_critic_loss, cost_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True
     )
     actor_update = gradients.gradient_update_fn(  # pytype: disable=wrong-arg-types  # jax-ndarray
         actor_loss, policy_optimizer, pmap_axis_name=_PMAP_AXIS_NAME
     )
+
+    def lambda_update_helper(
+            lambda_params,
+            cost_q_params,
+            normalizer_params,
+            transitions,
+            key_lambda,
+            optimizer_state,
+    ):
+        return lambda_update(
+            lambda_params,
+            cost_q_params,
+            normalizer_params,
+            transitions,
+            key_lambda,
+            optimizer_state=optimizer_state,
+        )
+
+    def no_lambda_update_helper(
+            lambda_params,
+            cost_q_params,
+            normalizer_params,
+            transitions,
+            key_lambda,
+            optimizer_state,
+    ):
+        return (0.0, {
+            "cost_q": 0.0,
+            "violation": 0.0,
+        }), lambda_params, optimizer_state
 
     def sgd_step(
         carry: Tuple[TrainingState, PRNGKey], transitions: Transition
@@ -421,15 +461,21 @@ def train(
             optimizer_state=training_state.alpha_optimizer_state,
         )
         alpha = jnp.exp(training_state.alpha_params)
-        lambda_loss, lambda_params, lambda_optimizer_state = lambda_update(
+
+        (lambda_loss, lambda_info), lambda_params, lambda_optimizer_state = jax.lax.cond(
+            training_state.gradient_steps % lambda_update_interval == 0,
+            lambda_update_helper,
+            no_lambda_update_helper,
             training_state.lambda_params,
-            training_state.policy_params,
+            training_state.cost_q_params,
             training_state.normalizer_params,
             transitions,
             key_lambda,
-            optimizer_state=training_state.lambda_optimizer_state,
+            training_state.lambda_optimizer_state,
         )
+
         lambda_multiplier = jnp.exp(training_state.lambda_params)
+
         critic_loss, q_params, q_optimizer_state = critic_update(
             training_state.q_params,
             training_state.policy_params,
@@ -440,7 +486,7 @@ def train(
             key_critic,
             optimizer_state=training_state.q_optimizer_state,
         )
-        cost_critic_loss, cost_q_params, cost_q_optimizer_state = cost_critic_update(
+        (cost_critic_loss, cost_critic_info), cost_q_params, cost_q_optimizer_state = cost_critic_update(
             training_state.cost_q_params,
             training_state.policy_params,
             training_state.normalizer_params,
@@ -448,13 +494,16 @@ def train(
             alpha,
             transitions,
             key_cost_critic,
-            optimizer_state=training_state.q_optimizer_state,
+            optimizer_state=training_state.cost_q_optimizer_state,
         )
+
         actor_loss, policy_params, policy_optimizer_state = actor_update(
             training_state.policy_params,
             training_state.normalizer_params,
             training_state.q_params,
+            training_state.cost_q_params,
             alpha,
+            lambda_multiplier,
             transitions,
             key_actor,
             optimizer_state=training_state.policy_optimizer_state,
@@ -475,6 +524,8 @@ def train(
             "lambda_loss": lambda_loss,
             "alpha": jnp.exp(alpha_params),
             "lambda": lambda_multiplier,
+            **cost_critic_info,
+            **lambda_info,
         }
 
         new_training_state = TrainingState(
@@ -521,6 +572,7 @@ def train(
                 extra_fields=(
                     "truncation",
                     # "seed",
+                    "cost",
                 ),
             )
             return (env_state, next_key), transition

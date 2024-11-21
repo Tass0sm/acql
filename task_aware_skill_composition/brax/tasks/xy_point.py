@@ -48,7 +48,7 @@ class XYPointTaskBase(TaskBase):
     @property
     def sac_hps(self):
         return {
-            "num_timesteps": 10_000_000,
+            "num_timesteps": 1_000_000,
             "reward_scaling": 10,
             "num_evals": 50,
             "episode_length": 1000,
@@ -66,6 +66,10 @@ class XYPointTaskBase(TaskBase):
             "num_envs": 512,
             "batch_size": 256,
         }
+
+    @property
+    def sac_lagrangian_hps(self):
+        return self.sac_hps
 
     @property
     def hsac_hps(self):
@@ -88,6 +92,7 @@ class XYPointTaskBase(TaskBase):
             "num_envs": 512,
             "batch_size": 256,
         }
+
 
 
 class XYPointStraight(XYPointTaskBase):
@@ -224,3 +229,31 @@ class XYPointObstacle(XYPointTaskBase):
         at_obs1 = inside_circle(obs_var.position, self.obs1_location, self.obs_radius)
         phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
         return phi
+
+class XYPointObstacle2(XYPointTaskBase):
+    """
+    G(!region1)
+    """
+
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([2.0, 2.0])
+        self.obs_radius = 1.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _create_vars(self):
+        self.wp_var = Var("wp", idx=0, dim=2)
+        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = XYPoint(backend=backend, exclude_current_positions_from_observation=False)
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        at_obs1 = inside_circle(obs_var.position, self.obs1_location, self.obs_radius)
+        phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+        return phi
+    

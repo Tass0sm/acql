@@ -30,13 +30,20 @@ from task_aware_skill_composition.brax.agents.sac_lagrangian import networks as 
 Transition = types.Transition
 
 
-def make_losses(sac_lagrangian_network: sac_lagrangian_networks.SACLagrangianNetworks, reward_scaling: float,
-                discounting: float, action_size: int):
+def make_losses(
+    sac_lagrangian_network: sac_lagrangian_networks.SACLagrangianNetworks,
+    reward_scaling: float,
+    cost_scaling: float,
+    cost_budget: float,
+    discounting: float,
+    action_size: int
+):
   """Creates the SAC losses."""
 
   target_entropy = -0.5 * action_size
   policy_network = sac_lagrangian_network.policy_network
   q_network = sac_lagrangian_network.q_network
+  cost_q_network = sac_lagrangian_network.cost_q_network
   parametric_action_distribution = sac_lagrangian_network.parametric_action_distribution
 
   def alpha_loss(log_alpha: jnp.ndarray, policy_params: Params,
@@ -52,18 +59,27 @@ def make_losses(sac_lagrangian_network: sac_lagrangian_networks.SACLagrangianNet
     alpha_loss = alpha * jax.lax.stop_gradient(-log_prob - target_entropy)
     return jnp.mean(alpha_loss)
 
-  def lambda_loss(lambda_multiplier: jnp.ndarray, policy_params: Params,
-                 normalizer_params: Any, transitions: Transition,
-                 key: PRNGKey) -> jnp.ndarray:
-    # """Eq 18 from https://arxiv.org/pdf/1812.05905.pdf."""
-    # dist_params = policy_network.apply(normalizer_params, policy_params,
-    #                                    transitions.observation)
-    # action = parametric_action_distribution.sample_no_postprocessing(
-    #     dist_params, key)
-    # log_prob = parametric_action_distribution.log_prob(dist_params, action)
-    # alpha = jnp.exp(log_alpha)
-    # alpha_loss = alpha * jax.lax.stop_gradient(-log_prob - target_entropy)
-    return 0.0 # jnp.mean(alpha_loss)
+  def lambda_loss(
+      lambda_multiplier: jnp.ndarray,
+      cost_q_params: Params,
+      normalizer_params: Any,
+      transitions: Transition,
+      key: PRNGKey) -> jnp.ndarray:
+    """Eq 7 from https://arxiv.org/pdf/2002.08550"""
+    cost_q_action = cost_q_network.apply(normalizer_params, cost_q_params,
+                                         transitions.observation, transitions.action)
+    min_cost_q = jnp.min(cost_q_action, axis=-1)
+    violation = min_cost_q - cost_budget
+
+    # Based on: https://github.com/ammarhydr/SAC-Lagrangian/blob/232a0772205007068449740e0a0f1b7ddca3d946/SAC_Agent.py#L278
+    # Experimenting...
+    log_lambda = jax.nn.softplus(lambda_multiplier)
+    lambda_loss = log_lambda * jax.lax.stop_gradient(violation)
+
+    return jnp.sum(lambda_loss), {
+      "cost_q": jnp.mean(min_cost_q),
+      "violation": jnp.mean(violation),
+    }
 
   def critic_loss(q_params: Params, policy_params: Params,
                   normalizer_params: Any, target_q_params: Params,
@@ -94,36 +110,45 @@ def make_losses(sac_lagrangian_network: sac_lagrangian_networks.SACLagrangianNet
     return q_loss
 
   def cost_critic_loss(cost_q_params: Params, policy_params: Params,
-                       normalizer_params: Any, target_q_params: Params,
+                       normalizer_params: Any, target_cost_q_params: Params,
                        alpha: jnp.ndarray, transitions: Transition,
                        key: PRNGKey) -> jnp.ndarray:
-    # q_old_action = q_network.apply(normalizer_params, q_params,
-    #                                transitions.observation, transitions.action)
-    # next_dist_params = policy_network.apply(normalizer_params, policy_params,
-    #                                         transitions.next_observation)
-    # next_action = parametric_action_distribution.sample_no_postprocessing(
-    #     next_dist_params, key)
-    # next_log_prob = parametric_action_distribution.log_prob(
-    #     next_dist_params, next_action)
-    # next_action = parametric_action_distribution.postprocess(next_action)
-    # next_q = q_network.apply(normalizer_params, target_q_params,
-    #                          transitions.next_observation, next_action)
-    # next_v = jnp.min(next_q, axis=-1) - alpha * next_log_prob
-    # target_q = jax.lax.stop_gradient(transitions.reward * reward_scaling +
-    #                                  transitions.discount * discounting *
-    #                                  next_v)
-    # q_error = q_old_action - jnp.expand_dims(target_q, -1)
+    cost_q_old_action = cost_q_network.apply(normalizer_params, cost_q_params,
+                                        transitions.observation, transitions.action)
+    next_dist_params = policy_network.apply(normalizer_params, policy_params,
+                                            transitions.next_observation)
+    next_action = parametric_action_distribution.sample_no_postprocessing(
+      next_dist_params, key)
+    next_log_prob = parametric_action_distribution.log_prob(
+      next_dist_params, next_action)
+    next_action = parametric_action_distribution.postprocess(next_action)
+    next_cost_q = cost_q_network.apply(normalizer_params, target_cost_q_params,
+                                       transitions.next_observation, next_action)
+    next_cost_v = jnp.min(next_cost_q, axis=-1) - alpha * next_log_prob
+    target_cost_q = jax.lax.stop_gradient(transitions.extras["state_extras"]["cost"] * cost_scaling +
+                                          transitions.discount * discounting *
+                                          next_cost_v)
+    cost_q_error = cost_q_old_action - jnp.expand_dims(target_cost_q, -1)
 
-    # # Better bootstrapping for truncated episodes.
-    # truncation = transitions.extras['state_extras']['truncation']
-    # q_error *= jnp.expand_dims(1 - truncation, -1)
+    # Better bootstrapping for truncated episodes.
+    truncation = transitions.extras['state_extras']['truncation']
+    cost_q_error *= jnp.expand_dims(1 - truncation, -1)
 
-    # q_loss = 0.5 * jnp.mean(jnp.square(q_error))
-    # return q_loss
-    return 0.0
+    cost_q_loss = 0.5 * jnp.mean(jnp.square(cost_q_error))
 
-  def actor_loss(policy_params: Params, normalizer_params: Any,
-                 q_params: Params, alpha: jnp.ndarray, transitions: Transition,
+    return cost_q_loss, {
+      "mean_cost_q_old_action": cost_q_old_action,
+      "mean_target_cost_q": target_cost_q,
+      "mean_cost_over_batch": jnp.mean(transitions.extras["state_extras"]["cost"])
+    }
+
+  def actor_loss(policy_params: Params,
+                 normalizer_params: Any,
+                 q_params: Params,
+                 cost_q_params: Params,
+                 alpha: jnp.ndarray,
+                 lambda_multiplier: jnp.ndarray,
+                 transitions: Transition,
                  key: PRNGKey) -> jnp.ndarray:
     dist_params = policy_network.apply(normalizer_params, policy_params,
                                        transitions.observation)
@@ -134,7 +159,15 @@ def make_losses(sac_lagrangian_network: sac_lagrangian_networks.SACLagrangianNet
     q_action = q_network.apply(normalizer_params, q_params,
                                transitions.observation, action)
     min_q = jnp.min(q_action, axis=-1)
-    actor_loss = alpha * log_prob - min_q
+
+    cost_q_action = cost_q_network.apply(normalizer_params, cost_q_params,
+                                         transitions.observation, action)
+    min_cost_q = jnp.min(cost_q_action, axis=-1)
+
+    # maximize entropy (minimize alpha*log_prob)
+    # maximize return (minimize -Q)
+    # minimize cost (minimize Qc)
+    actor_loss = alpha * log_prob - min_q + (lambda_multiplier * min_cost_q)
     return jnp.mean(actor_loss)
 
   return alpha_loss, lambda_loss, critic_loss, cost_critic_loss, actor_loss

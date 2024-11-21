@@ -17,6 +17,7 @@ from .xy_point import (
     XYPointStraightSequence,
     XYPointTurnSequence,
     XYPointObstacle,
+    XYPointObstacle2,
 )
 from .xy_point_maze import (
     XYPointMazeNav,
@@ -68,6 +69,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "straight_seq": XYPointStraightSequence,
             "turn_seq": XYPointTurnSequence,
             "obstacle": XYPointObstacle,
+            "obstacle2": XYPointObstacle2,
         },
         "xy_point_maze": {
             "true": XYPointMazeNav,
