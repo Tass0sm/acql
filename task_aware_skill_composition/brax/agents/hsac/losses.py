@@ -24,7 +24,7 @@ from brax.training.types import PRNGKey
 import jax
 import jax.numpy as jnp
 
-from task_aware_skill_composition.brax.agents.sac_option_critic import networks as soac_networks
+from task_aware_skill_composition.brax.agents.hsac import networks as soac_networks
 
 
 Transition = types.Transition
@@ -54,7 +54,6 @@ def make_losses(
       transitions: Transition,
       key: PRNGKey
   ) -> jnp.ndarray:
-    """Eq 18 from https://arxiv.org/pdf/1812.05905.pdf."""
     dist_params = hi_policy_network.apply(normalizer_params, policy_params,
                                           transitions.observation)
 

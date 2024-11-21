@@ -44,8 +44,8 @@ from jaxgcrl.src.evaluator import CrlEvaluator
 from jaxgcrl.src.replay_buffer import QueueBase, Sample
 
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from task_aware_skill_composition.brax.agents.sac_option_critic import networks as soac_networks
-from task_aware_skill_composition.brax.agents.sac_option_critic import losses as soac_losses
+from task_aware_skill_composition.brax.agents.hsac import networks as soac_networks
+from task_aware_skill_composition.brax.agents.hsac import losses as soac_losses
 from task_aware_skill_composition.hierarchy.training import acting as hierarchical_acting
 from task_aware_skill_composition.hierarchy.training import types as h_types
 from task_aware_skill_composition.hierarchy.state import OptionState
