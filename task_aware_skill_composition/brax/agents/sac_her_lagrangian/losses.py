@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""SAC-Lagrangian losses.
+"""Soft Actor-Critic losses.
 
 See: https://arxiv.org/pdf/1812.05905.pdf
 """
@@ -24,7 +24,7 @@ from brax.training.types import PRNGKey
 import jax
 import jax.numpy as jnp
 
-from task_aware_skill_composition.brax.agents.sac_lagrangian import networks as sac_lagrangian_networks
+from task_aware_skill_composition.brax.agents.sac_her_lagrangian import networks as sac_lagrangian_networks
 
 
 Transition = types.Transition

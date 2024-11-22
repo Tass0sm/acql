@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""SAC networks."""
+"""SAC Lagrangian networks."""
 
 from typing import Sequence, Tuple
 
@@ -32,7 +32,7 @@ class SACLagrangianNetworks:
   parametric_action_distribution: distribution.ParametricDistribution
 
 
-def make_inference_fn(sac_lagrangian_networks: SACLagrangianNetworks):
+def make_inference_fn(sac_networks: SACLagrangianNetworks):
   """Creates params and inference function for the SAC agent."""
 
   def make_policy(params: types.PolicyParams,
@@ -40,10 +40,10 @@ def make_inference_fn(sac_lagrangian_networks: SACLagrangianNetworks):
 
     def policy(observations: types.Observation,
                key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      logits = sac_lagrangian_networks.policy_network.apply(*params, observations)
+      logits = sac_networks.policy_network.apply(*params, observations)
       if deterministic:
-        return sac_lagrangian_networks.parametric_action_distribution.mode(logits), {}
-      return sac_lagrangian_networks.parametric_action_distribution.sample(
+        return sac_networks.parametric_action_distribution.mode(logits), {}
+      return sac_networks.parametric_action_distribution.sample(
           logits, key_sample), {}
 
     return policy
@@ -58,7 +58,7 @@ def make_sac_lagrangian_networks(
     .identity_observation_preprocessor,
     hidden_layer_sizes: Sequence[int] = (256, 256),
     activation: networks.ActivationFn = linen.relu) -> SACLagrangianNetworks:
-  """Make SAC-Lagrangian networks."""
+  """Make SAC networks."""
   parametric_action_distribution = distribution.NormalTanhDistribution(
       event_size=action_size)
   policy_network = networks.make_policy_network(
