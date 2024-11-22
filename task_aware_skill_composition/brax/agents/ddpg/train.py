@@ -3,6 +3,7 @@ import time
 from typing import Any, Callable, Optional, Tuple, Sequence
 
 from absl import logging
+from brax import base
 from brax import envs
 from brax.envs import wrappers
 from brax.io import model
@@ -13,16 +14,18 @@ from brax.training import replay_buffers
 from brax.training import types
 from brax.training.acme import running_statistics
 from brax.training.acme import specs
-from brax.training.agents.ddpg import losses as ddpg_losses
-from brax.training.agents.ddpg import networks as ddpg_networks
 from brax.training.types import Params
 from brax.training.types import PRNGKey, Transition
 import flax
 import jax
 import jax.numpy as jnp
 import optax
-import tensorflow as tf
 import numpy as np
+
+from task_aware_skill_composition.brax.agents.ddpg import losses as ddpg_losses
+from task_aware_skill_composition.brax.agents.ddpg import networks as ddpg_networks
+
+
 Metrics = types.Metrics
 Transition = types.Transition
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
@@ -76,35 +79,37 @@ def _init_training_state(
   return jax.device_put_replicated(training_state, jax.local_devices()[:local_devices_to_use])
 
 
-def train(environment: envs.Env,
-          num_timesteps,
-          episode_length: int = 1000,
-          action_repeat: int = 1,
-          num_envs: int = 128,
-          # num_sampling_per_update: int = 50,
-          num_eval_envs: int = 16,
-          learning_rate: float = 1e-4,
-          discounting: float = 0.9,
-          seed: int = 0,
-          batch_size: int = 256,
-          num_evals: int = 1,
-          normalize_observations: bool = True,
-          max_devices_per_host: Optional[int] = None,
-          reward_scaling: float = 1.,
-          tau: float = 0.005,
-          min_replay_size: int = 0,
-          max_replay_size: Optional[int] = 10_0000,
-          grad_updates_per_step: int = 1,
-          deterministic_eval: bool = False,
-          tensorboard_flag = True,
-          logdir = './logs',
-          network_factory: types.NetworkFactory[ddpg_networks.DDPGNetworks] = ddpg_networks.make_ddpg_networks,
-          progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
-          checkpoint_logdir: Optional[str] = None):
-
-  if tensorboard_flag:
-    file_writer = tf.summary.create_file_writer(logdir)
-    file_writer.set_as_default()
+def train(
+    environment: envs.Env,
+    num_timesteps,
+    episode_length: int = 1000,
+    wrap_env: bool = True,
+    action_repeat: int = 1,
+    num_envs: int = 128,
+    # num_sampling_per_update: int = 50,
+    num_eval_envs: int = 16,
+    learning_rate: float = 1e-4,
+    discounting: float = 0.9,
+    seed: int = 0,
+    batch_size: int = 256,
+    num_evals: int = 1,
+    normalize_observations: bool = True,
+    max_devices_per_host: Optional[int] = None,
+    reward_scaling: float = 1.,
+    tau: float = 0.005,
+    min_replay_size: int = 0,
+    max_replay_size: Optional[int] = 10_0000,
+    grad_updates_per_step: int = 1,
+    deterministic_eval: bool = False,
+    tensorboard_flag = True,
+    logdir = './logs',
+    network_factory: types.NetworkFactory[ddpg_networks.DDPGNetworks] = ddpg_networks.make_ddpg_networks,
+    progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
+    checkpoint_logdir: Optional[str] = None,
+    randomization_fn: Optional[
+      Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
+    ] = None,
+):
 
   process_id = jax.process_index()
   local_devices_to_use = jax.local_device_count()
@@ -136,9 +141,27 @@ def train(environment: envs.Env,
 
   assert num_envs % device_count == 0
   env = environment
-  env = wrappers.EpisodeWrapper(env, episode_length, action_repeat)
-  env = wrappers.VmapWrapper(env)
-  env = wrappers.AutoResetWrapper(env)
+  if wrap_env:
+    if isinstance(env, envs.Env):
+      wrap_for_training = envs.training.wrap
+    else:
+      wrap_for_training = envs_v1.wrappers.wrap_for_training
+
+    rng = jax.random.PRNGKey(seed)
+    rng, key = jax.random.split(rng)
+    v_randomization_fn = None
+    if randomization_fn is not None:
+      v_randomization_fn = functools.partial(
+          randomization_fn,
+          rng=jax.random.split(
+              key, num_envs // jax.process_count() // local_devices_to_use),
+      )
+    env = wrap_for_training(
+        env,
+        episode_length=episode_length,
+        action_repeat=action_repeat,
+        randomization_fn=v_randomization_fn,
+    )
 
   obs_size = env.observation_size
   action_size = env.action_size
@@ -263,8 +286,7 @@ def train(environment: envs.Env,
     transitions = jax.tree_map(lambda x: jnp.reshape(x, (grad_updates_per_step, -1) + x.shape[1:]), transitions)
     (training_state, _), metrics = jax.lax.scan(sgd_step, (training_state, training_key), transitions)
 
-    metrics['buffer_current_size'] = buffer_state.current_size
-    metrics['buffer_current_position'] = buffer_state.current_position
+    metrics['buffer_current_size'] = replay_buffer.size(buffer_state)
     return training_state, env_state, buffer_state, metrics
 
   def prefill_replay_buffer(
@@ -390,14 +412,6 @@ def train(environment: envs.Env,
     epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
     (training_state, env_state, buffer_state, training_metrics) = training_epoch_with_timing(training_state, env_state, buffer_state, epoch_keys)
     current_step = int(_unpmap(training_state.env_steps))
-
-    with tf.name_scope('Metric Info'):
-        tf.summary.scalar('actor_loss', data=np.array(training_metrics['training/actor_loss']), step=current_step)
-        tf.summary.scalar('critic_loss', data=np.array(training_metrics['training/critic_loss']), step=current_step)
-        tf.summary.scalar('raw_action_mean', data=np.array(training_metrics['training/raw_action_mean']), step=current_step)
-        tf.summary.scalar('raw_action_std', data=np.array(training_metrics['training/raw_action_std']), step=current_step)
-        tf.summary.scalar('sampled_action_mean', data=np.array(training_metrics['training/sampled_action_mean']), step=current_step)
-        tf.summary.scalar('sampled_action_std', data=np.array(training_metrics['training/sampled_action_std']), step=current_step)
 
     # Eval and logging
     if process_id == 0:

@@ -1,12 +1,14 @@
 from typing import Any
 
 from brax.training import types
-from brax.training.agents.ddpg import networks as ddpg_networks
 from brax.training.types import Params
 from brax.training.types import PRNGKey
 from brax.training import distribution
 import jax
 import jax.numpy as jnp
+
+from task_aware_skill_composition.brax.agents.ddpg import networks as ddpg_networks
+
 
 Transition = types.Transition
 
