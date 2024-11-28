@@ -48,28 +48,54 @@ class XYPointTaskBase(TaskBase):
     @property
     def sac_hps(self):
         return {
-            "num_timesteps": 1_000_000,
-            "reward_scaling": 10,
-            "num_evals": 50,
-            "episode_length": 1000,
-            "normalize_observations": True,
-            "action_repeat": 1,
-            "unroll_length": 62, # TODO: Reducing this increases time. What else does it affect?
-            "multiplier_num_sgd_steps": 1,
-            "max_devices_per_host": 1,
-            "max_replay_size": 10000,
-            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
-            "min_replay_size": 1000,
-            "use_her": False,
-            "discounting": 0.97,
-            # "learning_rate": 3e-4,
-            "num_envs": 512,
-            "batch_size": 256,
+            # "num_timesteps": 2_000_000,
+            # "reward_scaling": 10,
+            # "num_evals": 50,
+            # "episode_length": 1000,
+            # "normalize_observations": True,
+            # "action_repeat": 1,
+            # "unroll_length": 62, # TODO: Reducing this increases time. What else does it affect?
+            # "multiplier_num_sgd_steps": 1,
+            # "max_devices_per_host": 1,
+            # "max_replay_size": 10000,
+            # # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            # "min_replay_size": 1000,
+            # "use_her": False,
+            # "discounting": 0.97,
+            # # "learning_rate": 3e-4,
+            # "num_envs": 512,
+            # "batch_size": 256,
         }
 
     @property
     def sac_lagrangian_hps(self):
         return self.sac_hps
+
+    # @property
+    # def sac_her_hps(self):
+    #     return {
+    #         "num_timesteps": 2_000_000,
+    #         "reward_scaling": 10,
+    #         "num_evals": 50,
+    #         "episode_length": 1000,
+    #         "normalize_observations": True,
+    #         "action_repeat": 1,
+    #         "unroll_length": 62, # TODO: Reducing this increases time. What else does it affect?
+    #         "multiplier_num_sgd_steps": 1,
+    #         "max_devices_per_host": 1,
+    #         "max_replay_size": 10000,
+    #         # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+    #         "min_replay_size": 1000,
+    #         "use_her": False,
+    #         "discounting": 0.97,
+    #         # "learning_rate": 3e-4,
+    #         "num_envs": 512,
+    #         "batch_size": 256,
+    #     }
+
+    @property
+    def sac_her_lagrangian_hps(self):
+        return self.sac_her_hps
 
     @property
     def hsac_hps(self):
@@ -91,6 +117,25 @@ class XYPointTaskBase(TaskBase):
             # "learning_rate": 3e-4,
             "num_envs": 512,
             "batch_size": 256,
+        }
+
+    @property
+    def hdqn_hps(self):
+        return {
+            "num_timesteps": 1_000_000,
+            "num_evals": 20,
+            "reward_scaling": 30,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.997,
+            "learning_rate": 6e-4,
+            "num_envs": 128,
+            "batch_size": 512,
+            "grad_updates_per_step": 64,
+            "max_devices_per_host": 1,
+            "max_replay_size": 1048576,
+            "min_replay_size": 8192,
         }
 
 

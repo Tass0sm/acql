@@ -22,6 +22,9 @@ from .xy_point import (
 from .xy_point_maze import (
     XYPointMazeNav,
 )
+from .hopper import (
+    HopperStraight,
+)
 from .ant_maze import (
     AntMazeNav,
 )
@@ -73,6 +76,9 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "xy_point_maze": {
             "true": XYPointMazeNav,
+        },
+        "hopper": {
+            "straight": HopperStraight,
         },
         "ant_maze": {
             "true": AntMazeNav,

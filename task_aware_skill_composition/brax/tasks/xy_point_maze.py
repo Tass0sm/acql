@@ -43,7 +43,7 @@ class XYPointMazeTaskBase(TaskBase):
         }
 
     @property
-    def sac_hps(self):
+    def sac_her_hps(self):
         return {
             "num_timesteps": 6_553_600,
             "num_evals": 20,
