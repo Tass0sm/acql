@@ -90,6 +90,17 @@ class HierarchicalTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Samp
     @functools.partial(jax.jit, static_argnames=["use_her", "env"])
     def flatten_crl_fn(use_her, env, transition: HierarchicalTransition, sample_key: PRNGKey) -> HierarchicalTransition:
         if use_her:
+
+            # remove automaton state
+            if hasattr(env, "automaton") and env.augment_obs:
+                obs = transition.observation[..., :-env.automaton.num_states]
+                automaton_obs = transition.observation[..., -env.automaton.num_states:]
+                next_obs = transition.next_observation[..., :-env.automaton.num_states]
+                next_automaton_obs = transition.next_observation[..., -env.automaton.num_states:]
+            else:
+                obs = transition.observation
+                next_obs = transition.next_observation
+
             # Find truncation indexes if present
             seq_len = transition.observation.shape[0]
             arrangement = jnp.arange(seq_len)
@@ -108,12 +119,12 @@ class HierarchicalTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Samp
             binary_mask = jnp.logical_and(non_zero_columns, non_zero_columns)
 
             new_goals = (
-                binary_mask[:, None] * transition.observation[new_goals_idx][:, env.goal_indices]
-                + jnp.logical_not(binary_mask)[:, None] * transition.observation[new_goals_idx][:, env.state_dim :]
+                binary_mask[:, None] * obs[new_goals_idx][:, env.goal_indices]
+                + jnp.logical_not(binary_mask)[:, None] * obs[new_goals_idx][:, env.state_dim:]
             )
 
             # Transform observation
-            state = transition.observation[:, : env.state_dim]
+            state = obs[:, : env.state_dim]
             new_obs = jnp.concatenate([state, new_goals], axis=1)
 
             # Recalculate reward
@@ -121,8 +132,13 @@ class HierarchicalTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Samp
             new_reward = jnp.array(dist < env.goal_dist, dtype=float)
 
             # Transform next observation
-            next_state = transition.next_observation[:, : env.state_dim]
+            next_state = next_obs[:, : env.state_dim]
             new_next_obs = jnp.concatenate([next_state, new_goals], axis=1)
+
+            # add back automaton state
+            if hasattr(env, "automaton") and env.augment_obs:
+                new_obs = jnp.concatenate([new_obs, automaton_obs], axis=1)
+                new_next_obs = jnp.concatenate([new_next_obs, next_automaton_obs], axis=1)
 
             return transition._replace(
                 observation=jnp.squeeze(new_obs),

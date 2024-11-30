@@ -115,7 +115,7 @@ def train(
     max_devices_per_host: Optional[int] = None,
     reward_scaling: float = 1.,
     cost_scaling: float = 1.0,
-    cost_budget: float = 0.0,
+    cost_budget: float = 1000.0,
     tau: float = 0.005,
     min_replay_size: int = 0,
     max_replay_size: Optional[int] = 10_0000,
@@ -244,9 +244,9 @@ def train(
       discounting=discounting,
   )
   critic_update = gradients.gradient_update_fn(
-      critic_loss, option_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME)
+      critic_loss, option_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
   cost_critic_update = gradients.gradient_update_fn(
-      cost_critic_loss, cost_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME)
+      cost_critic_loss, cost_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
 
   def sgd_step(
       carry: Tuple[TrainingState, PRNGKey],
@@ -255,20 +255,22 @@ def train(
 
     key, key_critic, key_cost_critic = jax.random.split(key, 3)
 
-    critic_loss, option_q_params, option_q_optimizer_state = critic_update(
+    (critic_loss, critic_info), option_q_params, option_q_optimizer_state = critic_update(
         training_state.option_q_params,
         training_state.cost_q_params,
         training_state.normalizer_params,
         training_state.target_option_q_params,
+        training_state.target_cost_q_params,
         transitions,
         key_critic,
         optimizer_state=training_state.option_q_optimizer_state)
 
-    cost_critic_loss, cost_q_params, cost_q_optimizer_state = cost_critic_update(
-      training_state.option_q_params,
+    (cost_critic_loss, cost_critic_info), cost_q_params, cost_q_optimizer_state = cost_critic_update(
       training_state.cost_q_params,
+      training_state.option_q_params,
       training_state.normalizer_params,
       training_state.target_cost_q_params,
+      training_state.target_option_q_params,
       transitions,
       key_cost_critic,
       optimizer_state=training_state.cost_q_optimizer_state)
@@ -282,6 +284,8 @@ def train(
         'critic_loss': critic_loss,
         'cost_critic_loss': cost_critic_loss,
         # 'actor_loss': actor_loss,
+        **critic_info,
+        **cost_critic_info,
     }
 
     new_training_state = TrainingState(
@@ -325,6 +329,7 @@ def train(
         current_key,
         extra_fields=(
           "truncation",
+          "cost",
           # Note: This seems to only be present in the jaxgcrl envs
           # and I'm not sure if its important
           "seed",
@@ -361,6 +366,7 @@ def train(
         buffer_state,
         experience_key
     )
+
     training_state = training_state.replace(
       normalizer_params=normalizer_params,
       env_steps=training_state.env_steps + env_steps_per_actor_step

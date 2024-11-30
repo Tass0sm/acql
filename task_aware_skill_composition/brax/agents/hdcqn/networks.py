@@ -43,13 +43,13 @@ def make_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
 
     def greedy_safe_option_policy(observation: types.Observation,
                                   option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      qs = hdcq_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
-      min_q = jnp.min(qs, axis=-1)
+      double_qs = hdcq_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
+      qs = jnp.min(double_qs, axis=-1)
 
-      cqs = hdcq_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
-      min_cq = jnp.min(cqs, axis=-1)
+      double_cqs = hdcq_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
+      cqs = jnp.max(double_cqs, axis=-1)
 
-      masked_q = jnp.where(min_cq < cost_budget, min_q, -jnp.inf)
+      masked_q = jnp.where(cqs < cost_budget, qs, -jnp.inf)
 
       option = masked_q.argmax(axis=-1)
       return option

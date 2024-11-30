@@ -33,6 +33,7 @@ from .ant_push import (
 )
 from .simple_maze import (
     SimpleMazeNav,
+    SimpleMazeCenterConstraint,
 )
 from .skate import (
     SkateStraightSequence,
@@ -88,6 +89,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "simple_maze": {
             "true": SimpleMazeNav,
+            "center_constraint": SimpleMazeCenterConstraint,
         },
         "point": {
             "straight_seq": PointStraightSequence,

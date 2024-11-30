@@ -18,6 +18,8 @@ Env = Union[envs.Env]
 
 
 from brax.training.acting import Evaluator
+# from task_aware_skill_composition.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+
 from task_aware_skill_composition.hierarchy.training.acting import generate_unroll
 from task_aware_skill_composition.hierarchy.state import OptionState
 from task_aware_skill_composition.hierarchy.option import Option
@@ -40,6 +42,10 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
   ):
       self._key = key
       self._eval_walltime = 0.
+
+      self.has_automaton = hasattr(eval_env, "automaton")
+      self.obs_augmented = eval_env.augment_obs
+      self.automaton_states = eval_env.automaton.num_states if self.has_automaton else None
 
       eval_env = envs.training.EvalWrapper(eval_env)
 
@@ -80,8 +86,13 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
 
     eval_metrics = eval_state.info['eval_metrics']
 
+    if self.has_automaton and self.obs_augmented:
+      obs = data.observation[..., :-self.automaton_states]
+    else:
+      obs = data.observation
+
     # From data, calculate robustness
-    robustness_traces = jax.vmap(self.specification)({ self.state_var.idx: data.observation,
+    robustness_traces = jax.vmap(self.specification)({ self.state_var.idx: obs,
                                                        # "action": data.action
                                                       })
     robustness = robustness_traces[..., 0]

@@ -47,8 +47,9 @@ class AutomatonCostWrapper(Wrapper):
         return good_edge_satisfaction
 
     def _compute_cost(self, state: State, action: jax.Array, nstate: State):
-        aps = self.automaton.quantitative_eval_aps(state.obs)
-        return jax.nn.relu(aps[0])
+        # aps = self.automaton.quantitative_eval_aps(state.obs)
+        # return jax.nn.relu(aps[0])
+        return 0.0
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
