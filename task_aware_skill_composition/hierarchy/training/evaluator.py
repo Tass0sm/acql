@@ -44,7 +44,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
       self._eval_walltime = 0.
 
       self.has_automaton = hasattr(eval_env, "automaton")
-      self.obs_augmented = eval_env.augment_obs
+      self.obs_augmented = eval_env.augment_obs if self.has_automaton else None
       self.automaton_states = eval_env.automaton.num_states if self.has_automaton else None
 
       eval_env = envs.training.EvalWrapper(eval_env)

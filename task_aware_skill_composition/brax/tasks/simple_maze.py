@@ -8,7 +8,7 @@ from gymnasium.spaces.utils import flatdim
 from jaxgcrl.envs.simple_maze import SimpleMaze
 from task_aware_skill_composition.brax.envs.base import GoalConditionedEnv
 from task_aware_skill_composition.brax.tasks.base import TaskBase
-from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle
+from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box
 
 from corallab_stl import Expression, Var
 import corallab_stl.expression_jax2 as stl
@@ -69,7 +69,7 @@ class SimpleMazeTaskBase(TaskBase):
             "num_timesteps": 10_000_000,
             "reward_scaling": 1,
             "cost_scaling": 1,
-            "cost_budget": 1000,
+            "cost_budget": 3.0,
             "num_evals": 50,
             "episode_length": 1000,
             "normalize_observations": True,
@@ -127,5 +127,27 @@ class SimpleMazeCenterConstraint(SimpleMazeTaskBase):
 
     def _build_lo_spec(self, obs_var: Var) -> Expression:
         at_obs1 = inside_circle(obs_var.position, self.obs1_location, self.obs_radius)
+        phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+        return phi
+
+class SimpleMazeUMazeConstraint(SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze(
+            terminate_when_unhealthy=False,
+            maze_layout_name="open_maze",
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        at_obs1 = inside_box(obs_var.position, *self.obs_corners)
         phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
         return phi

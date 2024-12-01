@@ -56,7 +56,7 @@ def make_losses(
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
-    next_cqs = jnp.max(next_double_cqs, axis=-1)
+    next_cqs = jnp.min(next_double_cqs, axis=-1)
 
     # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
     next_v, _ = safe_greedy_policy(next_qs, next_cqs)
@@ -76,6 +76,7 @@ def make_losses(
     return q_loss, {
       "target_q": target_q,
       "mean_reward": transitions.reward.mean(),
+      "proportion_unsafe": jnp.where(next_cqs < cost_budget, 0.0, 1.0).mean()
     }
 
   def cost_critic_loss(
@@ -98,7 +99,7 @@ def make_losses(
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
-    next_cqs = jnp.max(next_double_cqs, axis=-1)
+    next_cqs = jnp.min(next_double_cqs, axis=-1)
 
     # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
     _, next_cv = safe_greedy_policy(next_qs, next_cqs)

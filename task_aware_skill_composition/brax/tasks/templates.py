@@ -2,7 +2,9 @@ from functools import reduce
 from typing import List, Tuple
 
 import jax
+import jax.numpy as jnp
 from jax.numpy.linalg import norm
+import einops
 
 from corallab_stl.var import Var
 import corallab_stl.expression_jax2 as stl
@@ -28,6 +30,26 @@ def outside_circle(
 
     def f(s):
         return norm(s - center) - radius
+
+    return stl.STLPredicate(var, f, 0.0)
+
+
+
+
+def inside_box(
+        var: Var,
+        corner1: jax.Array,
+        corner2: jax.Array,
+) -> stl.STLFormula:
+
+    neg_eye = -jnp.eye(var.dim)
+    pos_eye = jnp.eye(var.dim)
+    A = jnp.vstack((neg_eye, pos_eye))
+    b = jnp.concatenate((-corner1, corner2))
+    # using formula for testing point is inside polytope.
+
+    def f(s):
+        return (b - A @ s).min(axis=-1)
 
     return stl.STLPredicate(var, f, 0.0)
 
