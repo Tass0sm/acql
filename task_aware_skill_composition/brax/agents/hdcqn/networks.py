@@ -23,6 +23,51 @@ class HDCQNetworks:
   # parametric_option_distribution: distribution.ParametricDistribution
 
 
+def make_option_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
+
+  def make_policy(
+      params: types.PolicyParams,
+      deterministic: bool = False,
+  ) -> types.Policy:
+
+    normalizer_params, option_q_params, cost_q_params = params
+    options = hdcq_networks.options
+    n_options = len(options)
+
+    def random_option_policy(observation: types.Observation,
+                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+      option = jax.random.randint(option_key, (observation.shape[0],), 0, n_options)
+      return option, {}
+
+    def greedy_safe_option_policy(observation: types.Observation,
+                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+      double_qs = hdcq_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
+      qs = jnp.min(double_qs, axis=-1)
+
+      double_cqs = hdcq_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
+      cqs = jnp.max(double_cqs, axis=-1)
+
+      masked_q = jnp.where(cqs < cost_budget, qs, -jnp.inf)
+
+      option = masked_q.argmax(axis=-1)
+      return option, {}
+
+    epsilon = jnp.float32(0.1)
+
+    def eps_greedy_safe_option_policy(observation: types.Observation,
+                                      key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
+      key_sample, key_coin = jax.random.split(key_sample)
+      coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
+      return jax.lax.cond(coin_flip, greedy_safe_option_policy, random_option_policy, observation, key_sample)
+
+    if deterministic:
+      return greedy_safe_option_policy
+    else:
+      return eps_greedy_safe_option_policy
+
+  return make_policy
+
+
 def make_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
 
   def make_policy(
