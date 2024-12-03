@@ -33,7 +33,7 @@ def make_critic_loss(
 
     # Q(s_t, o_t) for all options
     qs_old = option_q_network.apply(normalizer_params, option_q_params, transitions.observation)
-    q_old_action = jax.vmap(lambda x, i: x.at[i].get())(qs_old, transitions.option)
+    q_old_action = jax.vmap(lambda x, i: x.at[i].get())(qs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_double_qs = option_q_network.apply(normalizer_params, target_option_q_params, transitions.next_observation)

@@ -22,6 +22,44 @@ class HDQNetworks:
   # parametric_option_distribution: distribution.ParametricDistribution
 
 
+def make_option_inference_fn(hdq_networks: HDQNetworks):
+
+  def make_policy(
+      params: types.PolicyParams,
+      deterministic: bool = False,
+  ) -> types.Policy:
+
+    options = hdq_networks.options
+    n_options = len(options)
+
+    def random_option_policy(observation: types.Observation,
+                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+      option = jax.random.randint(option_key, (observation.shape[0],), 0, n_options)
+      return option, {}
+
+    def greedy_option_policy(observation: types.Observation,
+                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+      qs = hdq_networks.option_q_network.apply(*params, observation)
+      min_q = jnp.min(qs, axis=-1)
+      option = min_q.argmax(axis=-1)
+      return option, {}
+
+    epsilon = jnp.float32(0.1)
+
+    def eps_greedy_option_policy(observation: types.Observation,
+                                 key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
+      key_sample, key_coin = jax.random.split(key_sample)
+      coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
+      return jax.lax.cond(coin_flip, greedy_option_policy, random_option_policy, observation, key_sample)
+
+    if deterministic:
+      return greedy_option_policy
+    else:
+      return eps_greedy_option_policy
+
+  return make_policy
+
+
 def make_inference_fn(hdq_networks: HDQNetworks):
 
   def make_policy(

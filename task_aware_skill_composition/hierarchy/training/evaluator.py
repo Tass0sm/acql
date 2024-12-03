@@ -18,9 +18,8 @@ Env = Union[envs.Env]
 
 
 from brax.training.acting import Evaluator
-# from task_aware_skill_composition.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 
-from task_aware_skill_composition.hierarchy.training.acting import generate_unroll
+from task_aware_skill_composition.hierarchy.training.acting import semimdp_generate_unroll
 from task_aware_skill_composition.hierarchy.state import OptionState
 from task_aware_skill_composition.hierarchy.option import Option
 
@@ -53,14 +52,10 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
                                key: PRNGKey) -> State:
           reset_keys = jax.random.split(key, num_eval_envs)
           eval_first_state = eval_env.reset(reset_keys)
-          option_state = OptionState(jnp.zeros_like(eval_first_state.reward, dtype=jnp.int32),
-                                     jnp.ones_like(eval_first_state.reward, dtype=jnp.int32))
-          return generate_unroll(
+          return semimdp_generate_unroll(
               eval_env,
               eval_first_state,
-              option_state,
               eval_policy_fn(policy_params),
-              options,
               key,
               unroll_length=episode_length // action_repeat
           )
@@ -80,7 +75,8 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
 
     t = time.time()
 
-    eval_state, option_state, data = self._generate_eval_unroll(policy_params, unroll_key)
+    eval_state, data = self._generate_eval_unroll(policy_params, unroll_key)
+
     # put the batch dim first
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
 
