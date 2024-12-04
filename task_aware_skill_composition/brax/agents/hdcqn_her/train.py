@@ -33,6 +33,8 @@ from task_aware_skill_composition.hierarchy.training import types as h_types
 
 from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsWrapper
 
+from task_aware_skill_composition.visualization.critic import make_plots_for_hdcqn
+
 
 Metrics = types.Metrics
 Transition = types.Transition
@@ -203,6 +205,7 @@ def train(
       options=options,
       preprocess_observations_fn=normalize_fn,)
   make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, cost_budget)
+  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, cost_budget)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
@@ -581,4 +584,4 @@ def train(
   pmap.assert_is_replicated(training_state)
   logging.info('total steps: %s', total_steps)
   pmap.synchronize_hosts()
-  return (make_policy, params, metrics)
+  return (make_flat_policy, params, metrics)

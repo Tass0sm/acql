@@ -32,7 +32,7 @@ from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsW
 
 
 Metrics = types.Metrics
-HierarchicalTransition = h_types.HierarchicalTransition
+Transition = types.Transition
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
 
 ReplayBufferState = Any
@@ -184,6 +184,7 @@ def train(
       options=options,
       preprocess_observations_fn=normalize_fn,)
   make_policy = hdq_networks.make_option_inference_fn(hdq_network)
+  make_flat_policy = hdq_networks.make_inference_fn(hdq_network)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
@@ -215,7 +216,7 @@ def train(
 
   def sgd_step(
       carry: Tuple[TrainingState, PRNGKey],
-      transitions: HierarchicalTransition) -> Tuple[Tuple[TrainingState, PRNGKey], Metrics]:
+      transitions: Transition) -> Tuple[Tuple[TrainingState, PRNGKey], Metrics]:
     training_state, key = carry
 
     key, key_critic = jax.random.split(key, 2)
@@ -510,4 +511,4 @@ def train(
   pmap.assert_is_replicated(training_state)
   logging.info('total steps: %s', total_steps)
   pmap.synchronize_hosts()
-  return (make_policy, params, metrics)
+  return (make_flat_policy, params, metrics)
