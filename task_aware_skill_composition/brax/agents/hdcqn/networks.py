@@ -40,7 +40,7 @@ def make_option_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
       return option, {}
 
     def greedy_safe_option_policy(observation: types.Observation,
-                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+                                  unused_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       double_qs = hdcq_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
       qs = jnp.min(double_qs, axis=-1)
 
