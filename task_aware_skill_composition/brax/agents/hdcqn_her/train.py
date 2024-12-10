@@ -536,6 +536,15 @@ def train(
     logging.info(metrics)
     progress_fn(0, metrics)
 
+    make_plots_for_hdcqn(
+      env=environment,
+      make_policy=make_policy,
+      network=hdcq_network,
+      params=_unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params)),
+      current_step=0,
+    )
+
+
   # Create and initialize the replay buffer.
   t = time.time()
   prefill_key, local_key = jax.random.split(local_key)
@@ -568,6 +577,14 @@ def train(
         params = _unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params))
         path = f'{checkpoint_logdir}_dq_{current_step}.pkl'
         model.save_params(path, params)
+
+      make_plots_for_hdcqn(
+        env=environment,
+        make_policy=make_policy,
+        network=hdcq_network,
+        params=_unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params)),
+        current_step=current_step,
+      )
 
       # Run evals.
       metrics = evaluator.run_evaluation(_unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params)), training_metrics)
