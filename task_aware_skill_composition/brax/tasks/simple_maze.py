@@ -88,7 +88,6 @@ class SimpleMazeTaskBase(TaskBase):
         }
 
 
-
 class SimpleMazeNav(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
         super().__init__(None, 1000, backend=backend)
@@ -106,6 +105,7 @@ class SimpleMazeNav(SimpleMazeTaskBase):
     def _build_lo_spec(self, obs_var: Var) -> Expression:
         true = stl.STLPredicate(obs_var, lambda s: 999, lower_bound=0.0)
         return true
+
 
 class SimpleMazeCenterConstraint(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
@@ -130,6 +130,7 @@ class SimpleMazeCenterConstraint(SimpleMazeTaskBase):
         phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
         return phi
 
+
 class SimpleMazeUMazeConstraint(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.obs_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
@@ -151,3 +152,51 @@ class SimpleMazeUMazeConstraint(SimpleMazeTaskBase):
         at_obs1 = inside_box(obs_var.position, *self.obs_corners)
         phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
         return phi
+
+
+class SimpleMazeSingleSubgoal(SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 4.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze(
+            terminate_when_unhealthy=False,
+            maze_layout_name="open_maze",
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
+        phi = stl.STLUntimedEventually(in_goal1)
+        return phi
+
+    @property
+    def hdcqn_her_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "cost_scaling": 1,
+            "cost_budget": -1.0,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            # "learning_rate": 3e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            "unroll_length": 62,
+            "multiplier_num_sgd_steps": 1,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            "min_replay_size": 1000,
+            "use_her": True,
+        }
