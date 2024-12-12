@@ -272,6 +272,7 @@ def train(
       training_state.normalizer_params,
       training_state.target_cost_q_params,
       training_state.target_option_q_params,
+      cost_budget,
       transitions,
       key_cost_critic,
       optimizer_state=training_state.cost_q_optimizer_state)

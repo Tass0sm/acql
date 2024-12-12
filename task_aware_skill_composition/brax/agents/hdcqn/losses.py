@@ -28,7 +28,7 @@ def make_losses(
 
   def safe_greedy_policy(reward_qs, cost_qs):
     "Finds option with maximal value under cost constraint"
-    masked_q = jnp.where(cost_qs < cost_budget, reward_qs, -jnp.inf)
+    masked_q = jnp.where(cost_qs < 1.0, reward_qs, -jnp.inf)
     option = masked_q.argmax(axis=-1)
     q = jax.vmap(lambda x, i: x.at[i].get())(reward_qs, option)
     cq = jax.vmap(lambda x, i: x.at[i].get())(cost_qs, option)
@@ -56,7 +56,7 @@ def make_losses(
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
-    next_cqs = jnp.min(next_double_cqs, axis=-1)
+    next_cqs = jnp.mean(next_double_cqs, axis=-1)
 
     # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
     next_v, _ = safe_greedy_policy(next_qs, next_cqs)
@@ -85,6 +85,7 @@ def make_losses(
       normalizer_params: Any,
       target_cost_q_params: Params,
       target_option_q_params: Params,
+      threshold: float,
       transitions: Transition,
       key: PRNGKey
   ) -> jnp.ndarray:
@@ -99,14 +100,16 @@ def make_losses(
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
-    next_cqs = jnp.min(next_double_cqs, axis=-1)
+    next_cqs = jnp.mean(next_double_cqs, axis=-1)
 
     # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
     _, next_cv = safe_greedy_policy(next_qs, next_cqs)
 
     # E (s_t, a_t, s_t+1) ~ D [r(s_t, a_t) + gamma * V(s_t+1)]
-    target_cq = jax.lax.stop_gradient(transitions.extras["state_extras"]["cost"] * cost_scaling +
-                                      transitions.discount * discounting * next_cv)
+    # * discounting * 
+    target_cq = jax.lax.stop_gradient(jnp.min(
+      jnp.stack((transitions.extras["state_extras"]["cost"] * cost_scaling,
+                 transitions.discount * next_cv)), axis=0))
 
     # Q(s_t, a_t) - E[r(s_t, a_t) + gamma * V(s_t+1)]
     cq_error = cq_old_action - jnp.expand_dims(target_cq, -1)

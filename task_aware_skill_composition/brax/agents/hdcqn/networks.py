@@ -177,7 +177,8 @@ def make_hdcq_networks(
       len(options),
       preprocess_observations_fn=preprocess_observations_fn,
       hidden_layer_sizes=hidden_layer_sizes,
-      activation=activation
+      activation=activation,
+      activation_final=linen.sigmoid
   )
 
   return HDCQNetworks(
