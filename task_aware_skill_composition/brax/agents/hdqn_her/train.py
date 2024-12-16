@@ -11,9 +11,9 @@ from brax.training import acting
 from brax.training import gradients
 from brax.training import pmap
 from brax.training.replay_buffers_test import jit_wrap
-from brax.training import replay_buffers
+# from brax.training import replay_buffers
 from brax.training import types
-from brax.training.acme import running_statistics
+# from brax.training.acme import running_statistics
 from brax.training.acme import specs
 from brax.training.types import Params
 from brax.training.types import PRNGKey
@@ -23,7 +23,9 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from task_aware_skill_composition.brax.her.replay_buffers import TrajectoryUniformSamplingQueue
+from task_aware_skill_composition.brax.training.acme import running_statistics
+from task_aware_skill_composition.brax.her import replay_buffers
+# AutomatonTrajectoryUniformSamplingQueue
 
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
 from task_aware_skill_composition.brax.agents.hdqn import losses as hdqn_losses
@@ -35,6 +37,8 @@ from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsW
 
 from task_aware_skill_composition.visualization.critic import make_plots_for_hdqn
 
+
+# TrajectoryUniformSamplingQueue = AutomatonTrajectoryUniformSamplingQueue
 
 Metrics = types.Metrics
 Transition = types.Transition
@@ -103,6 +107,7 @@ def train(
     batch_size: int = 256,
     num_evals: int = 1,
     normalize_observations: bool = True,
+    normalization_mask: Optional[jnp.ndarray] = None,
     max_devices_per_host: Optional[int] = None,
     reward_scaling: float = 1.,
     tau: float = 0.005,
@@ -121,6 +126,7 @@ def train(
     randomization_fn: Optional[
       Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
     ] = None,
+    replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
 ):
 
   process_id = jax.process_index()
@@ -185,7 +191,7 @@ def train(
 
   normalize_fn = lambda x, y: x
   if normalize_observations:
-    normalize_fn = running_statistics.normalize
+    normalize_fn = functools.partial(running_statistics.normalize, mask=normalization_mask)
   hdq_network = network_factory(
       observation_size=obs_size,
       action_size=action_size,
@@ -208,12 +214,17 @@ def train(
           'state_extras': {
             'truncation': 0.0,
             'seed': 0.0,
+            'automata_state': 0,
+            'made_transition': 0,
           },
           'policy_extras': {},
       }
   )
+
+  ReplayBufferClass = getattr(replay_buffers, replay_buffer_class_name)
+
   replay_buffer = jit_wrap(
-    TrajectoryUniformSamplingQueue(
+    ReplayBufferClass(
       max_replay_size=max_replay_size // device_count,
       dummy_data_sample=dummy_transition,
       sample_batch_size=batch_size // device_count,
@@ -288,6 +299,8 @@ def train(
         extra_fields=(
           'truncation',
           'seed',
+          'automata_state',
+          'made_transition',
         )
       )
       return (env_state, next_key), transitions
@@ -367,9 +380,17 @@ def train(
     buffer_state, transitions = replay_buffer.sample(buffer_state)
 
     batch_keys = jax.random.split(sampling_key, transitions.observation.shape[0])
-    transitions = jax.vmap(TrajectoryUniformSamplingQueue.flatten_crl_fn, in_axes=(None, None, 0, 0))(
+
+    # breakpoint()
+    # _ = ReplayBufferClass.flatten_crl_fn(use_her, env,
+    #                                      jax.tree.map(lambda x: x[0], transitions),
+    #                                      batch_keys[0])
+
+    transitions = jax.vmap(ReplayBufferClass.flatten_crl_fn, in_axes=(None, None, 0, 0))(
         use_her, env, transitions, batch_keys
     )
+
+    # jax.debug.breakpoint()
 
     # Shuffle transitions and reshape them into (number_of_sgd_steps, batch_size, ...)
     transitions = jax.tree_util.tree_map(

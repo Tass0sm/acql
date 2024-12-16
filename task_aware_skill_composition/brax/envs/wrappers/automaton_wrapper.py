@@ -99,31 +99,76 @@ class AutomatonWrapper(Wrapper):
             env: Env,
             specification: Expression,
             state_var,
-            augment_obs: bool = True
+            augment_obs: bool = True,
+            augment_with_subgoals: bool = True,
     ):
         super().__init__(env)
 
         self.automaton = JaxAutomaton(specification, state_var)
         self.augment_obs = augment_obs
+        self.augment_with_subgoals = augment_with_subgoals
+
+    def original_obs(self, obs):
+        if self.augment_with_subgoals and self.augment_obs:
+            n_subgoals = 1
+            subgoal_dim = 2
+            return obs[..., :-(n_subgoals * subgoal_dim + self.automaton.n_states)]
+        elif self.augment_obs:
+            return obs[..., :-self.automaton.n_states]
+        else:
+            return obs
+
+    def split_obs(self, obs):
+        if self.augment_with_subgoals and self.augment_obs:
+            n_subgoals = 1
+            subgoal_dim = 2
+            return (
+                obs[..., :-(n_subgoals * subgoal_dim + self.automaton.n_states)],
+                obs[..., -(n_subgoals * subgoal_dim + self.automaton.n_states):],
+            )
+        elif self.augment_obs:
+            return (
+                obs[..., :-self.automaton.n_states],
+                obs[..., -self.automaton.n_states:]
+            )
+        else:
+            return (
+                obs,
+                None,
+            )
+
+    def get_obs_goal(self, obs, i):
+        # if i > 0 and not self.augment_with_subgoals:
+        #     raise NotImplementedError
+        goal_start_idx = 4 + 2*i
+        return obs[..., goal_start_idx:goal_start_idx+2]
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
 
         automata_state = jnp.uint32(self.automaton.init_state)
+        # automata_state = jnp.uint32(0)
         state.info["automata_state"] = automata_state
         state.info["made_transition"] = jnp.uint32(0)
 
-        if self.augment_obs:
-            new_obs = jnp.concatenate((state.obs, self.automaton.embed(automata_state)), axis=-1)
-            # new_obs = jnp.concatenate((state.obs, self.automaton.one_hot_encode(automata_state)), axis=-1)
+        if self.augment_with_subgoals and self.augment_obs:
+            # new_obs = jnp.concatenate((state.obs,
+            #                            jnp.array([12.0, 4.0]),
+            #                            self.automaton.embed(automata_state)), axis=-1)
+            new_obs = jnp.concatenate((state.obs,
+                                       jnp.array([12.0, 4.0]),
+                                       self.automaton.one_hot_encode(automata_state)), axis=-1)
+            state = state.replace(obs=new_obs)
+        elif self.augment_obs:
+            # new_obs = jnp.concatenate((state.obs, self.automaton.embed(automata_state)), axis=-1)
+            new_obs = jnp.concatenate((state.obs, self.automaton.one_hot_encode(automata_state)), axis=-1)
             state = state.replace(obs=new_obs)
 
         return state
 
     def step(self, state: State, action: jax.Array) -> State:
 
-        if self.augment_obs:
-            state = state.replace(obs=state.obs[..., :-self.automaton.num_states])
+        state = state.replace(obs=self.original_obs(state.obs))
 
         nstate = self.env.step(state, action)
 
@@ -140,16 +185,28 @@ class AutomatonWrapper(Wrapper):
             made_transition=made_transition
         )
 
-        if self.augment_obs:
-            new_obs = jnp.concatenate((nstate.obs, self.automaton.embed(nautomata_state)), axis=-1)
-            # new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomata_state)), axis=-1)
+        if self.augment_with_subgoals and self.augment_obs:
+            # new_obs = jnp.concatenate((nstate.obs,
+            #                            jnp.array([12.0, 4.0]),
+            #                            self.automaton.embed(nautomata_state)), axis=-1)
+            new_obs = jnp.concatenate((nstate.obs,
+                                       jnp.array([12.0, 4.0]),
+                                       self.automaton.one_hot_encode(nautomata_state)), axis=-1)
+            nstate = nstate.replace(obs=new_obs)
+        elif self.augment_obs:
+            # new_obs = jnp.concatenate((nstate.obs, self.automaton.embed(nautomata_state)), axis=-1)
+            new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomata_state)), axis=-1)
             nstate = nstate.replace(obs=new_obs)
 
         return nstate
 
     @property
     def observation_size(self) -> int:
-        if self.augment_obs:
+        if self.augment_with_subgoals and self.augment_obs:
+            n_subgoals = 1
+            subgoal_dim = 2
+            return self.env.observation_size + (n_subgoals * subgoal_dim) + self.automaton.n_states
+        elif self.augment_obs:
             return self.env.observation_size + self.automaton.n_states
         else:
             return self.env.observation_size
