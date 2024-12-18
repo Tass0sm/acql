@@ -376,7 +376,7 @@ def train(
       buffer_state: ReplayBufferState,
       key: PRNGKey,
   ) -> Tuple[TrainingState, ReplayBufferState, Metrics]:
-    experience_key, training_key, sampling_key = jax.random.split(key, 3)
+    experience_key, training_key, sampling_key, prio_sampling_key = jax.random.split(key, 4)
     buffer_state, transitions = replay_buffer.sample(buffer_state)
 
     batch_keys = jax.random.split(sampling_key, transitions.observation.shape[0])
@@ -390,13 +390,44 @@ def train(
         use_her, env, transitions, batch_keys
     )
 
-    # jax.debug.breakpoint()
 
-    # Shuffle transitions and reshape them into (number_of_sgd_steps, batch_size, ...)
+    # prioritized sampling of transition states
+    traj_n_made_transition = transitions.extras["state_extras"]["made_transition"].sum()
+    traj_made_transition_weight = 0.5
+    traj_n_no_transition = 512 - traj_n_made_transition
+    traj_no_transition_weight = 1 - traj_made_transition_weight
+
+    traj_sampling_p = jnp.where(transitions.extras["state_extras"]["made_transition"].sum(axis=1) > 0,
+                           traj_made_transition_weight / traj_n_made_transition,
+                           traj_no_transition_weight / traj_n_no_transition)
+
+    transitions = jax.tree_util.tree_map(
+        lambda x: jax.random.choice(prio_sampling_key, x, shape=(x.shape[0],), replace=True, p=traj_sampling_p, axis=0),
+        transitions,
+    )
+
+    # flatten transitions into (traj_length * num_envs, ...)
     transitions = jax.tree_util.tree_map(
         lambda x: jnp.reshape(x, (-1,) + x.shape[2:], order="F"),
         transitions,
     )
+
+    # prioritized sampling of transition states
+    n_made_transition = transitions.extras["state_extras"]["made_transition"].sum()
+    made_transition_weight = 0.1
+    n_no_transition = 512000 - n_made_transition
+    no_transition_weight = 1 - made_transition_weight
+
+    sampling_p = jnp.where(transitions.extras["state_extras"]["made_transition"] == 1,
+                           made_transition_weight / n_made_transition,
+                           no_transition_weight / n_no_transition)
+
+    transitions = jax.tree_util.tree_map(
+        lambda x: jax.random.choice(prio_sampling_key, x, shape=(x.shape[0],), replace=True, p=sampling_p, axis=0),
+        transitions,
+    )
+
+    # shuffle transitions
     permutation = jax.random.permutation(experience_key, len(transitions.observation))
     transitions = jax.tree_util.tree_map(lambda x: x[permutation], transitions)
     transitions = jax.tree_util.tree_map(
@@ -509,15 +540,13 @@ def train(
         _unpmap((training_state.normalizer_params, training_state.option_q_params)),
         training_metrics={})
     logging.info(metrics)
-    progress_fn(0, metrics)
-
-    make_plots_for_hdqn(
+    progress_fn(
+      0,
+      metrics,
       env=environment,
       network=hdq_network,
       params=_unpmap((training_state.normalizer_params, training_state.option_q_params)),
-      current_step=0,
     )
-
 
   # Create and initialize the replay buffer.
   t = time.time()
@@ -552,17 +581,16 @@ def train(
         path = f'{checkpoint_logdir}_dq_{current_step}.pkl'
         model.save_params(path, params)
 
-      make_plots_for_hdqn(
-        env=environment,
-        network=hdq_network,
-        params=_unpmap((training_state.normalizer_params, training_state.option_q_params)),
-        current_step=current_step,
-      )
-
       # Run evals.
       metrics = evaluator.run_evaluation(_unpmap((training_state.normalizer_params, training_state.option_q_params)), training_metrics)
       logging.info(metrics)
-      progress_fn(current_step, metrics)
+      progress_fn(
+        current_step,
+        metrics,
+        env=environment,
+        network=hdq_network,
+        params=_unpmap((training_state.normalizer_params, training_state.option_q_params)),
+      )
 
   total_steps = current_step
   assert total_steps >= num_timesteps
