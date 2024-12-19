@@ -205,24 +205,9 @@ class FirstAutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sa
         # this function is vmapped over an env-shuffled batch of trajectories.
 
         if use_her:
-
-            # remove automaton state
-            # if hasattr(env, "automaton") and env.augment_obs:
-            #     obs = transition.observation[..., :-env.automaton.num_states]
-            #     automaton_obs = transition.observation[..., -env.automaton.num_states:]
-            #     automaton_state = transition.extras["state_extras"]["automata_state"]
-            #     next_obs = transition.next_observation[..., :-env.automaton.num_states]
-            #     next_automaton_obs = transition.next_observation[..., -env.automaton.num_states:]
-            # else:
-            #     obs = transition.observation
-            #     automaton_state = jnp.zeros_like(transition.reward, dtype=jnp.int32)
-            #     next_obs = transition.next_observation
-
             obs = transition.observation
-            # automaton_obs = transition.observation
             automaton_state = transition.extras["state_extras"]["automata_state"]
             next_obs = transition.next_observation
-            # next_automaton_obs = transition.next_observation
 
             # create a mask where mask[i,j] == 1 if j > i
             seq_len = transition.observation.shape[0]
@@ -288,6 +273,7 @@ class FirstAutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sa
             #####
 
             final_position = obs[new_goals_idx][:, env.goal_indices]
+            final_aut_state = automaton_state[new_goals_idx]
 
             def update_goal(o, aut_state, final_pos):
                 o = jax.lax.cond(aut_state == 1,
@@ -296,16 +282,20 @@ class FirstAutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sa
                 o = o.at[8:].set(env.automaton.one_hot_encode(aut_state))
                 return o
 
-            def conditional_update_goal(o, aut_state, final_pos, should_update):
+            def conditional_update_goal(should_update, final_aut_state, o, aut_state, final_pos):
                 return jax.lax.cond(should_update,
-                                    lambda: update_goal(o, aut_state, final_pos),
+                                    lambda: jax.lax.cond(final_aut_state == 0,
+                                                         update_goal,
+                                                         update_goal,
+                                                         o, aut_state, final_pos),
                                     lambda: o)
 
             new_obs = jax.vmap(conditional_update_goal)(
+                binary_mask,
+                final_aut_state,
                 obs,
                 new_aut_state_traj,
                 final_position,
-                binary_mask
             )
 
             # Recalculate reward
@@ -318,10 +308,11 @@ class FirstAutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sa
 
             # Transform next observation
             new_next_obs = jax.vmap(conditional_update_goal)(
+                binary_mask,
+                final_aut_state,
                 next_obs,
                 new_aut_state_traj,
                 final_position,
-                binary_mask
             )
 
             # update automaton related extras in-place
