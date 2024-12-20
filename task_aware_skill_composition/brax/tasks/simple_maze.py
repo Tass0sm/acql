@@ -44,7 +44,7 @@ class SimpleMazeTaskBase(TaskBase):
     @property
     def hdqn_her_hps(self):
         return {
-            "num_timesteps": 4_000_000,
+            "num_timesteps": 10_000_000,
             "reward_scaling": 1,
             "num_evals": 50,
             "episode_length": 1000,
@@ -201,6 +201,7 @@ class SimpleMazeSingleSubgoal(SimpleMazeTaskBase):
             "use_her": True,
         }
 
+
 class SimpleMazeTwoSubgoals(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([12.0, 4.0])
@@ -227,4 +228,35 @@ class SimpleMazeTwoSubgoals(SimpleMazeTaskBase):
         phi = stl.STLUntimedEventually(
             stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
         )
+        return phi
+
+
+class SimpleMazeObligationConstraint1(SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
+
+        self.goal1_location = jnp.array([12.0, 4.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze(
+            terminate_when_unhealthy=False,
+            maze_layout_name="open_maze",
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        at_obs1 = inside_box(obs_var.position, *self.obs1_corners)
+        phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
+        phi_liveness = stl.STLUntimedEventually(in_goal1)
+
+        phi = stl.STLAnd(phi_liveness, phi_safety)
         return phi

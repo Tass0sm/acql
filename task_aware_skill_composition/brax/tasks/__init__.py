@@ -36,6 +36,8 @@ from .simple_maze import (
     SimpleMazeCenterConstraint,
     SimpleMazeUMazeConstraint,
     SimpleMazeSingleSubgoal,
+    SimpleMazeTwoSubgoals,
+    SimpleMazeObligationConstraint1,
 )
 from .skate import (
     SkateStraightSequence,
@@ -94,6 +96,8 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "center_constraint": SimpleMazeCenterConstraint,
             "umaze_constraint": SimpleMazeUMazeConstraint,
             "subgoal": SimpleMazeSingleSubgoal,
+            "two_subgoals": SimpleMazeTwoSubgoals,
+            "obligation1": SimpleMazeObligationConstraint1,
         },
         "point": {
             "straight_seq": PointStraightSequence,
