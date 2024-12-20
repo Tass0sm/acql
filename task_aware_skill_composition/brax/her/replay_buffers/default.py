@@ -47,6 +47,23 @@ _PMAP_AXIS_NAME = "i"
 class TrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]):
     """Implements an uniform sampling limited-size replay queue but with trajectories."""
 
+    def __init__(
+            self,
+            max_replay_size: int,
+            dummy_data_sample: Sample,
+            sample_batch_size: int,
+            num_envs: int,
+            episode_length: int,
+            **kwargs
+    ):
+        super(TrajectoryUniformSamplingQueue, self).__init__(
+            max_replay_size,
+            dummy_data_sample,
+            sample_batch_size,
+            num_envs,
+            episode_length
+        )
+
     def sample_internal(self, buffer_state: ReplayBufferState) -> Tuple[ReplayBufferState, Sample]:
         if buffer_state.data.shape != self._data_shape:
             raise ValueError(

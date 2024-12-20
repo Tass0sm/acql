@@ -58,7 +58,6 @@ class AutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]
 
         self.automaton = automaton
 
-
     def sample_internal(self, buffer_state: ReplayBufferState) -> Tuple[ReplayBufferState, Sample]:
         if buffer_state.data.shape != self._data_shape:
             raise ValueError(

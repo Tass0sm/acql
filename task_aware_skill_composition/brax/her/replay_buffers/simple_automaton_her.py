@@ -23,62 +23,14 @@ from brax.training.acme.types import NestedArray
 from brax.training.types import Params, Policy
 from brax.training.types import Transition
 from brax.training.types import PRNGKey
-from brax.v1 import envs as envs_v1
-import flax
 import jax
 import jax.numpy as jnp
-import optax
 
-from jaxgcrl.src.evaluator import CrlEvaluator
-from jaxgcrl.src.replay_buffer import QueueBase, Sample
+from task_aware_skill_composition.brax.her.replay_buffers.automaton_her import AutomatonTrajectoryUniformSamplingQueue
 
 
-ReplayBufferState = Any
-
-
-class AutomatonTrajectoryUniformSamplingQueueVariant(QueueBase[Sample], Generic[Sample]):
+class SimpleAutomatonTrajectoryUniformSamplingQueue(AutomatonTrajectoryUniformSamplingQueue):
     """Implements an uniform sampling limited-size replay queue but with trajectories."""
-
-    def sample_internal(self, buffer_state: ReplayBufferState) -> Tuple[ReplayBufferState, Sample]:
-        if buffer_state.data.shape != self._data_shape:
-            raise ValueError(
-                f"Data shape expected by the replay buffer ({self._data_shape}) does "
-                f"not match the shape of the buffer state ({buffer_state.data.shape})"
-            )
-        key, sample_key, shuffle_key = jax.random.split(buffer_state.key, 3)
-        # NOTE: this is the number of envs to sample but it can be modified if there is OOM
-        shape = self.num_envs
-
-        # Sampling envs idxs
-        envs_idxs = jax.random.choice(sample_key, jnp.arange(self.num_envs), shape=(shape,), replace=False)
-
-        @functools.partial(jax.jit, static_argnames=("rows", "cols"))
-        def create_matrix(rows, cols, min_val, max_val, rng_key):
-            rng_key, subkey = jax.random.split(rng_key)
-            start_values = jax.random.randint(subkey, shape=(rows,), minval=min_val, maxval=max_val)
-            row_indices = jnp.arange(cols)
-            matrix = start_values[:, jnp.newaxis] + row_indices
-            return matrix
-
-        @jax.jit
-        def create_batch(arr_2d, indices):
-            return jnp.take(arr_2d, indices, axis=0, mode="wrap")
-
-        create_batch_vmaped = jax.vmap(create_batch, in_axes=(1, 0))
-
-        # create matrix where each row is a sequence of indices into the buffer
-        matrix = create_matrix(
-            shape,
-            self.episode_length,
-            buffer_state.sample_position,
-            buffer_state.insert_position - self.episode_length,
-            sample_key,
-        )
-
-        # create batch by taking from env-shuffled buffer the indices in each row of matrix
-        batch = create_batch_vmaped(buffer_state.data[:, envs_idxs, :], matrix)
-        transitions = self._unflatten_fn(batch)
-        return buffer_state.replace(key=key), transitions
 
     @staticmethod
     @functools.partial(jax.jit, static_argnames=["use_her", "env"])
@@ -117,8 +69,8 @@ class AutomatonTrajectoryUniformSamplingQueueVariant(QueueBase[Sample], Generic[
             #     transition.extras["state_extras"]["truncation"],
             #     transition.extras["state_extras"]["made_transition"]
             # )
-            truncation_or_transition_mask = transition.extras["state_extras"]["truncation"]
-            final_step_mask = jnp.logical_and(final_step_mask, truncation_or_transition_mask[None, :])
+            truncation_mask = transition.extras["state_extras"]["truncation"]
+            final_step_mask = jnp.logical_and(final_step_mask, truncation_mask[None, :])
 
             # for every row, get the index of the terminal state
             # non_zero_columns = jnp.nonzero(final_step_mask, size=seq_len)[1]
@@ -142,65 +94,48 @@ class AutomatonTrajectoryUniformSamplingQueueVariant(QueueBase[Sample], Generic[
 
             # for now don't introduce any artificial transitions...
 
-            #### TODO: keep trajectories with transition?
-            new_aut_state_key = sample_key
-            new_aut_state = jax.random.randint(new_aut_state_key, (), 0, 2, jnp.int32)
-            # new_aut_state_mapping = jnp.array([new_aut_state, 1 - new_aut_state])
-            # new_aut_state_traj = jnp.where(automaton_state == 1,
-            #                                new_aut_state_mapping[0],
-            #                                new_aut_state_mapping[1])
-            # new_made_tran_traj = jnp.where(binary_mask, 0, transition.extras["state_extras"]["made_transition"])
-            new_aut_state_traj = jnp.where(binary_mask, new_aut_state, 1)
-            new_made_tran_traj = jnp.where(binary_mask, 0, transition.extras["state_extras"]["made_transition"])
+            #### TODO: randomly generate index to select subgoal for sections of the trajectory
+            # random_goal_idx_key = sample_key
+            random_goal_idx = 0 # jax.random.randint(new_aut_state_key, (), 0, env.goal_width, jnp.int32)
             #####
 
             final_position = obs[new_goals_idx][:, env.goal_indices]
-            final_aut_state = automaton_state[new_goals_idx]
+            final_automaton_state = automaton_state[new_goals_idx]
 
-            def update_goal(o, aut_state, final_pos):
-                o = jax.lax.cond(aut_state == 1,
-                                 lambda: o.at[6:8].set(final_pos), # change subgoal
-                                 lambda: o.at[4:6].set(final_pos)) # change final goal
-                o = o.at[8:].set(env.automaton.one_hot_encode(aut_state))
+            def update_goal(o, aut_state, final_pos, final_aut_state):
+                o = jax.lax.cond(aut_state == final_aut_state,
+                                 lambda: o.at[4:6].set(final_pos),
+                                 lambda: o)
                 return o
 
-            def conditional_update_goal(should_update, final_aut_state, o, aut_state, final_pos):
+            def conditional_update_goal(should_update, o, aut_state, final_pos, final_aut_state):
                 return jax.lax.cond(should_update,
-                                    lambda: jax.lax.cond(final_aut_state == 0,
-                                                         update_goal,
-                                                         update_goal,
-                                                         o, aut_state, final_pos),
+                                    lambda: update_goal(o, aut_state, final_pos, final_aut_state),
                                     lambda: o)
 
             new_obs = jax.vmap(conditional_update_goal)(
                 binary_mask,
-                final_aut_state,
                 obs,
-                new_aut_state_traj,
+                automaton_state,
                 final_position,
+                final_automaton_state,
             )
 
             # Recalculate reward
             def get_new_reward(o, aut_state):
-                return jax.lax.cond(aut_state == 0,
-                                    lambda: jnp.float32(jnp.linalg.norm(o.at[4:6].get() - o.at[0:2].get()) < env.goal_dist),
-                                    lambda: jnp.float32(jnp.linalg.norm(o.at[6:8].get() - o.at[0:2].get()) < env.goal_dist))
+                return jax.lax.cond(aut_state == 1,
+                                    lambda: jnp.float32(jnp.linalg.norm(o.at[4:6].get() - o.at[0:2].get()) < 5*env.goal_dist),
+                                    lambda: jnp.float32(jnp.linalg.norm(o.at[4:6].get() - o.at[0:2].get()) < env.goal_dist))
 
-            new_reward = jax.vmap(get_new_reward)(new_obs, new_aut_state_traj)
+            new_reward = jax.vmap(get_new_reward)(new_obs, automaton_state)
 
             # Transform next observation
             new_next_obs = jax.vmap(conditional_update_goal)(
                 binary_mask,
-                final_aut_state,
                 next_obs,
-                new_aut_state_traj,
+                automaton_state,
                 final_position,
-            )
-
-            # update automaton related extras in-place
-            transition.extras["state_extras"].update(
-                automata_state=new_aut_state_traj,
-                made_transition=new_made_tran_traj
+                final_automaton_state,
             )
 
             return transition._replace(

@@ -11,9 +11,7 @@ from brax.training import acting
 from brax.training import gradients
 from brax.training import pmap
 from brax.training.replay_buffers_test import jit_wrap
-# from brax.training import replay_buffers
 from brax.training import types
-# from brax.training.acme import running_statistics
 from brax.training.acme import specs
 from brax.training.types import Params
 from brax.training.types import PRNGKey
@@ -25,7 +23,6 @@ import numpy as np
 
 from task_aware_skill_composition.brax.training.acme import running_statistics
 from task_aware_skill_composition.brax.her import replay_buffers
-# AutomatonTrajectoryUniformSamplingQueue
 
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
 from task_aware_skill_composition.brax.agents.hdqn import losses as hdqn_losses
@@ -37,8 +34,6 @@ from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsW
 
 from task_aware_skill_composition.visualization.critic import make_plots_for_hdqn
 
-
-# TrajectoryUniformSamplingQueue = AutomatonTrajectoryUniformSamplingQueue
 
 Metrics = types.Metrics
 Transition = types.Transition
@@ -126,7 +121,7 @@ def train(
     randomization_fn: Optional[
       Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
     ] = None,
-    replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
+    replay_buffer_class_name = "SimpleAutomatonTrajectoryUniformSamplingQueue",
 ):
 
   process_id = jax.process_index()
@@ -214,6 +209,8 @@ def train(
           'state_extras': {
             'truncation': 0.0,
             'seed': 0.0,
+            'automata_state': 0,
+            'made_transition': 0,
           },
           'policy_extras': {},
       }
@@ -298,6 +295,8 @@ def train(
         extra_fields=(
           'truncation',
           'seed',
+          'automata_state',
+          'made_transition',
         )
       )
       return (env_state, next_key), transitions
@@ -378,15 +377,50 @@ def train(
 
     batch_keys = jax.random.split(sampling_key, transitions.observation.shape[0])
 
+    # breakpoint()
+    # tmp = ReplayBufferClass.flatten_crl_fn(use_her, env,
+    #                                        jax.tree.map(lambda x: x[0], transitions),
+    #                                        batch_keys[0])
+
     transitions = jax.vmap(ReplayBufferClass.flatten_crl_fn, in_axes=(None, None, 0, 0))(
         use_her, env, transitions, batch_keys
     )
+
+    # # prioritized sampling of transition states
+    # traj_n_made_transition = transitions.extras["state_extras"]["made_transition"].sum()
+    # traj_made_transition_weight = 0.5
+    # traj_n_no_transition = 512 - traj_n_made_transition
+    # traj_no_transition_weight = 1 - traj_made_transition_weight
+
+    # traj_sampling_p = jnp.where(transitions.extras["state_extras"]["made_transition"].sum(axis=1) > 0,
+    #                        traj_made_transition_weight / traj_n_made_transition,
+    #                        traj_no_transition_weight / traj_n_no_transition)
+
+    # transitions = jax.tree_util.tree_map(
+    #     lambda x: jax.random.choice(prio_sampling_key, x, shape=(x.shape[0],), replace=True, p=traj_sampling_p, axis=0),
+    #     transitions,
+    # )
 
     # flatten transitions into (traj_length * num_envs, ...)
     transitions = jax.tree_util.tree_map(
         lambda x: jnp.reshape(x, (-1,) + x.shape[2:], order="F"),
         transitions,
     )
+
+    # # prioritized sampling of transition states
+    # n_made_transition = transitions.extras["state_extras"]["made_transition"].sum()
+    # made_transition_weight = 0.1
+    # n_no_transition = 512000 - n_made_transition
+    # no_transition_weight = 1 - made_transition_weight
+
+    # sampling_p = jnp.where(transitions.extras["state_extras"]["made_transition"] == 1,
+    #                        made_transition_weight / n_made_transition,
+    #                        no_transition_weight / n_no_transition)
+
+    # transitions = jax.tree_util.tree_map(
+    #     lambda x: jax.random.choice(prio_sampling_key, x, shape=(x.shape[0],), replace=True, p=sampling_p, axis=0),
+    #     transitions,
+    # )
 
     # shuffle transitions
     permutation = jax.random.permutation(experience_key, len(transitions.observation))

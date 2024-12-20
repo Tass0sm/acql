@@ -21,6 +21,7 @@ class JaxAutomaton:
 
         self.aps = aps
         self.n_aps = len(aps)
+        self.formula = formula
         self.automaton = formula.translate('Buchi', 'state-based', 'complete')
         self.n_states = self.automaton.num_states()
         self.n_edges = self.automaton.num_edges()
@@ -210,3 +211,102 @@ class AutomatonWrapper(Wrapper):
             return self.env.observation_size + self.automaton.n_states
         else:
             return self.env.observation_size
+
+
+class AutomatonGoalConditionedWrapper(Wrapper):
+    """Tracks automaton state and adds goal condition inputs as necessary"""
+
+    def __init__(
+            self,
+            env: Env,
+            specification: Expression,
+            state_var,
+    ):
+        super().__init__(env)
+
+        self.automaton = JaxAutomaton(specification, state_var)
+        self.augment_obs = False
+        self.augment_with_subgoals = True
+
+        # TODO: analyze automaton
+        # ...
+        self.goal_width = 1
+        self.goal_dim = 2
+        self.all_goals_dim = self.goal_width * self.goal_dim
+
+    def original_obs(self, obs):
+        # return obs[..., :-(self.all_goals_dim + self.automaton.n_states)]
+        return obs # [..., :-self.all_goals_dim]
+        # return obs[..., :-self.automaton.n_states]
+
+    def modify_goal_for_aut_state(self, o, aut_state):
+        return jax.lax.cond(aut_state == 1,
+                            lambda: o.at[4:6].set(jnp.array([12.0, 4.0])),
+                            lambda: o)
+
+    # def split_obs(self, obs):
+    #     if self.augment_with_subgoals and self.augment_obs:
+    #         n_subgoals = 1
+    #         subgoal_dim = 2
+    #         return (
+    #             obs[..., :-(n_subgoals * subgoal_dim + self.automaton.n_states)],
+    #             obs[..., -(n_subgoals * subgoal_dim + self.automaton.n_states):],
+    #         )
+    #     elif self.augment_obs:
+    #         return (
+    #             obs[..., :-self.automaton.n_states],
+    #             obs[..., -self.automaton.n_states:]
+    #         )
+    #     else:
+    #         return (
+    #             obs,
+    #             None,
+    #         )
+
+    # def get_obs_goal(self, obs, i):
+    #     # if i > 0 and not self.augment_with_subgoals:
+    #     #     raise NotImplementedError
+    #     goal_start_idx = 4 + 2*i
+    #     return obs[..., goal_start_idx:goal_start_idx+2]
+
+    def reset(self, rng: jax.Array) -> State:
+        state = self.env.reset(rng)
+
+        automaton_state = jnp.uint32(self.automaton.init_state)
+        state.info["automata_state"] = automaton_state
+        state.info["made_transition"] = jnp.uint32(0)
+
+        new_obs = self.modify_goal_for_aut_state(state.obs, automaton_state)
+        state = state.replace(obs=new_obs)
+
+        return state
+
+    def step(self, state: State, action: jax.Array) -> State:
+
+        state = state.replace(obs=self.original_obs(state.obs))
+
+        nstate = self.env.step(state, action)
+
+        labels = self.automaton.eval_aps(action, nstate.obs)
+
+        automaton_state = state.info["automata_state"]
+
+        nautomaton_state = self.automaton.step(automaton_state, labels)
+
+        made_transition = jnp.where(automaton_state != nautomaton_state, jnp.uint32(1), jnp.uint32(0))
+
+        state.info.update(
+            automata_state=nautomaton_state,
+            made_transition=made_transition
+        )
+
+        new_obs = self.modify_goal_for_aut_state(nstate.obs, automaton_state)
+        nstate = nstate.replace(obs=new_obs)
+
+        return nstate
+
+    @property
+    def observation_size(self) -> int:
+        # return (self.env.observation_size - 2) + self.all_goals_dim + self.automaton.n_states
+        # return (self.env.observation_size - 2) + self.all_goals_dim
+        return self.env.observation_size
