@@ -25,7 +25,6 @@ import numpy as np
 
 from task_aware_skill_composition.brax.training.acme import running_statistics
 from task_aware_skill_composition.brax.her import replay_buffers
-# AutomatonTrajectoryUniformSamplingQueue
 
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
 from task_aware_skill_composition.brax.agents.hdqn import losses as hdqn_losses
@@ -37,8 +36,6 @@ from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsW
 
 from task_aware_skill_composition.visualization.critic import make_plots_for_hdqn
 
-
-# TrajectoryUniformSamplingQueue = AutomatonTrajectoryUniformSamplingQueue
 
 Metrics = types.Metrics
 Transition = types.Transition

@@ -19,7 +19,7 @@ def inside_circle(
     def f(s):
         return -norm(s - center) + radius
 
-    return stl.STLPredicate(var, f, 0.0)
+    return stl.STLPredicate(var, f, 0.0, info={"goal": center})
 
 
 def outside_circle(
@@ -51,7 +51,7 @@ def inside_box(
     def f(s):
         return (b - A @ s).min(axis=-1)
 
-    return stl.STLPredicate(var, f, 0.0)
+    return stl.STLPredicate(var, f, 0.0, info={"goal": corner1+(corner2-corner1)/2})
 
 
 def sequence(

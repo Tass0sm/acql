@@ -118,6 +118,82 @@ def make_plots_for_hdqn(
         fig.savefig(f"hdqn_figures/value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
         plt.close(fig)
 
+
+def make_test_plot_for_hdqn(
+        env: envs.Env,
+        network: hdq_networks.HDQNetworks,
+        params: Params,
+        label: str,
+        grid_size=100,
+        tmp_state_fn = lambda x: x,
+        save_and_close = True,
+        seed=0
+):
+    reset_key = jax.random.PRNGKey(seed)
+    tmp_state1 = env.reset(reset_key)
+    tmp_state1 = tmp_state1.replace(obs=tmp_state1.obs.at[:6].get())
+
+    suffix = jnp.array([4.0, 12.0])
+    tmp_state2 = tmp_state1.replace(obs=tmp_state1.obs.at[:6].get())
+    tmp_state2 = tmp_state2.replace(obs=tmp_state2.obs.at[4:].set(suffix))
+
+    normalizer_params, option_q_params = params
+
+    x_min, x_max = 0, 16
+    y_min, y_max = 0, 16
+    x_values = jnp.linspace(x_min, x_max, grid_size)
+    y_values = jnp.linspace(y_min, y_max, grid_size)
+    X, Y = jnp.meshgrid(x_values, y_values)
+    positions = jnp.stack([X.ravel(), Y.ravel()], axis=1)
+
+    # Prepare batched input for value_net
+    obs_batch1 = jnp.repeat(jnp.expand_dims(tmp_state1.obs, axis=0), positions.shape[0], axis=0)
+    obs_batch1 = obs_batch1.at[:, 0:2].set(positions)
+
+    obs_batch2 = jnp.repeat(jnp.expand_dims(tmp_state2.obs, axis=0), positions.shape[0], axis=0)
+    obs_batch2 = obs_batch2.at[:, 0:2].set(positions)
+
+    # goal_repeated = np.repeat(goal[2:].reshape(1, -1), positions.shape[0], axis=0)
+    # batch_input = np.hstack([positions, goal_repeated])
+    # batch_goal = np.repeat(goal.reshape(1, -1), positions.shape[0], axis=0)
+    
+    # Compute the value function for the grid
+    value_q_function_output1 = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch1)
+    value_q_function_output2 = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch2)
+
+    value_q_function_output = jnp.max(jnp.stack((value_q_function_output1, value_q_function_output2), axis=-1), axis=-1).min(axis=-1)
+    value_function_output = value_q_function_output.max(axis=-1)
+    value_function_grid = value_function_output.reshape(grid_size, grid_size)
+
+    options = value_q_function_output.argmax(axis=-1)
+
+    # Option arrows
+    arrows = jnp.array([[0.0, 1.0],
+                        [1.0, 0.0],
+                        [-1.0, 0.0],
+                        [0.0, -1.0]])
+    option_vectors = jax.vmap(lambda o: arrows.at[o].get())(options)
+    option_vector_grid = option_vectors.reshape(grid_size, grid_size, 2)
+    option_vector_grid = option_vector_grid[::2, ::2]
+
+    start_position = tmp_state1.obs[:2]
+    goal_position = tmp_state1.obs[4:6]
+    # goal_position = jnp.array([12.0, 4.0])
+    fig, ax = plot_function_grid(
+        X, Y,
+        x_min, x_max,
+        y_min, y_max,
+        value_function_grid,
+        start_position, goal_position,
+        label
+    )
+
+    ax.quiver(X[::2, ::2], Y[::2, ::2], option_vector_grid[..., 0], option_vector_grid[..., 1])
+
+    if save_and_close:
+        fig.savefig(f"hdqn_figures/value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
+
 def make_plots_for_hdcqn(
         env: envs.Env,
         make_policy: Callable,

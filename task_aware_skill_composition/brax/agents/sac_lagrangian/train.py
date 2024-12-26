@@ -336,6 +336,9 @@ def train(
         key_lambda,
         training_state.lambda_optimizer_state,
     )
+
+    lambda_params = jnp.clip(lambda_params, -5.0, 5.0)
+
     lambda_multiplier = training_state.lambda_params
 
     critic_loss, q_params, q_optimizer_state = critic_update(

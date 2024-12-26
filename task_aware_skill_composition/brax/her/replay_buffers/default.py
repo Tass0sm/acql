@@ -140,8 +140,8 @@ class TrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]):
             # binary_mask = jnp.logical_and(binary_mask, terminal_aut_state_mask)
 
             new_goals = (
-                binary_mask[:, None] * obs[new_goals_idx][:, env.goal_indices] # use obs x/y position as new goal
-                + jnp.logical_not(binary_mask)[:, None] * obs[new_goals_idx][..., 4:6] # use original goal in obs
+                binary_mask[:, None] * obs[new_goals_idx][:, env.pos_indices] # use obs x/y position as new goal
+                + jnp.logical_not(binary_mask)[:, None] * obs[new_goals_idx][..., env.goal_indices] # use original goal in obs
             )
 
 

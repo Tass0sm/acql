@@ -25,8 +25,8 @@ from task_aware_skill_composition.brax.training.acme import running_statistics
 from task_aware_skill_composition.brax.her import replay_buffers
 
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from task_aware_skill_composition.brax.agents.hdcqn import losses as hdcqn_losses
-from task_aware_skill_composition.brax.agents.hdcqn import networks as hdcq_networks
+from task_aware_skill_composition.brax.agents.hdcqn_automaton_her import losses as hdcqn_losses
+from task_aware_skill_composition.brax.agents.hdcqn_automaton_her import networks as hdcq_networks
 from task_aware_skill_composition.hierarchy.training import acting as hierarchical_acting
 from task_aware_skill_composition.hierarchy.training import types as h_types
 
@@ -193,25 +193,28 @@ def train(
         randomization_fn=v_randomization_fn,
     )
 
-  obs_size = env.observation_size
+  full_obs_size = env.full_observation_size
+  input_obs_size = env.observation_size
+  cost_input_obs_size = env.goalless_observation_size
   action_size = env.action_size
 
   normalize_fn = lambda x, y: x
   if normalize_observations:
     normalize_fn = running_statistics.normalize
   hdcq_network = network_factory(
-      observation_size=obs_size,
+      observation_size=input_obs_size,
+      cost_observation_size=cost_input_obs_size,
       action_size=action_size,
       options=options,
       preprocess_observations_fn=normalize_fn,)
-  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, cost_budget)
-  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, cost_budget)
+  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, cost_budget)
+  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, cost_budget)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
   cost_q_optimizer = optax.adam(learning_rate=learning_rate)
 
-  dummy_obs = jnp.zeros((obs_size,))
+  dummy_obs = jnp.zeros((full_obs_size,))
   dummy_transition = Transition(
       observation=dummy_obs,
       action=0,
@@ -222,6 +225,8 @@ def train(
           'state_extras': {
             'truncation': 0.0,
             'seed': 0.0,
+            'automata_state': 0,
+            'made_transition': 0,
             'cost': 0.0,
           },
           'policy_extras': {},
@@ -243,6 +248,7 @@ def train(
 
   critic_loss, cost_critic_loss = hdcqn_losses.make_losses(
       hdcq_network=hdcq_network,
+      env=env,
       reward_scaling=reward_scaling,
       cost_scaling=cost_scaling,
       cost_budget=cost_budget,
@@ -330,9 +336,11 @@ def train(
         policy,
         current_key,
         extra_fields=(
-          "truncation",
-          "cost",
-          "seed",
+          'truncation',
+          'seed',
+          'automata_state',
+          'made_transition',
+          'cost',
         ),
       )
       return (env_state, next_key), transition
@@ -341,9 +349,10 @@ def train(
 
     normalizer_params = running_statistics.update(
         normalizer_params,
+      # TODO: figure out best way to get observation with dim input_obs_size
         jax.tree_util.tree_map(
             lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data
-        ).observation,  # so that batch size*unroll_length is the first dimension
+        ).observation[..., :input_obs_size],  # so that batch size*unroll_length is the first dimension
         pmap_axis_name=_PMAP_AXIS_NAME,
     )
     buffer_state = replay_buffer.insert(buffer_state, data)
@@ -501,7 +510,7 @@ def train(
   # Training state init
   training_state = _init_training_state(
       key=global_key,
-      obs_size=obs_size,
+      obs_size=input_obs_size,
       local_devices_to_use=local_devices_to_use,
       hdcq_network=hdcq_network,
       # policy_optimizer=policy_optimizer,
@@ -542,8 +551,10 @@ def train(
       0,
       metrics,
       env=environment,
-      network=hdq_network,
-      params=_unpmap((training_state.normalizer_params, training_state.option_q_params)),
+      network=hdcq_network,
+      params=_unpmap((training_state.normalizer_params,
+                      training_state.option_q_params,
+                      training_state.cost_q_params))
     )
 
   # Create and initialize the replay buffer.
@@ -586,8 +597,10 @@ def train(
         current_step,
         metrics,
         env=environment,
-        network=hdq_network,
-        params=_unpmap((training_state.normalizer_params, training_state.option_q_params)),
+        network=hdcq_network,
+        params=_unpmap((training_state.normalizer_params,
+                        training_state.option_q_params,
+                        training_state.cost_q_params)),
       )
 
   total_steps = current_step

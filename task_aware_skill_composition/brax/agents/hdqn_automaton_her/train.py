@@ -25,8 +25,8 @@ from task_aware_skill_composition.brax.training.acme import running_statistics
 from task_aware_skill_composition.brax.her import replay_buffers
 
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from task_aware_skill_composition.brax.agents.hdqn import losses as hdqn_losses
-from task_aware_skill_composition.brax.agents.hdqn import networks as hdq_networks
+from task_aware_skill_composition.brax.agents.hdqn_automaton_her import losses as hdqn_losses
+from task_aware_skill_composition.brax.agents.hdqn_automaton_her import networks as hdq_networks
 from task_aware_skill_composition.hierarchy.training import acting as hierarchical_acting
 from task_aware_skill_composition.hierarchy.training import types as h_types
 
@@ -181,24 +181,25 @@ def train(
         randomization_fn=v_randomization_fn,
     )
 
-  obs_size = env.observation_size
+  full_obs_size = env.full_observation_size
+  input_obs_size = env.observation_size
   action_size = env.action_size
 
   normalize_fn = lambda x, y: x
   if normalize_observations:
     normalize_fn = functools.partial(running_statistics.normalize, mask=normalization_mask)
   hdq_network = network_factory(
-      observation_size=obs_size,
+      observation_size=input_obs_size,
       action_size=action_size,
       options=options,
       preprocess_observations_fn=normalize_fn,)
-  make_policy = hdq_networks.make_option_inference_fn(hdq_network)
-  make_flat_policy = hdq_networks.make_inference_fn(hdq_network)
+  make_policy = hdq_networks.make_option_inference_fn(hdq_network, env)
+  make_flat_policy = hdq_networks.make_inference_fn(hdq_network, env)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
 
-  dummy_obs = jnp.zeros((obs_size,))
+  dummy_obs = jnp.zeros((full_obs_size,))
   dummy_transition = Transition(
       observation=dummy_obs,
       action=0,
@@ -231,6 +232,7 @@ def train(
 
   critic_loss = hdqn_losses.make_critic_loss(
       hdq_network=hdq_network,
+      env=env,
       reward_scaling=reward_scaling,
       discounting=discounting,
   )
@@ -282,6 +284,7 @@ def train(
     ReplayBufferState,
   ]:
     policy = make_policy((normalizer_params, option_q_params))
+    # unroll_key, subgoal_key = jax.random.split(key)
 
     @jax.jit
     def f(carry, unused_t):
@@ -303,11 +306,18 @@ def train(
 
     (env_state, _), data = jax.lax.scan(f, (env_state, key), (), length=unroll_length)
 
+    # def random_subgoal_selection(key, obs):
+    #   subgoals_idxs = jax.random.randint(key, (obs.shape[0],), 0, env.goal_width)
+    #   all_goals = obs[:, env.no_goal_obs_dim:env.no_goal_obs_dim+env.all_goals_dim]
+    #   subgoals = jax.vmap(lambda gs, i: gs.at[i*env.goal_dim:(i+1)*env.goal_dim].get())(all_goals, subgoals_idxs)
+    #   return jax.concatenate((env.goalless_obs(obs), subgoals), axis=-1)
+
     normalizer_params = running_statistics.update(
         normalizer_params,
+        # TODO: figure out best way to get observation with dim input_obs_size
         jax.tree_util.tree_map(
             lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data
-        ).observation,  # so that batch size*unroll_length is the first dimension
+        ).observation[..., :input_obs_size],  # so that batch size*unroll_length is the first dimension
         pmap_axis_name=_PMAP_AXIS_NAME,
     )
     buffer_state = replay_buffer.insert(buffer_state, data)
@@ -500,7 +510,7 @@ def train(
   # Training state init
   training_state = _init_training_state(
       key=global_key,
-      obs_size=obs_size,
+      obs_size=input_obs_size,
       local_devices_to_use=local_devices_to_use,
       hdq_network=hdq_network,
       # policy_optimizer=policy_optimizer,
