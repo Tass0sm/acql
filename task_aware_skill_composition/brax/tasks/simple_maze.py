@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from jaxgcrl.envs.simple_maze import SimpleMaze
 from task_aware_skill_composition.brax.envs.base import GoalConditionedEnv
 from task_aware_skill_composition.brax.tasks.base import TaskBase
-from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box
+from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 from task_aware_skill_composition.hierarchy.xy_point.load import load_hard_coded_xy_point_options
 
 from corallab_stl import Expression, Var
@@ -20,6 +20,9 @@ class SimpleMazeTaskBase(TaskBase):
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=2)
         self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
+
+    def get_options(self):
+        return self.get_hard_coded_options()
 
     def get_hard_coded_options(self):
         return load_hard_coded_xy_point_options()
@@ -105,8 +108,7 @@ class SimpleMazeNav(SimpleMazeTaskBase):
         pass
 
     def _build_lo_spec(self, obs_var: Var) -> Expression:
-        true = stl.STLPredicate(obs_var, lambda s: 999, lower_bound=0.0)
-        return true
+        return true_exp(obs_var)
 
 
 class SimpleMazeCenterConstraint(SimpleMazeTaskBase):

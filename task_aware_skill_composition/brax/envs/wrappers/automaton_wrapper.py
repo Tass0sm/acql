@@ -83,11 +83,17 @@ class JaxAutomaton:
     def step(self, aut_state, ap_bit_vector):
         return self.delta_u[aut_state, ap_bit_vector]
 
-    def one_hot_encode(self, state: jax.Array) -> jax.Array:
-        return jax.nn.one_hot(state, self.num_states)
+    def one_hot_encode(self, obs: jax.Array) -> jax.Array:
+        if self.num_states <= 1:
+            return jnp.array([])
+        else:
+            return jax.nn.one_hot(obs, self.num_states)
 
-    def one_hot_decode(self, state: jax.Array) -> jax.Array:
-        return jnp.argmax(state, axis=1)
+    def one_hot_decode(self, obs: jax.Array) -> jax.Array:
+        if self.num_states <= 1:
+            return jnp.zeros((obs.shape[0],), dtype=jnp.int32)
+        else:
+            return jnp.argmax(obs, axis=-1)
 
     def embed(self, state: jax.Array) -> jax.Array:
         return self.embedding(state)
@@ -296,6 +302,9 @@ class AutomatonGoalConditionedWrapper(Wrapper):
     def original_obs(self, obs):
         return obs[..., :self.original_obs_dim]
 
+    def split_obs(self, obs):
+        return obs[..., :self.original_obs_dim], obs[..., self.original_obs_dim:]
+    
     def default_goal(self, obs):
         original_goal = obs[..., self.env.goal_indices]
         return jnp.zeros((self.all_goals_dim,)).at[:self.goal_dim].set(original_goal)
@@ -371,4 +380,4 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
     @property
     def full_observation_size(self) -> int:
-        return (self.observation_size - self.goal_dim) + self.all_goals_dim + self.automaton.n_states
+        return (self.observation_size - self.goal_dim) + self.all_goals_dim + (self.automaton.n_states if self.automaton.n_states > 1 else 0)

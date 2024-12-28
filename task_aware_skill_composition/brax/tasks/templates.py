@@ -10,6 +10,11 @@ from corallab_stl.var import Var
 import corallab_stl.expression_jax2 as stl
 
 
+def true_exp(var: Var):
+    true = stl.STLPredicate(var, lambda s: 999, lower_bound=0.0, info={"true": True})
+    return true
+
+
 def inside_circle(
         var: Var,
         center: jax.Array,

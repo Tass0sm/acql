@@ -42,6 +42,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
       self._key = key
       self._eval_walltime = 0.
 
+      self.env = eval_env
       self.has_automaton = hasattr(eval_env, "automaton")
       self.obs_augmented = eval_env.augment_obs if self.has_automaton else None
       self.automaton_states = eval_env.automaton.num_states if self.has_automaton else None
@@ -83,7 +84,8 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
     eval_metrics = eval_state.info['eval_metrics']
 
     if self.has_automaton and self.obs_augmented:
-      obs = data.observation[..., :-self.automaton_states]
+      obs = self.env.original_obs(data.observation)
+      # obs = data.observation[..., :-self.automaton_states]
     else:
       obs = data.observation
 

@@ -11,9 +11,7 @@ from brax.training import acting
 from brax.training import gradients
 from brax.training import pmap
 from brax.training.replay_buffers_test import jit_wrap
-# from brax.training import replay_buffers
 from brax.training import types
-# from brax.training.acme import running_statistics
 from brax.training.acme import specs
 from brax.training.types import Params
 from brax.training.types import PRNGKey
@@ -33,8 +31,6 @@ from task_aware_skill_composition.hierarchy.training import acting as hierarchic
 from task_aware_skill_composition.hierarchy.training import types as h_types
 
 from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsWrapper
-
-from task_aware_skill_composition.visualization.critic import make_plots_for_hdqn
 
 
 Metrics = types.Metrics
@@ -374,6 +370,11 @@ def train(
     buffer_state, transitions = replay_buffer.sample(buffer_state)
 
     batch_keys = jax.random.split(sampling_key, transitions.observation.shape[0])
+
+    # breakpoint()
+    # tmp = ReplayBufferClass.flatten_crl_fn(use_her, env,
+    #                                        jax.tree.map(lambda x: x[0], transitions),
+    #                                        batch_keys[0])
 
     transitions = jax.vmap(ReplayBufferClass.flatten_crl_fn, in_axes=(None, None, 0, 0))(
         use_her, env, transitions, batch_keys

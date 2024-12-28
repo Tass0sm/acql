@@ -24,45 +24,45 @@
     <material name="body_frame_plastic" rgba="0.102 0.102 0.102 1"/>
     <material name="burnished_chrome" rgba="0.898 0.898 0.898 1"/>
 
-    <mesh file="cf2_0.obj"/>
-    <mesh file="cf2_1.obj"/>
-    <mesh file="cf2_2.obj"/>
-    <mesh file="cf2_3.obj"/>
-    <mesh file="cf2_4.obj"/>
-    <mesh file="cf2_5.obj"/>
-    <mesh file="cf2_6.obj"/>
-    <mesh file="cf2_collision_0.obj"/>
-    <mesh file="cf2_collision_1.obj"/>
-    <mesh file="cf2_collision_2.obj"/>
-    <mesh file="cf2_collision_3.obj"/>
-    <mesh file="cf2_collision_4.obj"/>
-    <mesh file="cf2_collision_5.obj"/>
-    <mesh file="cf2_collision_6.obj"/>
-    <mesh file="cf2_collision_7.obj"/>
-    <mesh file="cf2_collision_8.obj"/>
-    <mesh file="cf2_collision_9.obj"/>
-    <mesh file="cf2_collision_10.obj"/>
-    <mesh file="cf2_collision_11.obj"/>
-    <mesh file="cf2_collision_12.obj"/>
-    <mesh file="cf2_collision_13.obj"/>
-    <mesh file="cf2_collision_14.obj"/>
-    <mesh file="cf2_collision_15.obj"/>
-    <mesh file="cf2_collision_16.obj"/>
-    <mesh file="cf2_collision_17.obj"/>
-    <mesh file="cf2_collision_18.obj"/>
-    <mesh file="cf2_collision_19.obj"/>
-    <mesh file="cf2_collision_20.obj"/>
-    <mesh file="cf2_collision_21.obj"/>
-    <mesh file="cf2_collision_22.obj"/>
-    <mesh file="cf2_collision_23.obj"/>
-    <mesh file="cf2_collision_24.obj"/>
-    <mesh file="cf2_collision_25.obj"/>
-    <mesh file="cf2_collision_26.obj"/>
-    <mesh file="cf2_collision_27.obj"/>
-    <mesh file="cf2_collision_28.obj"/>
-    <mesh file="cf2_collision_29.obj"/>
-    <mesh file="cf2_collision_30.obj"/>
-    <mesh file="cf2_collision_31.obj"/>
+    <mesh file="meshes/cf2_0.obj"/>
+    <mesh file="meshes/cf2_1.obj"/>
+    <mesh file="meshes/cf2_2.obj"/>
+    <mesh file="meshes/cf2_3.obj"/>
+    <mesh file="meshes/cf2_4.obj"/>
+    <mesh file="meshes/cf2_5.obj"/>
+    <mesh file="meshes/cf2_6.obj"/>
+    <mesh file="meshes/cf2_collision_0.obj"/>
+    <mesh file="meshes/cf2_collision_1.obj"/>
+    <mesh file="meshes/cf2_collision_2.obj"/>
+    <mesh file="meshes/cf2_collision_3.obj"/>
+    <mesh file="meshes/cf2_collision_4.obj"/>
+    <mesh file="meshes/cf2_collision_5.obj"/>
+    <mesh file="meshes/cf2_collision_6.obj"/>
+    <mesh file="meshes/cf2_collision_7.obj"/>
+    <mesh file="meshes/cf2_collision_8.obj"/>
+    <mesh file="meshes/cf2_collision_9.obj"/>
+    <mesh file="meshes/cf2_collision_10.obj"/>
+    <mesh file="meshes/cf2_collision_11.obj"/>
+    <mesh file="meshes/cf2_collision_12.obj"/>
+    <mesh file="meshes/cf2_collision_13.obj"/>
+    <mesh file="meshes/cf2_collision_14.obj"/>
+    <mesh file="meshes/cf2_collision_15.obj"/>
+    <mesh file="meshes/cf2_collision_16.obj"/>
+    <mesh file="meshes/cf2_collision_17.obj"/>
+    <mesh file="meshes/cf2_collision_18.obj"/>
+    <mesh file="meshes/cf2_collision_19.obj"/>
+    <mesh file="meshes/cf2_collision_20.obj"/>
+    <mesh file="meshes/cf2_collision_21.obj"/>
+    <mesh file="meshes/cf2_collision_22.obj"/>
+    <mesh file="meshes/cf2_collision_23.obj"/>
+    <mesh file="meshes/cf2_collision_24.obj"/>
+    <mesh file="meshes/cf2_collision_25.obj"/>
+    <mesh file="meshes/cf2_collision_26.obj"/>
+    <mesh file="meshes/cf2_collision_27.obj"/>
+    <mesh file="meshes/cf2_collision_28.obj"/>
+    <mesh file="meshes/cf2_collision_29.obj"/>
+    <mesh file="meshes/cf2_collision_30.obj"/>
+    <mesh file="meshes/cf2_collision_31.obj"/>
   </asset>
 
   <worldbody>
@@ -128,6 +128,6 @@
   </sensor>
 
   <keyframe>
-    <key name="hover" qpos="0 0 0.1 1 0 0 0" ctrl="0.26487 0 0 0"/>
+    <key name="hover" qpos="0 0 0.1 1 0 0 0 8 8 8" ctrl="0.26487 0 0 0"/>
   </keyframe>
 </mujoco>

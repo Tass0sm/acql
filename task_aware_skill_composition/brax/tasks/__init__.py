@@ -43,6 +43,10 @@ from .simple_maze import (
 )
 from .simple_maze_3d import (
     SimpleMaze3DNav,
+    SimpleMaze3DSingleSubgoal,
+)
+from .drone_maze import (
+    DroneMazeNav,
 )
 from .skate import (
     SkateStraightSequence,
@@ -53,6 +57,9 @@ from .ant import (
     AntPositiveY,
     AntStraightSequence,
     AntTurnSequence
+)
+from .ur5e_envs.ur5e_reach import (
+    UR5eReachNav,
 )
 
 
@@ -108,6 +115,10 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "simple_maze_3d": {
             "true": SimpleMaze3DNav,
+            "subgoal": SimpleMaze3DSingleSubgoal,
+        },
+        "drone_maze": {
+            "true": DroneMazeNav,
         },
         "point": {
             "straight_seq": PointStraightSequence,
@@ -119,6 +130,9 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             # "branch": PointBranch,
             # "loop": PointLoop,
             # "signal": PointSignal
+        },
+        "ur5e_reach": {
+            "true": UR5eReachNav,
         },
         # "car": {
         #     "seq": CarSequence,

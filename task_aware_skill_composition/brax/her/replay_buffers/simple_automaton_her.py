@@ -96,15 +96,15 @@ class SimpleAutomatonTrajectoryUniformSamplingQueue(AutomatonTrajectoryUniformSa
 
             #### TODO: randomly generate index to select subgoal for sections of the trajectory
             # random_goal_idx_key = sample_key
-            random_goal_idx = 0 # jax.random.randint(new_aut_state_key, (), 0, env.goal_width, jnp.int32)
+            # random_goal_idx = 0 jax.random.randint(new_aut_state_key, (), 0, env.goal_width, jnp.int32)
             #####
 
-            final_position = obs[new_goals_idx][:, env.goal_indices]
+            final_position = obs[new_goals_idx][:, env.pos_indices]
             final_automaton_state = automaton_state[new_goals_idx]
 
             def update_goal(o, aut_state, final_pos, final_aut_state):
                 o = jax.lax.cond(aut_state == final_aut_state,
-                                 lambda: o.at[4:6].set(final_pos),
+                                 lambda: o.at[env.goal_indices].set(final_pos),
                                  lambda: o)
                 return o
 
@@ -123,9 +123,9 @@ class SimpleAutomatonTrajectoryUniformSamplingQueue(AutomatonTrajectoryUniformSa
 
             # Recalculate reward
             def get_new_reward(o, aut_state):
-                return jax.lax.cond(aut_state == 1,
-                                    lambda: jnp.float32(jnp.linalg.norm(o.at[4:6].get() - o.at[0:2].get()) < 5*env.goal_dist),
-                                    lambda: jnp.float32(jnp.linalg.norm(o.at[4:6].get() - o.at[0:2].get()) < env.goal_dist))
+                return jax.lax.cond(aut_state == 0,
+                                    lambda: jnp.float32(jnp.linalg.norm(o.at[env.goal_indices].get() - o.at[env.pos_indices].get()) < env.goal_dist),
+                                    lambda: jnp.float32(jnp.linalg.norm(o.at[env.goal_indices].get() - o.at[env.pos_indices].get()) < 5*env.goal_dist))
 
             new_reward = jax.vmap(get_new_reward)(new_obs, automaton_state)
 

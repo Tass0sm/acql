@@ -27,7 +27,7 @@ class HDQNetworks:
     # parametric_option_distribution: distribution.ParametricDistribution
 
 
-def get_compiled_q_function_branches(
+def get_compiled_q_function_branches_tmp(
     hdq_networks: HDQNetworks,
     env: envs.Env,
 ):
@@ -43,14 +43,19 @@ def get_compiled_q_function_branches(
         children = list(children)
 
         k = root.kind()
+        print(f"POST ORDER k = {k}")
 
         if k == spot.op_ff:
+            print(f"MAKING FF")
             return lambda params, obs: -999
         elif k == spot.op_tt:
+            print(f"MAKING TT")
             return lambda params, obs: 999
         elif k == spot.op_ap:
+            print(f"MAKING AP")
             ap_id = int(root.ap_name()[3:])
             goal_idx = ap_to_goal_idx_dict[ap_id]
+            print(f"USING GOAL IDX {goal_idx}")
 
             def get_ap_q(params, obs):
                 nn_input = jnp.concatenate((env.goalless_obs(obs),
@@ -60,19 +65,23 @@ def get_compiled_q_function_branches(
             
             return get_ap_q
         elif k == spot.op_Not:
+            print(f"MAKING NOT")
             return lambda params, obs: -children[0](params, obs)
         elif k == spot.op_And:
+            print(f"MAKING AND")
             return lambda params, obs: jnp.min(jnp.stack(
               (children[0](params, obs), children[1](params, obs)), axis=-1
             ), axis=-1)
         elif k == spot.op_Or:
+            print(f"MAKING OR")
             return lambda params, obs: jnp.max(jnp.stack(
               (children[0](params, obs), children[1](params, obs)), axis=-1
             ), axis=-1)
         else:
             raise NotImplementedError(f"Formula {root} with kind = {k}")
 
-    for k, cond_bdd in out_conditions.items():
+    for k, cond_bdd in sorted(out_conditions.items(), key=lambda x: x[0]):
+        print(f"making q branch for state {k}")
         if k == 0:
             def default_q(params, obs):
                 nn_input = jnp.concatenate((env.goalless_obs(obs),
@@ -82,10 +91,39 @@ def get_compiled_q_function_branches(
             preds.append(jax.jit(default_q))
         else:
             f_k = spot.bdd_to_formula(cond_bdd, bdd_dict)
+            print(f"making it with formula {f_k}")
             q_func_k = fold_spot_formula(to_q_func_helper, f_k)
             preds.append(jax.jit(q_func_k))
 
     return preds
+
+def get_compiled_q_function_branches(
+    hdq_networks: HDQNetworks,
+    env: envs.Env,
+):
+    # out_conditions = env.out_conditions
+    # bdd_dict = env.automaton.bdd_dict
+    # ap_to_goal_idx_dict = env.ap_to_goal_idx_dict
+
+    preds = []
+
+    def q_zero(params, obs):
+        nn_input = jnp.concatenate((env.goalless_obs(obs),
+                                    env.ith_goal(obs, 0)), axis=-1)
+        qs = hdq_networks.option_q_network.apply(*params, nn_input)
+        return qs
+
+    def q_one(params, obs):
+        nn_input = jnp.concatenate((env.goalless_obs(obs),
+                                    env.ith_goal(obs, 0)), axis=-1)
+        qs = hdq_networks.option_q_network.apply(*params, nn_input)
+        return qs
+
+    preds.append(q_zero)
+    preds.append(q_one)
+
+    return preds
+
 
 def make_option_inference_fn(
     hdq_networks: HDQNetworks,
@@ -102,17 +140,22 @@ def make_option_inference_fn(
     options = hdq_networks.options
     n_options = len(options)
 
+    # breakpoint()
+    # jaxpr = jax.make_jaxpr(q_func_branches[0])(params, jnp.array([0., 0., 0., 0., 0., 0., 0., 0., 0.]))
+    # print(jaxpr)
+
     def random_option_policy(observation: types.Observation,
                              option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       option = jax.random.randint(option_key, (observation.shape[0],), 0, n_options)
       return option, {}
 
+
     def greedy_option_policy(observation: types.Observation,
                              option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       aut_state = env.aut_state_from_obs(observation)
-      qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, params, obs))(aut_state, observation)
-      min_q = jnp.min(qs, axis=-1)
-      option = min_q.argmax(axis=-1)
+      double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, params, obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation))
+      qs = double_qs.min(axis=-1)
+      option = qs.argmax(axis=-1)
       return option, {}
 
     epsilon = jnp.float32(0.1)
@@ -145,7 +188,6 @@ def make_inference_fn(
 
     options = hdq_networks.options
     n_options = len(options)
-    env = env
 
     def random_option_policy(observation: types.Observation,
                              option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
@@ -154,8 +196,11 @@ def make_inference_fn(
 
     def greedy_option_policy(observation: types.Observation,
                              option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+
       aut_state = env.aut_state_from_obs(observation)
-      qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, params, obs))(aut_state, observation)
+      # double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, params, obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation))
+      double_qs = jax.lax.switch(aut_state, q_func_branches, params, observation)
+      qs = double_qs.min(axis=-1)
       option = qs.argmax(axis=-1)
       return option
 

@@ -6,7 +6,7 @@ import jax.numpy as jnp
 from task_aware_skill_composition.brax.envs.simple_maze_3d import SimpleMaze3D
 from task_aware_skill_composition.brax.envs.base import GoalConditionedEnv
 from task_aware_skill_composition.brax.tasks.base import TaskBase
-from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box
+from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 from task_aware_skill_composition.hierarchy.xyz_point.load import load_hard_coded_xyz_point_options
 
 from corallab_stl import Expression, Var
@@ -20,6 +20,9 @@ class SimpleMaze3DTaskBase(TaskBase):
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=3)
         self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 3))
+
+    def get_options(self):
+        return self.get_hard_coded_options()
 
     def get_hard_coded_options(self):
         return load_hard_coded_xyz_point_options()
@@ -50,7 +53,7 @@ class SimpleMaze3DTaskBase(TaskBase):
             "reward_scaling": 1,
             "num_evals": 50,
             "episode_length": 1000,
-            "normalize_observations": False,
+            "normalize_observations": True,
             "action_repeat": 1,
             "discounting": 0.99,
             # "learning_rate": 3e-4,
@@ -74,7 +77,7 @@ class SimpleMaze3DTaskBase(TaskBase):
             "cost_budget": 3.0,
             "num_evals": 50,
             "episode_length": 1000,
-            "normalize_observations": True,
+            "normalize_observations": False,
             "action_repeat": 1,
             "discounting": 0.99,
             # "learning_rate": 3e-4,
@@ -105,8 +108,30 @@ class SimpleMaze3DNav(SimpleMaze3DTaskBase):
         pass
 
     def _build_lo_spec(self, obs_var: Var) -> Expression:
-        true = stl.STLPredicate(obs_var, lambda s: 999, lower_bound=0.0)
-        return true
+        return true_exp(obs_var)
+
+
+class SimpleMaze3DSingleSubgoal(SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 12.0, 2.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze3D(
+            terminate_when_unhealthy=False,
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
+        phi = stl.STLUntimedEventually(in_goal1)
+        return phi
 
 
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):

@@ -15,21 +15,26 @@ RESET = R = 'r'
 GOAL = G = 'g'
 
 # Z, X, Y / k, i, j (therefore, not viewing from typical x-y viewpoint)
-OPEN_MAZE = [[[0, 0, 0, 0, 0],
-              [0, R, G, G, 0],
-              [0, G, R, G, 0],
-              [0, G, G, R, 0],
-              [0, 0, 0, 0, 0]],
-             [[0, 0, 0, 0, 0],
-              [0, G, G, G, 0],
-              [0, G, G, G, 0],
-              [0, G, G, G, 0],
-              [0, 0, 0, 0, 0]],
-             [[0, 0, 0, 0, 0],
-              [0, G, G, G, 0],
-              [0, G, G, G, 0],
-              [0, G, G, G, 0],
-              [0, 0, 0, 0, 0]]]
+OPEN_MAZE = [[[1, 1, 1, 1, 1],
+              [1, R, G, G, 1],
+              [1, G, R, G, 1],
+              [1, G, G, R, 1],
+              [1, 1, 1, 1, 1]],
+             [[1, 1, 1, 1, 1],
+              [1, G, G, G, 1],
+              [1, G, G, G, 1],
+              [1, G, G, G, 1],
+              [1, 1, 1, 1, 1]],
+             [[1, 1, 1, 1, 1],
+              [1, G, G, G, 1],
+              [1, G, G, G, 1],
+              [1, G, G, G, 1],
+              [1, 1, 1, 1, 1]],
+             [[1, 1, 1, 1, 1],
+              [1, 1, 1, 1, 1],
+              [1, 1, 1, 1, 1],
+              [1, 1, 1, 1, 1],
+              [1, 1, 1, 1, 1]]]
 
 MAZE_HEIGHT = 0.5
 
@@ -39,7 +44,9 @@ def find_starts(structure, size_scaling):
         for i in range(len(structure[0])):
             for j in range(len(structure[0][0])):
                 if structure[k][i][j] == RESET:
-                    starts.append([k * size_scaling, i * size_scaling, j * size_scaling])
+                    starts.append([i * size_scaling,
+                                   j * size_scaling,
+                                   (k+0.5) * size_scaling])
 
     return jnp.array(starts)
 
@@ -49,7 +56,9 @@ def find_goals(structure, size_scaling):
         for i in range(len(structure[0])):
             for j in range(len(structure[0][0])):
                 if structure[k][i][j] == GOAL:
-                    goals.append([k * size_scaling, i * size_scaling, j * size_scaling])
+                    goals.append([i * size_scaling,
+                                  j * size_scaling,
+                                  (k+0.5) * size_scaling])
 
     return jnp.array(goals)
 
@@ -75,10 +84,10 @@ def make_maze(maze_layout_name, maze_size_scaling):
                 if struct == 1:
                     ET.SubElement(
                         worldbody, "geom",
-                        name="block_%d_%d" % (i, j),
+                        name="block_%d_%d_%d" % (i, j, k),
                         pos="%f %f %f" % (i * maze_size_scaling,
                                           j * maze_size_scaling,
-                                          k * maze_size_scaling),
+                                          (k+0.5) * maze_size_scaling),
                         size="%f %f %f" % (0.5 * maze_size_scaling,
                                            0.5 * maze_size_scaling,
                                            0.5 * maze_size_scaling),
@@ -86,13 +95,14 @@ def make_maze(maze_layout_name, maze_size_scaling):
                         material="",
                         contype="1",
                         conaffinity="1",
-                        rgba="0.7 0.5 0.3 1.0",
+                        rgba="0.7 0.5 0.3 0.1",
                     )
 
     tree = tree.getroot()
     xml_string = ET.tostring(tree)
 
     return xml_string, possible_starts, possible_goals
+
 
 class SimpleMaze3D(PipelineEnv):
     def __init__(
@@ -102,7 +112,7 @@ class SimpleMaze3D(PipelineEnv):
         contact_cost_weight=5e-4,
         healthy_reward=1.0,
         terminate_when_unhealthy=True,
-        healthy_z_range=(0.2, 1.0),
+        healthy_z_range=(0.2, 14.0),
         contact_force_range=(-1.0, 1.0),
         reset_noise_scale=0.1,
         exclude_current_positions_from_observation=False,
@@ -239,6 +249,7 @@ class SimpleMaze3D(PipelineEnv):
 
         dist = jnp.linalg.norm(obs[:3] - obs[-3:])
         success = jnp.array(dist < self.goal_dist, dtype=float)
+
         success_easy = jnp.array(dist < 2., dtype=float)
         reward = -dist + healthy_reward - ctrl_cost - contact_cost
         state.metrics.update(
@@ -265,7 +276,6 @@ class SimpleMaze3D(PipelineEnv):
         """Observe ant body position and velocities."""
         qpos = pipeline_state.q[:-3]
         qvel = pipeline_state.qd[:-3]
-
 
         target_pos = pipeline_state.x.pos[-1][:3]
 

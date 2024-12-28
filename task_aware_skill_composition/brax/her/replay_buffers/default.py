@@ -150,12 +150,14 @@ class TrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]):
             new_obs = jnp.concatenate([state, new_goals], axis=1)
 
             # Recalculate reward
-            dist = jnp.linalg.norm(new_obs[:, env.state_dim :] - new_obs[:, env.goal_indices], axis=1)
+            dist = jnp.linalg.norm(new_obs[:, env.pos_indices] - new_obs[:, env.goal_indices], axis=1)
             new_reward = jnp.array(dist < env.goal_dist, dtype=float)
 
             # Transform next observation
-            next_state = next_obs[:, : env.state_dim]
+            next_state = next_obs[:, :env.state_dim]
             new_next_obs = jnp.concatenate([next_state, new_goals], axis=1)
+
+            # jax.debug.breakpoint()
 
             # add back automaton state
             if hasattr(env, "automaton") and env.augment_obs:

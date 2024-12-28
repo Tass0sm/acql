@@ -45,13 +45,13 @@ class OptionsWrapper(Wrapper):
 
         def while_cond(x):
             s_t, _, _, key = x
-            beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t, key)
+            beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t.obs, key)
             return beta_t != 1
 
         def while_body(x):
             s_t, iters, r_t, key = x
             key, inf_key = jax.random.split(key)
-            a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t, inf_key)
+            a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
             s_t1 = self.env.step(s_t, a_t)
             r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
             return (s_t1, iters+1, r_t1, key)

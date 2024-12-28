@@ -52,7 +52,6 @@ def plot_function_grid(
     return fig, ax
     
 
-
 def make_plots_for_hdqn(
         env: envs.Env,
         network: hdq_networks.HDQNetworks,
@@ -89,20 +88,20 @@ def make_plots_for_hdqn(
     value_function_output = value_q_function_output.max(axis=-1)
     value_function_grid = value_function_output.reshape(grid_size, grid_size)
 
-    options = value_q_function_output.argmax(axis=-1)
+    # options = value_q_function_output.argmax(axis=-1)
 
-    # Option arrows
-    arrows = jnp.array([[0.0, 1.0],
-                        [1.0, 0.0],
-                        [-1.0, 0.0],
-                        [0.0, -1.0]])
-    option_vectors = jax.vmap(lambda o: arrows.at[o].get())(options)
-    option_vector_grid = option_vectors.reshape(grid_size, grid_size, 2)
-    option_vector_grid = option_vector_grid[::2, ::2]
+    # # Option arrows
+    # arrows = jnp.array([[0.0, 1.0],
+    #                     [1.0, 0.0],
+    #                     [-1.0, 0.0],
+    #                     [0.0, -1.0]])
+    # option_vectors = jax.vmap(lambda o: arrows.at[o].get())(options)
+    # option_vector_grid = option_vectors.reshape(grid_size, grid_size, 2)
+    # option_vector_grid = option_vector_grid[::2, ::2]
 
-    start_position = tmp_state.obs[:2]
-    goal_position = tmp_state.obs[4:6]
-    # goal_position = jnp.array([12.0, 4.0])
+    start_position = tmp_state.obs[env.pos_indices][:2]
+    goal_position = tmp_state.obs[env.goal_indices][:2]
+
     fig, ax = plot_function_grid(
         X, Y,
         x_min, x_max,
@@ -112,7 +111,7 @@ def make_plots_for_hdqn(
         label
     )
 
-    ax.quiver(X[::2, ::2], Y[::2, ::2], option_vector_grid[..., 0], option_vector_grid[..., 1])
+    # ax.quiver(X[::2, ::2], Y[::2, ::2], option_vector_grid[..., 0], option_vector_grid[..., 1])
 
     if save_and_close:
         fig.savefig(f"hdqn_figures/value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
@@ -193,6 +192,7 @@ def make_test_plot_for_hdqn(
     if save_and_close:
         fig.savefig(f"hdqn_figures/value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
         plt.close(fig)
+
 
 def make_plots_for_hdcqn(
         env: envs.Env,

@@ -27,7 +27,7 @@ from task_aware_skill_composition.hierarchy.option import Option, BernoulliTermi
 
 
 def load_ant_options(
-        termination_prob: float = 0.2,
+        termination_prob: float = 0.3,
         adapter: Optional[Callable] = None
 ):
 

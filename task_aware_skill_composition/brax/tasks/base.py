@@ -62,3 +62,49 @@ class TaskBase(ABC):
             "num_envs": 4096,
             "batch_size": 2048,
         }
+
+    @property
+    def hdqn_her_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            # "learning_rate": 3e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            "unroll_length": 62,
+            "multiplier_num_sgd_steps": 1,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            "min_replay_size": 1000,
+            "use_her": True,
+        }
+
+    @property
+    def hdcqn_her_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "cost_scaling": 1,
+            "cost_budget": 3.0,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            # "learning_rate": 3e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            "unroll_length": 62,
+            "multiplier_num_sgd_steps": 1,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            "min_replay_size": 1000,
+            "use_her": True,
+        }
