@@ -304,6 +304,9 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
     def split_obs(self, obs):
         return obs[..., :self.original_obs_dim], obs[..., self.original_obs_dim:]
+
+    def automaton_obs(self, obs):
+        return obs[..., -self.automaton.n_states:]
     
     def default_goal(self, obs):
         original_goal = obs[..., self.env.goal_indices]

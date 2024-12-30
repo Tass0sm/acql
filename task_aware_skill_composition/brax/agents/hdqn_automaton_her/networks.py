@@ -27,7 +27,7 @@ class HDQNetworks:
     # parametric_option_distribution: distribution.ParametricDistribution
 
 
-def get_compiled_q_function_branches_tmp(
+def get_compiled_q_function_branches(
     hdq_networks: HDQNetworks,
     env: envs.Env,
 ):
@@ -47,10 +47,10 @@ def get_compiled_q_function_branches_tmp(
 
         if k == spot.op_ff:
             print(f"MAKING FF")
-            return lambda params, obs: -999
+            return lambda params, obs: -987
         elif k == spot.op_tt:
             print(f"MAKING TT")
-            return lambda params, obs: 999
+            return lambda params, obs: 789
         elif k == spot.op_ap:
             print(f"MAKING AP")
             ap_id = int(root.ap_name()[3:])
@@ -62,7 +62,7 @@ def get_compiled_q_function_branches_tmp(
                                             env.ith_goal(obs, goal_idx)), axis=-1)
                 qs = hdq_networks.option_q_network.apply(*params, nn_input)
                 return qs
-            
+
             return get_ap_q
         elif k == spot.op_Not:
             print(f"MAKING NOT")
@@ -97,32 +97,32 @@ def get_compiled_q_function_branches_tmp(
 
     return preds
 
-def get_compiled_q_function_branches(
-    hdq_networks: HDQNetworks,
-    env: envs.Env,
-):
-    # out_conditions = env.out_conditions
-    # bdd_dict = env.automaton.bdd_dict
-    # ap_to_goal_idx_dict = env.ap_to_goal_idx_dict
+# def get_compiled_q_function_branches(
+#     hdq_networks: HDQNetworks,
+#     env: envs.Env,
+# ):
+#     # out_conditions = env.out_conditions
+#     # bdd_dict = env.automaton.bdd_dict
+#     # ap_to_goal_idx_dict = env.ap_to_goal_idx_dict
 
-    preds = []
+#     preds = []
 
-    def q_zero(params, obs):
-        nn_input = jnp.concatenate((env.goalless_obs(obs),
-                                    env.ith_goal(obs, 0)), axis=-1)
-        qs = hdq_networks.option_q_network.apply(*params, nn_input)
-        return qs
+#     def q_zero(params, obs):
+#         nn_input = jnp.concatenate((env.goalless_obs(obs),
+#                                     env.ith_goal(obs, 0)), axis=-1)
+#         qs = hdq_networks.option_q_network.apply(*params, nn_input)
+#         return qs
 
-    def q_one(params, obs):
-        nn_input = jnp.concatenate((env.goalless_obs(obs),
-                                    env.ith_goal(obs, 0)), axis=-1)
-        qs = hdq_networks.option_q_network.apply(*params, nn_input)
-        return qs
+#     def q_one(params, obs):
+#         nn_input = jnp.concatenate((env.goalless_obs(obs),
+#                                     env.ith_goal(obs, 0)), axis=-1)
+#         qs = hdq_networks.option_q_network.apply(*params, nn_input)
+#         return qs
 
-    preds.append(q_zero)
-    preds.append(q_one)
+#     preds.append(q_zero)
+#     preds.append(q_one)
 
-    return preds
+#     return preds
 
 
 def make_option_inference_fn(
@@ -140,8 +140,9 @@ def make_option_inference_fn(
     options = hdq_networks.options
     n_options = len(options)
 
+    # jaxpr0 = jax.make_jaxpr(q_func_branches[0])(params, jnp.array([0., 0., 0., 0., 0., 0., 0., 0., 0.]))
+    # jaxpr1 = jax.make_jaxpr(q_func_branches[1])(params, jnp.array([0., 0., 0., 0., 0., 0., 0., 0., 0.]))
     # breakpoint()
-    # jaxpr = jax.make_jaxpr(q_func_branches[0])(params, jnp.array([0., 0., 0., 0., 0., 0., 0., 0., 0.]))
     # print(jaxpr)
 
     def random_option_policy(observation: types.Observation,

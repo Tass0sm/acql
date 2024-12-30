@@ -123,6 +123,7 @@ class SimpleAutomatonTrajectoryUniformSamplingQueue(AutomatonTrajectoryUniformSa
 
             # Recalculate reward
             def get_new_reward(o, aut_state):
+                # return jnp.float32(jnp.linalg.norm(o.at[env.goal_indices].get() - o.at[env.pos_indices].get()) < env.goal_dist)
                 return jax.lax.cond(aut_state == 0,
                                     lambda: jnp.float32(jnp.linalg.norm(o.at[env.goal_indices].get() - o.at[env.pos_indices].get()) < env.goal_dist),
                                     lambda: jnp.float32(jnp.linalg.norm(o.at[env.goal_indices].get() - o.at[env.pos_indices].get()) < 5*env.goal_dist))

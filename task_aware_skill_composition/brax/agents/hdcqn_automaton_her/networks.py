@@ -16,6 +16,7 @@ from flax import linen
 from task_aware_skill_composition.hierarchy.training import networks as h_networks
 from task_aware_skill_composition.hierarchy.state import OptionState
 from task_aware_skill_composition.hierarchy.option import Option
+from task_aware_skill_composition.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
 
 from corallab_stl.utils import fold_spot_formula
 
@@ -28,65 +29,6 @@ class HDCQNetworks:
   # parametric_option_distribution: distribution.ParametricDistribution
 
 
-def get_compiled_q_function_branches(
-    hdcq_networks: HDCQNetworks,
-    env: envs.Env,
-):
-    out_conditions = env.out_conditions
-    bdd_dict = env.automaton.bdd_dict
-    ap_to_goal_idx_dict = env.ap_to_goal_idx_dict
-
-    preds = []
-
-    def to_q_func_helper(root, children):
-        nonlocal ap_to_goal_idx_dict
-
-        children = list(children)
-
-        k = root.kind()
-
-        if k == spot.op_ff:
-            return lambda params, obs: -999
-        elif k == spot.op_tt:
-            return lambda params, obs: 999
-        elif k == spot.op_ap:
-            ap_id = int(root.ap_name()[3:])
-            goal_idx = ap_to_goal_idx_dict[ap_id]
-
-            def get_ap_q(params, obs):
-                nn_input = jnp.concatenate((env.goalless_obs(obs),
-                                            env.ith_goal(obs, goal_idx)), axis=-1)
-                qs = hdcq_networks.option_q_network.apply(*params, nn_input)
-                return qs
-
-            return get_ap_q
-        elif k == spot.op_Not:
-            return lambda params, obs: -children[0](params, obs)
-        elif k == spot.op_And:
-            return lambda params, obs: jnp.min(jnp.stack(
-              (children[0](params, obs), children[1](params, obs)), axis=-1
-            ), axis=-1)
-        elif k == spot.op_Or:
-            return lambda params, obs: jnp.max(jnp.stack(
-              (children[0](params, obs), children[1](params, obs)), axis=-1
-            ), axis=-1)
-        else:
-            raise NotImplementedError(f"Formula {root} with kind = {k}")
-
-    for k, cond_bdd in out_conditions.items():
-        if k == 0:
-            def default_q(params, obs):
-                nn_input = jnp.concatenate((env.goalless_obs(obs),
-                                            env.ith_goal(obs, 0)), axis=-1)
-                qs = hdcq_networks.option_q_network.apply(*params, nn_input)
-                return qs
-            preds.append(jax.jit(default_q))
-        else:
-            f_k = spot.bdd_to_formula(cond_bdd, bdd_dict)
-            q_func_k = fold_spot_formula(to_q_func_helper, f_k)
-            preds.append(jax.jit(q_func_k))
-
-    return preds
 
 
 def make_option_inference_fn(
@@ -114,11 +56,13 @@ def make_option_inference_fn(
     def greedy_safe_option_policy(observation: types.Observation,
                                   unused_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       aut_state = env.aut_state_from_obs(observation)
-      double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(aut_state, observation)
+      double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation))
       qs = jnp.min(double_qs, axis=-1)
 
-      goalless_obs = env.goalless_obs(observation)
-      double_cqs = hdcq_networks.cost_q_network.apply(normalizer_params, cost_q_params, goalless_obs)
+      cost_obs = env.cost_obs(observation)
+      # goalless_obs = env.goalless_obs(observation)
+      # trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.goalless_observation_size] if x.ndim >= 1 else x, normalizer_params)
+      double_cqs = hdcq_networks.cost_q_network.apply(None, cost_q_params, cost_obs)
       cqs = jnp.max(double_cqs, axis=-1)
 
       masked_q = jnp.where(cqs < cost_budget, qs, -jnp.inf)
@@ -159,8 +103,7 @@ def make_inference_fn(
     options = hdcq_networks.options
     n_options = len(options)
 
-    # TODO: Respect Cost Q
-
+    # TODO: Random option policy could still respect Cost Q
     def random_option_policy(observation: types.Observation,
                              option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       option = jax.random.randint(option_key, (), 0, n_options)
@@ -169,10 +112,14 @@ def make_inference_fn(
     def greedy_safe_option_policy(observation: types.Observation,
                                   option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       aut_state = env.aut_state_from_obs(observation)
-      double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(aut_state, observation)
+      # double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation))
+      double_qs = jax.lax.switch(aut_state, q_func_branches, (normalizer_params, option_q_params), observation)
       qs = jnp.min(double_qs, axis=-1)
 
-      double_cqs = hdcq_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
+      cost_obs = env.cost_obs(observation)
+      # goalless_obs = env.goalless_obs(observation)
+      # trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.goalless_observation_size] if x.ndim >= 1 else x, normalizer_params)
+      double_cqs = hdcq_networks.cost_q_network.apply(None, cost_q_params, cost_obs)
       cqs = jnp.max(double_cqs, axis=-1)
 
       masked_q = jnp.where(cqs < cost_budget, qs, -jnp.inf)
@@ -257,7 +204,8 @@ def make_hdcq_networks(
   cost_q_network = h_networks.make_option_q_network(
       cost_observation_size,
       len(options),
-      preprocess_observations_fn=preprocess_observations_fn,
+      preprocess_observations_fn=types.identity_observation_preprocessor,
+      # preprocess_observations_fn=preprocess_observations_fn,
       hidden_layer_sizes=hidden_layer_sizes,
       activation=activation
   )

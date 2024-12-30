@@ -24,7 +24,7 @@ def inside_circle(
     def f(s):
         return -norm(s - center) + radius
 
-    return stl.STLPredicate(var, f, 0.0, info={"goal": center})
+    return stl.STLPredicate(var, f, 0.0, info={"goal": center, "name": f"inside_circle ({center}, {radius})"})
 
 
 def outside_circle(
@@ -36,9 +36,7 @@ def outside_circle(
     def f(s):
         return norm(s - center) - radius
 
-    return stl.STLPredicate(var, f, 0.0)
-
-
+    return stl.STLPredicate(var, f, 0.0, info={"name": f"outside_circle ({center}, {radius})"})
 
 
 def inside_box(
@@ -56,7 +54,8 @@ def inside_box(
     def f(s):
         return (b - A @ s).min(axis=-1)
 
-    return stl.STLPredicate(var, f, 0.0, info={"goal": corner1+(corner2-corner1)/2})
+    return stl.STLPredicate(var, f, 0.0, info={"goal": corner1+(corner2-corner1)/2,
+                                               "name": f"inside_box ({corner1}, {corner2})"})
 
 
 def sequence(

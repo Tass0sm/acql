@@ -1,5 +1,6 @@
 """Wrapper for adding automaton cost function."""
 
+import copy
 from typing import Callable, Dict, Optional, Tuple
 
 import spot
@@ -28,14 +29,24 @@ def get_compiled_conditions(
 
         children = list(children)
         k = root.kind()
+        print(f"POST ORDER k = {k}")
 
         if k == spot.op_ff:
-            return stl.STLPredicate(state_var, lambda s: -999, lower_bound=0.0)
+            print(f"MAKING FF")
+            return stl.STLPredicate(state_var, lambda s: -1, lower_bound=0.0)
         elif k == spot.op_tt:
-            return stl.STLPredicate(state_var, lambda s: 999, lower_bound=0.0)
+            print(f"MAKING TT")
+            return stl.STLPredicate(state_var, lambda s: 1, lower_bound=0.0)
+            # ap_pred = copy.deepcopy(aps[0])
+            # ap_pred.lower_bound = 0.0
+            # return ap_pred
         elif k == spot.op_ap:
+            print(f"MAKING AP")
             ap_id = int(root.ap_name()[3:])
-            return aps[ap_id]
+            # return aps[ap_id]
+            ap_pred = copy.deepcopy(aps[ap_id])
+            ap_pred.lower_bound = -1.0
+            return ap_pred
         elif k == spot.op_Not:
             return stl.STLNegation(children[0])
         elif k == spot.op_And:
@@ -46,6 +57,7 @@ def get_compiled_conditions(
             raise NotImplementedError(f"Formula {root} with kind = {k}")
 
     for k, form_k in sorted(safety_conditions.items(), key=lambda x: x[0]):
+        print(f"making safety condition for state {k}")
         stl_k = fold_spot_formula(to_stl_helper, form_k)
         stls.append(stl_k)
 
@@ -67,6 +79,10 @@ class AutomatonCostWrapper(Wrapper):
         self.safety_exps = get_compiled_conditions(self.safety_conditions,
                                                    self.automaton.state_var,
                                                    self.automaton.aps)
+
+    def cost_obs(self, obs):
+        return jnp.concatenate((self.goalless_obs(obs),
+                                self.automaton_obs(obs)), axis=-1)
 
     def _compute_cost(self, state: State, action: jax.Array, nstate: State):
         """

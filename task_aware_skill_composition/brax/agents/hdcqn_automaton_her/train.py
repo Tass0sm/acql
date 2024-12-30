@@ -32,8 +32,6 @@ from task_aware_skill_composition.hierarchy.training import types as h_types
 
 from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsWrapper
 
-from task_aware_skill_composition.visualization.critic import make_plots_for_hdcqn
-
 
 Metrics = types.Metrics
 Transition = types.Transition
@@ -195,7 +193,7 @@ def train(
 
   full_obs_size = env.full_observation_size
   input_obs_size = env.observation_size
-  cost_input_obs_size = env.goalless_observation_size
+  cost_input_obs_size = env.goalless_observation_size + env.automaton.n_states
   action_size = env.action_size
 
   normalize_fn = lambda x, y: x
@@ -441,6 +439,7 @@ def train(
     )
 
     (training_state, _), metrics = jax.lax.scan(sgd_step, (training_state, training_key), transitions)
+
     return training_state, buffer_state, metrics
 
   def scan_additional_sgds(n, ts, bs, a_sgd_key):
@@ -551,6 +550,7 @@ def train(
       0,
       metrics,
       env=environment,
+      make_policy=make_policy,
       network=hdcq_network,
       params=_unpmap((training_state.normalizer_params,
                       training_state.option_q_params,
@@ -597,6 +597,7 @@ def train(
         current_step,
         metrics,
         env=environment,
+        make_policy=make_policy,
         network=hdcq_network,
         params=_unpmap((training_state.normalizer_params,
                         training_state.option_q_params,

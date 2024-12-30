@@ -56,8 +56,10 @@ def make_losses(
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_aut_state = env.aut_state_from_obs(transitions.next_observation)
-    next_double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(next_aut_state, transitions.next_observation)
-    next_double_cqs = cost_q_network.apply(normalizer_params, target_cost_q_params, env.goalless_obs(transitions.next_observation))
+    next_double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), obs))(next_aut_state, transitions.next_observation)
+
+    # trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.goalless_observation_size] if x.ndim >= 1 else x, normalizer_params)
+    next_double_cqs = cost_q_network.apply(None, target_cost_q_params, env.cost_obs(transitions.next_observation))
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
@@ -95,13 +97,14 @@ def make_losses(
   ) -> jnp.ndarray:
 
     # Double Q(s_t, o_t) for all options
-    cqs_old = cost_q_network.apply(normalizer_params, cost_q_params, env.goalless_obs(transitions.observation))
+    # trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.goalless_observation_size] if x.ndim >= 1 else x, normalizer_params)
+    cqs_old = cost_q_network.apply(None, cost_q_params, env.cost_obs(transitions.observation))
     cq_old_action = jax.vmap(lambda x, i: x.at[i].get())(cqs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_aut_state = env.aut_state_from_obs(transitions.next_observation)
     next_double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), obs))(next_aut_state, transitions.next_observation)
-    next_double_cqs = cost_q_network.apply(normalizer_params, target_cost_q_params, env.goalless_obs(transitions.next_observation))
+    next_double_cqs = cost_q_network.apply(None, target_cost_q_params, env.cost_obs(transitions.next_observation))
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
@@ -122,6 +125,7 @@ def make_losses(
     cq_error *= jnp.expand_dims(1 - truncation, -1)
 
     cq_loss = 0.5 * jnp.mean(jnp.square(cq_error))
+
     return cq_loss, {
       "target_cq": target_cq,
       "mean_cost": transitions.extras["state_extras"]["cost"].mean(),

@@ -41,7 +41,7 @@ def make_critic_loss(
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_aut_state = env.aut_state_from_obs(transitions.next_observation)
-    next_double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(next_aut_state, transitions.next_observation)
+    next_double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), obs))(next_aut_state, transitions.next_observation)
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
