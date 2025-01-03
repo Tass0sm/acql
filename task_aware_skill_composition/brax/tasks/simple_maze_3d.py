@@ -46,9 +46,31 @@ class SimpleMaze3DNav(SimpleMaze3DTaskBase):
         return true_exp(obs_var)
 
 
+class SimpleMaze3DUMazeConstraint(SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs_corners = (jnp.array([6.0, 2.0, 0.0]), jnp.array([10.0, 10.0, 8.0]))
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze3D(
+            terminate_when_unhealthy=False,
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        at_obs1 = inside_box(obs_var.position, *self.obs_corners)
+        phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+        return phi
+
+
 class SimpleMaze3DSingleSubgoal(SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
-        self.goal1_location = jnp.array([12.0, 12.0, 2.0])
+        self.goal1_location = jnp.array([4.0, 12.0, 10.0])
         self.goal1_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
@@ -67,6 +89,34 @@ class SimpleMaze3DSingleSubgoal(SimpleMaze3DTaskBase):
         in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
         phi = stl.STLUntimedEventually(in_goal1)
         return phi
+
+
+class SimpleMaze3DBranching1(SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 4.0, 10.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 12.0, 2.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze3D(
+            terminate_when_unhealthy=False,
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
+        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
+        phi = stl.STLAnd(stl.STLUntimedEventually(in_goal1),
+                         stl.STLUntimedEventually(in_goal2))
+        return phi
+
 
 
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):

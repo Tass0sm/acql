@@ -28,6 +28,7 @@ from task_aware_skill_composition.hierarchy.option import Option, BernoulliTermi
 
 def load_ant_options(
         termination_prob: float = 0.3,
+        termination_policy = None,
         adapter: Optional[Callable] = None
 ):
 
@@ -52,9 +53,12 @@ def load_ant_options(
         make_policy = ppo_networks.make_inference_fn(ppo_network)
         inference_fn = make_policy(params)
 
+        if termination_policy is None:
+            termination_policy = BernoulliTerminationPolicy(termination_prob)
+
         options_l.append(
             Option(name, ppo_network, params, inference_fn,
-                   termination_policy=BernoulliTerminationPolicy(termination_prob),
+                   termination_policy=termination_policy,
                    adapter=adapter)
         )
 

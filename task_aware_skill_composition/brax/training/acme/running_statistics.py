@@ -198,12 +198,22 @@ def update(state: RunningStatisticsState,
 def normalize(batch: types.NestedArray,
               mean_std: NestedMeanStd,
               max_abs_value: Optional[float] = None,
-              mask: Optional[jax.Array] = None) -> types.NestedArray:
+              mask: Optional[jax.Array] = None,
+              env = None) -> types.NestedArray:
   """Normalizes data using running statistics."""
 
   if mask is None:
     mask = jnp.ones((batch.shape[-1]), dtype=jnp.uint8)
 
+  if env is not None and hasattr(env, "automaton"):
+    def augment_for_full_obs(x):
+      no_goal_x = x[:env.no_goal_obs_dim]
+      goal_x = x[env.no_goal_obs_dim:]
+      all_goal_x = jnp.tile(goal_x, env.goal_width)
+      return jnp.concatenate((no_goal_x, all_goal_x))
+    
+    mean_std = jax.tree.map(lambda x: augment_for_full_obs(x) if x.ndim >= 1 else x, mean_std)
+    
   def normalize_leaf(data: jnp.ndarray, mean: jnp.ndarray,
                      std: jnp.ndarray) -> jnp.ndarray:
     # Only normalize inexact

@@ -114,7 +114,7 @@ def train(
     max_devices_per_host: Optional[int] = None,
     reward_scaling: float = 1.,
     cost_scaling: float = 1.0,
-    cost_budget: float = 1000.0,
+    safety_minimum: float = 0.0,
     tau: float = 0.005,
     min_replay_size: int = 0,
     max_replay_size: Optional[int] = 10_0000,
@@ -193,20 +193,30 @@ def train(
 
   full_obs_size = env.full_observation_size
   input_obs_size = env.observation_size
-  cost_input_obs_size = env.goalless_observation_size + env.automaton.n_states
+  cost_input_obs_size = env.cost_observation_size
   action_size = env.action_size
 
   normalize_fn = lambda x, y: x
+  cost_normalize_fn = lambda x, y: x
   if normalize_observations:
-    normalize_fn = running_statistics.normalize
+    normalize_fn = functools.partial(running_statistics.normalize)
+    normalization_mask = jnp.concatenate((jnp.ones((env.goalless_observation_size,), dtype=jnp.int32),
+                                          # jnp.zeros((env.automaton.n_states,), dtype=jnp.int32)
+                                          ))
+    cost_normalize_fn = functools.partial(running_statistics.normalize,
+                                          mask=normalization_mask)
+
   hdcq_network = network_factory(
       observation_size=input_obs_size,
       cost_observation_size=cost_input_obs_size,
+      num_aut_states=env.automaton.n_states,
       action_size=action_size,
       options=options,
-      preprocess_observations_fn=normalize_fn,)
-  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, cost_budget)
-  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, cost_budget)
+      preprocess_observations_fn=normalize_fn,
+      preprocess_cost_observations_fn=cost_normalize_fn,
+  )
+  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, safety_minimum)
+  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, safety_minimum)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
@@ -244,12 +254,20 @@ def train(
     )
   )
 
+  # SAFETY GAMMA SCHEDULER
+  # gamma_init_value = initValue
+  # gamma_update_period = period
+  # gamma_decay = decay
+  # gamma_end_value = endValue
+  # gamma_goal_value = goalValue
+  # safety_gamma_scheduler = make_gamma_scheduler()
+
   critic_loss, cost_critic_loss = hdcqn_losses.make_losses(
       hdcq_network=hdcq_network,
       env=env,
       reward_scaling=reward_scaling,
       cost_scaling=cost_scaling,
-      cost_budget=cost_budget,
+      safety_minimum=safety_minimum,
       discounting=discounting,
   )
   critic_update = gradients.gradient_update_fn(
@@ -281,6 +299,7 @@ def train(
       training_state.target_cost_q_params,
       training_state.target_option_q_params,
       transitions,
+      # cost_gamma,
       key_cost_critic,
       optimizer_state=training_state.cost_q_optimizer_state)
 

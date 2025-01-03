@@ -20,7 +20,7 @@ def make_losses(
         env: envs.Env,
         reward_scaling: float,
         cost_scaling: float,
-        cost_budget: float,
+        safety_minimum: float,
         discounting: float,
 ):
   """Creates the HDCQN losses."""
@@ -31,7 +31,7 @@ def make_losses(
 
   def safe_greedy_policy(reward_qs, cost_qs):
     "Finds option with maximal value under cost constraint"
-    masked_q = jnp.where(cost_qs < cost_budget, reward_qs, -jnp.inf)
+    masked_q = jnp.where(cost_qs > safety_minimum, reward_qs, -jnp.inf)
     option = masked_q.argmax(axis=-1)
     q = jax.vmap(lambda x, i: x.at[i].get())(reward_qs, option)
     cq = jax.vmap(lambda x, i: x.at[i].get())(cost_qs, option)
@@ -58,8 +58,8 @@ def make_losses(
     next_aut_state = env.aut_state_from_obs(transitions.next_observation)
     next_double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), obs))(next_aut_state, transitions.next_observation)
 
-    # trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.goalless_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    next_double_cqs = cost_q_network.apply(None, target_cost_q_params, env.cost_obs(transitions.next_observation))
+    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
+    next_double_cqs = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, env.cost_obs(transitions.next_observation))
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
@@ -83,7 +83,7 @@ def make_losses(
     return q_loss, {
       "target_q": target_q,
       "mean_reward": transitions.reward.mean(),
-      "proportion_unsafe": jnp.where(next_cqs < cost_budget, 0.0, 1.0).mean()
+      "proportion_unsafe": jnp.where(next_cqs > safety_minimum, 0.0, 1.0).mean()
     }
 
   def cost_critic_loss(
@@ -93,18 +93,19 @@ def make_losses(
       target_cost_q_params: Params,
       target_option_q_params: Params,
       transitions: Transition,
+      # cost_gamma: float,
       key: PRNGKey
   ) -> jnp.ndarray:
 
     # Double Q(s_t, o_t) for all options
-    # trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.goalless_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    cqs_old = cost_q_network.apply(None, cost_q_params, env.cost_obs(transitions.observation))
+    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
+    cqs_old = cost_q_network.apply(trimmed_normalizer_params, cost_q_params, env.cost_obs(transitions.observation))
     cq_old_action = jax.vmap(lambda x, i: x.at[i].get())(cqs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_aut_state = env.aut_state_from_obs(transitions.next_observation)
     next_double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), obs))(next_aut_state, transitions.next_observation)
-    next_double_cqs = cost_q_network.apply(None, target_cost_q_params, env.cost_obs(transitions.next_observation))
+    next_double_cqs = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, env.cost_obs(transitions.next_observation))
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
@@ -113,9 +114,19 @@ def make_losses(
     # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
     _, next_cv = safe_greedy_policy(next_qs, next_cqs)
 
-    # E (s_t, a_t, s_t+1) ~ D [r(s_t, a_t) + gamma * V(s_t+1)]
-    target_cq = jax.lax.stop_gradient(transitions.extras["state_extras"]["cost"] * cost_scaling +
-                                      transitions.discount * discounting * next_cv)
+    # E (s_t, a_t, s_t+1) ~ D [ gamma * min(c(s_t, a_t), V(s_t+1)) + (1-gamma) * c(s_t, a_t) ]
+    # target_cq = jax.lax.stop_gradient(transitions.extras["state_extras"]["cost"] * cost_scaling +
+    #                                   transitions.discount * discounting * next_cv)
+    cost_gamma = 0.85
+    target_cq = jax.lax.stop_gradient(
+      cost_gamma * jnp.min(
+        jnp.stack((transitions.extras["state_extras"]["cost"] * cost_scaling,
+                   transitions.discount * next_cv), axis=-1),
+        axis=-1
+      ) + (1 - cost_gamma) * transitions.extras["state_extras"]["cost"]
+    )
+
+    # jax.debug.breakpoint()
 
     # Q(s_t, a_t) - E[r(s_t, a_t) + gamma * V(s_t+1)]
     cq_error = cq_old_action - jnp.expand_dims(target_cq, -1)

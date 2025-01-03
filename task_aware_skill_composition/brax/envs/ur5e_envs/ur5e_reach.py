@@ -4,7 +4,9 @@ from brax.io import mjcf
 import mujoco
 import jax
 from jax import numpy as jnp
-from jaxgcrl.envs.manipulation.arm_envs import ArmEnvs
+
+from task_aware_skill_composition.brax.envs.ur5e_envs.base import UR5eArmEnvs
+
 
 """
 Reach: Move end of arm to random goal.
@@ -13,7 +15,7 @@ Reach: Move end of arm to random goal.
 
 See _get_obs() and ArmEnvs._convert_action() for details.
 """
-class UR5eReach(ArmEnvs):
+class UR5eReach(UR5eArmEnvs):
     def _get_xml_path(self):
         return "/home/tassos/phd/research/second-project/task-aware-skill-composition/task_aware_skill_composition/brax/envs/assets/ur5e_reach.xml"
     

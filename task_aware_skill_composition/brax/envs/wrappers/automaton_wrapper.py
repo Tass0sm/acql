@@ -220,7 +220,7 @@ class AutomatonWrapper(Wrapper):
             return self.env.observation_size
 
 
-def get_automaton_goal_array(shape, out_conditions, bdd_dict, aps, goal_dim):
+def get_automaton_goal_array(shape, out_conditions, bdd_dict, aps, state_and_ap_to_goal_idx_dict, goal_dim):
     goal_array = jnp.zeros(shape)
 
     # A little hacky
@@ -235,7 +235,8 @@ def get_automaton_goal_array(shape, out_conditions, bdd_dict, aps, goal_dim):
         f.traverse(register_ap, goal_dict_k)
 
         for i, goal in goal_dict_k.items():
-            goal_array = goal_array.at[k, i*goal_dim:(i+1)*goal_dim].set(goal)
+            goal_idx = state_and_ap_to_goal_idx_dict[(k, i)]
+            goal_array = goal_array.at[k, goal_idx*goal_dim:(goal_idx+1)*goal_dim].set(goal)
 
     return goal_array
 
@@ -257,6 +258,7 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
         self.liveness_automaton = make_just_liveness_automaton(self.automaton.automaton)
         self.out_conditions = get_outgoing_conditions(self.liveness_automaton)
+        self.live_states = jnp.array([k for k in self.out_conditions])
 
         # Scan the liveness automaton to identify the maximum number of goals
         # needed at any stage in the trajectory.
@@ -265,25 +267,25 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
         # There is always an implicit final goal. If there are no subgoals, set
         # the goal_width and goal_idx dict accordingly.
+        self.state_and_ap_to_goal_idx_dict = {}
         if max_e == 0:
             self.goal_width = 1
-            self.ap_to_goal_idx_dict = {}
         else:
             self.goal_width = max_e
-    
-            goal_idx = 0
-            max_e_formula = spot.bdd_to_formula(supports[max_i], self.automaton.bdd_dict)
-            self.ap_to_goal_idx_dict = {}
-    
-            # A little hacky
-            def register_ap(x):
-                nonlocal goal_idx
-                if x.kind() == spot.op_ap:
-                    ap_id = int(x.ap_name()[3:])
-                    self.ap_to_goal_idx_dict[ap_id] = goal_idx
-                    goal_idx += 1
-    
-            max_e_formula.traverse(register_ap)
+
+            for k, cond in self.out_conditions.items():
+                goal_idx = 0
+                cond_formula = spot.bdd_to_formula(cond, self.automaton.bdd_dict)
+
+                # A little hacky
+                def register_ap(x):
+                    nonlocal goal_idx
+                    if x.kind() == spot.op_ap:
+                        ap_id = int(x.ap_name()[3:])
+                        self.state_and_ap_to_goal_idx_dict[(k, ap_id)] = goal_idx
+                        goal_idx += 1
+
+                cond_formula.traverse(register_ap)
 
         self.goal_dim = self.env.goal_indices.size
         self.all_goals_dim = self.goal_width * self.goal_dim
@@ -292,6 +294,7 @@ class AutomatonGoalConditionedWrapper(Wrapper):
                                                              self.out_conditions,
                                                              self.automaton.bdd_dict,
                                                              self.automaton.aps,
+                                                             self.state_and_ap_to_goal_idx_dict,
                                                              self.goal_dim)
         self.original_obs_dim = env.observation_size
         self.no_goal_obs_dim = self.original_obs_dim - self.goal_dim
@@ -315,10 +318,10 @@ class AutomatonGoalConditionedWrapper(Wrapper):
     def ith_goal(self, obs, i):
         all_goals = obs[..., self.no_goal_obs_dim:self.no_goal_obs_dim+self.all_goals_dim]
         return all_goals[..., i*self.goal_dim:(i+1)*self.goal_dim]
-    
+
     def current_goals(self, aut_state, default_goal):
         # assumes that state zero is the accepting state
-        return jax.lax.cond(aut_state != 0,
+        return jax.lax.cond(jnp.logical_and(aut_state != 0, jnp.isin(aut_state, self.live_states)),
                             lambda: self.automaton_goal_array.at[aut_state].get(),
                             lambda: default_goal)
 

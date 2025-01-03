@@ -29,19 +29,16 @@ def get_compiled_conditions(
 
         children = list(children)
         k = root.kind()
-        print(f"POST ORDER k = {k}")
 
         if k == spot.op_ff:
-            print(f"MAKING FF")
             return stl.STLPredicate(state_var, lambda s: -1, lower_bound=0.0)
         elif k == spot.op_tt:
-            print(f"MAKING TT")
             return stl.STLPredicate(state_var, lambda s: 1, lower_bound=0.0)
             # ap_pred = copy.deepcopy(aps[0])
-            # ap_pred.lower_bound = 0.0
+            # ap_pred.lower_bound = -2.0
             # return ap_pred
+            # return aps[0]
         elif k == spot.op_ap:
-            print(f"MAKING AP")
             ap_id = int(root.ap_name()[3:])
             # return aps[ap_id]
             ap_pred = copy.deepcopy(aps[ap_id])
@@ -57,9 +54,9 @@ def get_compiled_conditions(
             raise NotImplementedError(f"Formula {root} with kind = {k}")
 
     for k, form_k in sorted(safety_conditions.items(), key=lambda x: x[0]):
-        print(f"making safety condition for state {k}")
         stl_k = fold_spot_formula(to_stl_helper, form_k)
-        stls.append(stl_k)
+        not_stl_k = stl.STLNegation(stl_k)
+        stls.append(not_stl_k)
 
     return stls
 
@@ -93,7 +90,9 @@ class AutomatonCostWrapper(Wrapper):
         safety_rho = jax.lax.switch(nstate.info["automata_state"],
                                     self.safety_exps,
                                     { self.state_var.idx: nobs }).squeeze()
-        return jax.nn.relu(safety_rho)
+        # return jax.nn.relu(safety_rho)
+        # return jnp.tanh(safety_rho)
+        return safety_rho
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
@@ -117,3 +116,8 @@ class AutomatonCostWrapper(Wrapper):
         )
 
         return nstate
+
+    @property
+    def cost_observation_size(self):
+        # return self.env.goalless_observation_size
+        return self.env.goalless_observation_size + self.env.automaton.n_states

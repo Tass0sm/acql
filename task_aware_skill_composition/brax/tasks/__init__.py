@@ -27,6 +27,12 @@ from .hopper import (
 )
 from .ant_maze import (
     AntMazeNav,
+    AntMazeUMazeConstraint,
+    AntMazeSingleSubgoal,
+    AntMazeTwoSubgoals,
+    AntMazeBranching1,
+    AntMazeBranching2,
+    AntMazeObligationConstraint1,
 )
 from .ant_push import (
     AntPushDefault,
@@ -43,7 +49,9 @@ from .simple_maze import (
 )
 from .simple_maze_3d import (
     SimpleMaze3DNav,
+    SimpleMaze3DUMazeConstraint,
     SimpleMaze3DSingleSubgoal,
+    SimpleMaze3DBranching1,
 )
 from .drone_maze import (
     DroneMazeNav,
@@ -99,6 +107,12 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "ant_maze": {
             "true": AntMazeNav,
+            "umaze_constraint": AntMazeUMazeConstraint,
+            "subgoal": AntMazeSingleSubgoal,
+            "two_subgoals": AntMazeTwoSubgoals,
+            "branching1": AntMazeBranching1,
+            "branching2": AntMazeBranching2,
+            "obligation1": AntMazeObligationConstraint1,
         },
         "ant_push": {
             "true": AntPushDefault,
@@ -115,7 +129,9 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "simple_maze_3d": {
             "true": SimpleMaze3DNav,
+            "umaze_constraint": SimpleMaze3DUMazeConstraint,
             "subgoal": SimpleMaze3DSingleSubgoal,
+            "branching1": SimpleMaze3DBranching1,
         },
         "drone_maze": {
             "true": DroneMazeNav,

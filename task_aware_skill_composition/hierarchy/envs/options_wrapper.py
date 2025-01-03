@@ -9,7 +9,7 @@ from flax import struct, nnx
 import jax
 from jax import numpy as jnp
 
-from task_aware_skill_composition.hierarchy.option import Option
+from task_aware_skill_composition.hierarchy.option import Option, FixedLengthTerminationPolicy
 
 
 class OptionsWrapper(Wrapper):
@@ -24,6 +24,16 @@ class OptionsWrapper(Wrapper):
         super().__init__(env)
 
         self.options = options
+
+        if hasattr(env, "automaton"):
+            def augment_adapter(option):
+                old_adapter = option.obs_adapter
+                new_adapter = lambda x: old_adapter(env.original_obs(x))
+                option.obs_adapter = new_adapter
+
+            for o in self.options:
+                augment_adapter(o)
+
         self.num_options = len(options)
         self.discounting = discounting
 
@@ -43,27 +53,45 @@ class OptionsWrapper(Wrapper):
 
         o_t, key = option_and_key
 
-        def while_cond(x):
-            s_t, _, _, key = x
-            beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t.obs, key)
-            return beta_t != 1
+        if isinstance(self.options[0].termination_policy, FixedLengthTerminationPolicy):
+            length = self.options[0].termination_policy.t
 
-        def while_body(x):
-            s_t, iters, r_t, key = x
-            key, inf_key = jax.random.split(key)
-            a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
-            s_t1 = self.env.step(s_t, a_t)
-            r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
-            return (s_t1, iters+1, r_t1, key)
+            def for_body(unused, x):
+                s_t, iters, r_t, key = x
+                key, inf_key = jax.random.split(key)
+                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
+                s_t1 = self.env.step(s_t, a_t)
+                r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
+                return (s_t1, iters+1, r_t1, key)
 
-        # run body at least once
-        nstate, steps, reward, nkey = while_body((state, 0, 0, key))
+            # run body <length> times
+            fstate, k, freward, _ = jax.lax.fori_loop(0, length, for_body, (state, 0, 0, key))
 
-        # then continue running until terminated
-        fstate, k, freward, _ = jax.lax.while_loop(while_cond, while_body, (nstate, steps, reward, nkey))
+            # update reward of final state with the option history reward
+            fstate = fstate.replace(reward=freward)
 
-        # update reward of final state with the option history reward
-        fstate = fstate.replace(reward=freward)
+        else:
+            def while_cond(x):
+                s_t, _, _, key = x
+                beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t.obs, key)
+                return beta_t != 1
+    
+            def while_body(x):
+                s_t, iters, r_t, key = x
+                key, inf_key = jax.random.split(key)
+                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
+                s_t1 = self.env.step(s_t, a_t)
+                r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
+                return (s_t1, iters+1, r_t1, key)
+    
+            # run body at least once
+            nstate, steps, reward, nkey = while_body((state, 0, 0, key))
+    
+            # then continue running until terminated
+            fstate, k, freward, _ = jax.lax.while_loop(while_cond, while_body, (nstate, steps, reward, nkey))
+    
+            # update reward of final state with the option history reward
+            fstate = fstate.replace(reward=freward)
 
         # update state info
         fstate.info['low_steps'] = state.info['low_steps'] + k

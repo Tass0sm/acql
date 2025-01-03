@@ -16,13 +16,13 @@ GOAL = G = 'g'
 
 # Z, X, Y / k, i, j (therefore, not viewing from typical x-y viewpoint)
 OPEN_MAZE = [[[1, 1, 1, 1, 1],
-              [1, R, G, G, 1],
-              [1, G, R, G, 1],
-              [1, G, G, R, 1],
+              [1, R, G, R, 1],
+              [1, G, 0, G, 1],
+              [1, R, G, R, 1],
               [1, 1, 1, 1, 1]],
              [[1, 1, 1, 1, 1],
               [1, G, G, G, 1],
-              [1, G, G, G, 1],
+              [1, G, 0, G, 1],
               [1, G, G, G, 1],
               [1, 1, 1, 1, 1]],
              [[1, 1, 1, 1, 1],

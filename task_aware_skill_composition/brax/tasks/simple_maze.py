@@ -116,29 +116,6 @@ class SimpleMazeSingleSubgoal(SimpleMazeTaskBase):
         phi = stl.STLUntimedEventually(in_goal1)
         return phi
 
-    @property
-    def hdcqn_her_hps(self):
-        return {
-            "num_timesteps": 10_000_000,
-            "reward_scaling": 1,
-            "cost_scaling": 1,
-            "cost_budget": -1.0,
-            "num_evals": 50,
-            "episode_length": 1000,
-            "normalize_observations": True,
-            "action_repeat": 1,
-            "discounting": 0.99,
-            # "learning_rate": 3e-4,
-            "num_envs": 256,
-            "batch_size": 256,
-            "unroll_length": 62,
-            "multiplier_num_sgd_steps": 1,
-            "max_devices_per_host": 1,
-            "max_replay_size": 10000,
-            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
-            "min_replay_size": 1000,
-            "use_her": True,
-        }
 
 class SimpleMazeTwoSubgoals(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
@@ -254,6 +231,15 @@ class SimpleMazeObligationConstraint1(SimpleMazeTaskBase):
 
         phi = stl.STLAnd(phi_liveness, phi_safety)
         return phi
+
+    @property
+    def hdcqn_her_hps(self):
+        return {
+            **self.hdqn_her_hps,
+            "cost_scaling": 1.0,
+            "safety_minimum": -0.2,
+        }
+
 
 class SimpleMazeObligationConstraint2(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):

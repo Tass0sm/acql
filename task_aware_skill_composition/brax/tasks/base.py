@@ -108,6 +108,6 @@ class TaskBase(ABC):
     def hdcqn_her_hps(self):
         return {
             **self.hdqn_her_hps,
-            "cost_scaling": 1,
-            "cost_budget": 3.0,
+            "cost_scaling": 1.0,
+            "safety_minimum": 0.0,
         }

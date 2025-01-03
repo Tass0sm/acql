@@ -1,3 +1,4 @@
+import functools
 from typing import Sequence, Tuple
 
 import spot
@@ -33,28 +34,25 @@ def get_compiled_q_function_branches(
 ):
     out_conditions = env.out_conditions
     bdd_dict = env.automaton.bdd_dict
-    ap_to_goal_idx_dict = env.ap_to_goal_idx_dict
+    state_and_ap_to_goal_idx_dict = env.state_and_ap_to_goal_idx_dict
 
     preds = []
 
-    def to_q_func_helper(root, children):
-        nonlocal ap_to_goal_idx_dict
+    def to_q_func_helper(root, children, aut_state=0):
+        nonlocal state_and_ap_to_goal_idx_dict
 
         children = list(children)
 
         k = root.kind()
-        print(f"POST ORDER k = {k}")
 
         if k == spot.op_ff:
-            print(f"MAKING FF")
             return lambda params, obs: -987
         elif k == spot.op_tt:
-            print(f"MAKING TT")
-            return lambda params, obs: 789
+            return lambda params, obs: 987
         elif k == spot.op_ap:
             print(f"MAKING AP")
             ap_id = int(root.ap_name()[3:])
-            goal_idx = ap_to_goal_idx_dict[ap_id]
+            goal_idx = state_and_ap_to_goal_idx_dict[(aut_state, ap_id)]
             print(f"USING GOAL IDX {goal_idx}")
 
             def get_ap_q(params, obs):
@@ -65,15 +63,12 @@ def get_compiled_q_function_branches(
 
             return get_ap_q
         elif k == spot.op_Not:
-            print(f"MAKING NOT")
             return lambda params, obs: -children[0](params, obs)
         elif k == spot.op_And:
-            print(f"MAKING AND")
             return lambda params, obs: jnp.min(jnp.stack(
               (children[0](params, obs), children[1](params, obs)), axis=-1
             ), axis=-1)
         elif k == spot.op_Or:
-            print(f"MAKING OR")
             return lambda params, obs: jnp.max(jnp.stack(
               (children[0](params, obs), children[1](params, obs)), axis=-1
             ), axis=-1)
@@ -92,7 +87,8 @@ def get_compiled_q_function_branches(
         else:
             f_k = spot.bdd_to_formula(cond_bdd, bdd_dict)
             print(f"making it with formula {f_k}")
-            q_func_k = fold_spot_formula(to_q_func_helper, f_k)
+            q_func_k = fold_spot_formula(functools.partial(to_q_func_helper, aut_state=k),
+                                         f_k)
             preds.append(jax.jit(q_func_k))
 
     return preds

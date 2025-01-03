@@ -17,6 +17,13 @@ class BernoulliTerminationPolicy:
         return termination
 
 
+class FixedLengthTerminationPolicy:
+    def __init__(self, t):
+        self.t = t
+
+    def __call__(self, s_t, key):
+        raise NotImplementedError
+
 class Option:
     def __init__(
             self,
