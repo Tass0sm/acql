@@ -87,11 +87,27 @@ def _init_training_state(
       cost_q_optimizer_state=cost_q_optimizer_state,
       cost_q_params=cost_q_params,
       target_cost_q_params=cost_q_params,
-      gradient_steps=jnp.zeros(()),
+      gradient_steps=jnp.zeros((), dtype=jnp.int32),
       env_steps=jnp.zeros(()),
       normalizer_params=normalizer_params)
   return jax.device_put_replicated(training_state, jax.local_devices()[:local_devices_to_use])
 
+
+def make_gamma_scheduler(
+    init_value,
+    update_period,
+    decay,
+    end_value,
+    goal_value,
+):
+
+  def scheduler(x):
+    # num_decay = jnp.floor_divide(x, update_period)
+    num_decay = jnp.divide(x, update_period)
+    tmp_value = goal_value - (goal_value - init_value) * jnp.pow(decay, num_decay)
+    return jnp.where(tmp_value >= end_value, end_value, tmp_value)
+
+  return scheduler
 
 def train(
     environment: envs.Env,
@@ -131,9 +147,13 @@ def train(
     randomization_fn: Optional[
       Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
     ] = None,
-    replay_buffer_class_name = "SimpleAutomatonTrajectoryUniformSamplingQueue",
+    replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
+    gamma_init_value = 0.80,
+    gamma_update_period = None,
+    gamma_decay = 0.15,
+    gamma_end_value = 0.98,
+    gamma_goal_value = 1.0,
 ):
-
   process_id = jax.process_index()
   local_devices_to_use = jax.local_device_count()
   if max_devices_per_host is not None:
@@ -211,6 +231,8 @@ def train(
       cost_observation_size=cost_input_obs_size,
       num_aut_states=env.automaton.n_states,
       action_size=action_size,
+      num_unique_safety_conditions=env.n_unique_safety_conds,
+      env=env,
       options=options,
       preprocess_observations_fn=normalize_fn,
       preprocess_cost_observations_fn=cost_normalize_fn,
@@ -255,12 +277,17 @@ def train(
   )
 
   # SAFETY GAMMA SCHEDULER
-  # gamma_init_value = initValue
-  # gamma_update_period = period
-  # gamma_decay = decay
-  # gamma_end_value = endValue
-  # gamma_goal_value = goalValue
-  # safety_gamma_scheduler = make_gamma_scheduler()
+
+  if gamma_update_period is None:
+    gamma_update_period = num_timesteps / 40
+
+  safety_gamma_scheduler = make_gamma_scheduler(
+    gamma_init_value,
+    gamma_update_period,
+    gamma_decay,
+    gamma_end_value,
+    gamma_goal_value,
+  )
 
   critic_loss, cost_critic_loss = hdcqn_losses.make_losses(
       hdcq_network=hdcq_network,
@@ -292,6 +319,8 @@ def train(
         key_critic,
         optimizer_state=training_state.option_q_optimizer_state)
 
+    cost_gamma = safety_gamma_scheduler(training_state.gradient_steps)
+
     (cost_critic_loss, cost_critic_info), cost_q_params, cost_q_optimizer_state = cost_critic_update(
       training_state.cost_q_params,
       training_state.option_q_params,
@@ -299,7 +328,7 @@ def train(
       training_state.target_cost_q_params,
       training_state.target_option_q_params,
       transitions,
-      # cost_gamma,
+      cost_gamma,
       key_cost_critic,
       optimizer_state=training_state.cost_q_optimizer_state)
 
@@ -309,6 +338,8 @@ def train(
                                        training_state.target_cost_q_params, cost_q_params)
 
     metrics = {
+        'grad_steps': training_state.gradient_steps,
+        'cost_gamma': cost_gamma,
         'critic_loss': critic_loss,
         'cost_critic_loss': cost_critic_loss,
         # 'actor_loss': actor_loss,

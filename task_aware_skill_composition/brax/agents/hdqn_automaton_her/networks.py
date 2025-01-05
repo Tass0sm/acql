@@ -50,10 +50,8 @@ def get_compiled_q_function_branches(
         elif k == spot.op_tt:
             return lambda params, obs: 987
         elif k == spot.op_ap:
-            print(f"MAKING AP")
             ap_id = int(root.ap_name()[3:])
             goal_idx = state_and_ap_to_goal_idx_dict[(aut_state, ap_id)]
-            print(f"USING GOAL IDX {goal_idx}")
 
             def get_ap_q(params, obs):
                 nn_input = jnp.concatenate((env.goalless_obs(obs),
@@ -76,7 +74,6 @@ def get_compiled_q_function_branches(
             raise NotImplementedError(f"Formula {root} with kind = {k}")
 
     for k, cond_bdd in sorted(out_conditions.items(), key=lambda x: x[0]):
-        print(f"making q branch for state {k}")
         if k == 0:
             def default_q(params, obs):
                 nn_input = jnp.concatenate((env.goalless_obs(obs),
@@ -86,7 +83,6 @@ def get_compiled_q_function_branches(
             preds.append(jax.jit(default_q))
         else:
             f_k = spot.bdd_to_formula(cond_bdd, bdd_dict)
-            print(f"making it with formula {f_k}")
             q_func_k = fold_spot_formula(functools.partial(to_q_func_helper, aut_state=k),
                                          f_k)
             preds.append(jax.jit(q_func_k))

@@ -121,8 +121,8 @@ def train(
     randomization_fn: Optional[
       Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
     ] = None,
-    # replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
-    replay_buffer_class_name = "SimpleAutomatonTrajectoryUniformSamplingQueue",
+    replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
+    # replay_buffer_class_name = "SimpleAutomatonTrajectoryUniformSamplingQueue",
 ):
 
   process_id = jax.process_index()

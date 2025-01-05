@@ -93,7 +93,7 @@ def make_losses(
       target_cost_q_params: Params,
       target_option_q_params: Params,
       transitions: Transition,
-      # cost_gamma: float,
+      cost_gamma: float,
       key: PRNGKey
   ) -> jnp.ndarray:
 
@@ -117,7 +117,7 @@ def make_losses(
     # E (s_t, a_t, s_t+1) ~ D [ gamma * min(c(s_t, a_t), V(s_t+1)) + (1-gamma) * c(s_t, a_t) ]
     # target_cq = jax.lax.stop_gradient(transitions.extras["state_extras"]["cost"] * cost_scaling +
     #                                   transitions.discount * discounting * next_cv)
-    cost_gamma = 0.85
+    # cost_gamma = 0.85
     target_cq = jax.lax.stop_gradient(
       cost_gamma * jnp.min(
         jnp.stack((transitions.extras["state_extras"]["cost"] * cost_scaling,
