@@ -57,41 +57,42 @@ class OptionsWrapper(Wrapper):
             length = self.options[0].termination_policy.t
 
             def for_body(unused, x):
-                s_t, iters, r_t, key = x
+                s_t, iters, r_t, c_t, key = x
+                c_t = s_t.info["cost"]
                 key, inf_key = jax.random.split(key)
                 a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
-                return (s_t1, iters+1, r_t1, key)
+                c_t1 = jnp.minimum(c_t, s_t1.info["cost"])
+                return (s_t1, iters+1, r_t1, c_t1, key)
 
             # run body <length> times
-            fstate, k, freward, _ = jax.lax.fori_loop(0, length, for_body, (state, 0, 0, key))
-
-            # update reward of final state with the option history reward
-            fstate = fstate.replace(reward=freward)
+            fstate, k, freward, fcost, _ = jax.lax.fori_loop(0, length, for_body, (state, 0, 0, jnp.inf, key))
 
         else:
             def while_cond(x):
-                s_t, _, _, key = x
+                s_t, _, _, _, key = x
                 beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t.obs, key)
                 return beta_t != 1
     
             def while_body(x):
-                s_t, iters, r_t, key = x
+                s_t, iters, r_t, c_t, key = x
                 key, inf_key = jax.random.split(key)
                 a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
-                return (s_t1, iters+1, r_t1, key)
+                c_t1 = jnp.minimum(c_t, s_t1.info["cost"])
+                return (s_t1, iters+1, r_t1, c_t1, key)
     
             # run body at least once
-            nstate, steps, reward, nkey = while_body((state, 0, 0, key))
+            nstate, steps, reward, cost, nkey = while_body((state, 0, 0, jnp.inf, key))
     
             # then continue running until terminated
-            fstate, k, freward, _ = jax.lax.while_loop(while_cond, while_body, (nstate, steps, reward, nkey))
+            fstate, k, freward, fcost, _ = jax.lax.while_loop(while_cond, while_body, (nstate, steps, reward, cost, nkey))
     
-            # update reward of final state with the option history reward
-            fstate = fstate.replace(reward=freward)
+        # update cost/reward of final state with the option history reward
+        fstate.info.update(cost=fcost)
+        fstate = fstate.replace(reward=freward)
 
         # update state info
         fstate.info['low_steps'] = state.info['low_steps'] + k

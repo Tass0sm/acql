@@ -1,6 +1,8 @@
 from typing import Callable
 import matplotlib.pyplot as plt
 
+from numpy import ma
+
 import jax
 import jax.numpy as jnp
 from brax import envs
@@ -373,3 +375,79 @@ def make_plots_for_hdcqn_aut(
 
     # return (fig1, ax1), (fig2, ax2)
     return (fig2, ax2)
+
+
+def make_plots_for_forbidden_actions(
+        env: envs.Env,
+        safety_minimum: float,
+        make_policy: Callable,
+        network: hdcq_networks.HDCQNetworks,
+        params: Params,
+        label: str,
+        grid_size=100,
+        tmp_state_fn = lambda x: x,
+        save_and_close = True,
+        seed=0
+):
+    reset_key = jax.random.PRNGKey(seed)
+    tmp_state = env.reset(reset_key)
+    tmp_state = tmp_state_fn(tmp_state)
+
+    normalizer_params, option_q_params, cost_q_params = params
+
+    x_min, x_max = 0, 16
+    y_min, y_max = 0, 16
+    x_values = jnp.linspace(x_min, x_max, grid_size)
+    y_values = jnp.linspace(y_min, y_max, grid_size)
+    X, Y = jnp.meshgrid(x_values, y_values)
+    positions = jnp.stack([X.ravel(), Y.ravel()], axis=1)
+
+    # Prepare batched input for value_net
+    obs_batch = jnp.repeat(jnp.expand_dims(tmp_state.obs, axis=0), positions.shape[0], axis=0)
+    # obs_batch = jnp.concatenate((env.goalless_obs(obs_batch),
+    #                              env.ith_goal(obs_batch, 0)), axis=-1)
+    obs_batch = obs_batch.at[:, 0:2].set(positions)
+
+    # policy
+    policy = make_policy(params, deterministic=True)
+    options, _ = policy(obs_batch, None)
+
+    # Compute the cost value function for the grid
+    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
+    cost_obs_batch = env.cost_obs(obs_batch)
+    cost_q_function_output = network.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs_batch).min(axis=-1)
+    cost_q_function_output = jax.vmap(lambda x, i: x.at[i].get())(cost_q_function_output, options)
+    cost_q_function_output_grid = cost_q_function_output.reshape(grid_size, grid_size)
+    is_forbidden_grid = cost_q_function_output_grid <= safety_minimum
+
+    # Option arrows
+    arrows = jnp.array([[0.0, 1.0],
+                        [1.0, 0.0],
+                        [-1.0, 0.0],
+                        [0.0, -1.0]])
+    option_vectors = jax.vmap(lambda o: arrows.at[o].get())(options)
+    option_vector_grid = option_vectors.reshape(grid_size, grid_size, 2)
+
+    # make plot
+
+    start_position = tmp_state.obs[:2]
+    goal_position = env.ith_goal(tmp_state.obs, 0)
+    fig1, ax1 = plot_function_grid(
+        X, Y,
+        x_min, x_max,
+        y_min, y_max,
+        cost_q_function_output_grid,
+        start_position, goal_position,
+        f"Reward - {label}"
+    )
+
+    masked_option_vector_grid = ma.masked_array(option_vector_grid, mask=jnp.stack((is_forbidden_grid,
+                                                                                    is_forbidden_grid), axis=-1))
+    masked_option_vector_grid = masked_option_vector_grid[::2, ::2]
+    ax1.quiver(X[::2, ::2], Y[::2, ::2], masked_option_vector_grid[..., 0], masked_option_vector_grid[..., 1])
+
+    if save_and_close:
+        fig1.savefig(f"figures/masked_options.png", format="png", bbox_inches='tight', pad_inches=0)
+        plt.close(fig1)
+
+    return (fig1, ax1)

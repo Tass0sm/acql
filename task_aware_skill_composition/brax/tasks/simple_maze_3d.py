@@ -90,6 +90,33 @@ class SimpleMaze3DSingleSubgoal(SimpleMaze3DTaskBase):
         phi = stl.STLUntimedEventually(in_goal1)
         return phi
 
+class SimpleMaze3DTwoSubgoals(SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 4.0, 2.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 12.0, 10.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze3D(
+            terminate_when_unhealthy=False,
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
+        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
+        phi = stl.STLUntimedEventually(
+            stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
+        )
+        return phi
+
 
 class SimpleMaze3DBranching1(SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):

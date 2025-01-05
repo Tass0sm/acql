@@ -18,13 +18,17 @@ def true_exp(var: Var):
 def inside_circle(
         var: Var,
         center: jax.Array,
-        radius: float
+        radius: float,
+        has_goal: bool = False,
 ) -> stl.STLFormula:
 
     def f(s):
         return -norm(s - center) + radius
 
-    return stl.STLPredicate(var, f, 0.0, info={"goal": center, "name": f"inside_circle ({center}, {radius})"})
+    info = {"name": f"inside_circle ({center}, {radius})"}
+    if has_goal:
+        info["goal"] = center
+    return stl.STLPredicate(var, f, 0.0, info=info)
 
 
 def outside_circle(
@@ -43,6 +47,7 @@ def inside_box(
         var: Var,
         corner1: jax.Array,
         corner2: jax.Array,
+        has_goal: bool = False
 ) -> stl.STLFormula:
 
     neg_eye = -jnp.eye(var.dim)
@@ -54,8 +59,10 @@ def inside_box(
     def f(s):
         return (b - A @ s).min(axis=-1)
 
-    return stl.STLPredicate(var, f, 0.0, info={"goal": corner1+(corner2-corner1)/2,
-                                               "name": f"inside_box ({corner1}, {corner2})"})
+    info = {"name": f"inside_box ({corner1}, {corner2})"}
+    if has_goal:
+        info["goal"] = corner1+(corner2-corner1)/2
+    return stl.STLPredicate(var, f, 0.0, info=info)
 
 
 def sequence(

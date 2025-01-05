@@ -62,6 +62,7 @@
 
   <worldbody>
     <light name="spotlight" mode="targetbodycom" target="wrist_2_link" pos="0 -1 2"/>
+    <camera name="overview" pos="1 1 0.5" xyaxes="-1 1 0 0 0 1" fovy="90"/>
     <body name="base" quat="1 0 0 1" childclass="ur5e">
       <!-- <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072"/> -->
       <geom mesh="base_0" material="black" class="visual"/>
@@ -114,9 +115,9 @@
                   <geom class="eef_collision" pos="0 0.08 0" quat="1 1 0 0" size="0.04 0.02"/>
                   <site name="attachment_site" pos="0 0.1 0" quat="-1 1 0 0"/>
 
-		  <body name="hand" pos="0 0 0.107" quat="0.9238795 0 0 -0.3826834">
-                      <geom name="hand_geom" rgba="1 1 1 1" type="capsule" size="0.04 0.06" pos="0 0 0.035" quat="1 1 0 0" contype="0" conaffinity="0"/>
-                  </body>
+		  <!-- <body name="hand" pos="0 0 0.107" quat="0.9238795 0 0 -0.3826834"> -->
+                  <!--     <geom name="hand_geom" rgba="1 1 1 1" type="capsule" size="0.04 0.06" pos="0 0 0.035" quat="1 1 0 0" contype="0" conaffinity="0"/> -->
+                  <!-- </body> -->
                 </body>
               </body>
             </body>
@@ -139,9 +140,9 @@
     </body>
   </worldbody>
 
-  <contact>
-    <pair geom1="table_geom" geom2="hand_geom"/>
-  </contact>
+  <!-- <contact> -->
+  <!--   <pair geom1="table_geom" geom2="hand_geom"/> -->
+  <!-- </contact> -->
 
   <actuator>
     <general class="size3" name="shoulder_pan" joint="shoulder_pan_joint"/>

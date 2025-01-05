@@ -46,11 +46,13 @@ from .simple_maze import (
     SimpleMazeBranching1,
     SimpleMazeBranching2,
     SimpleMazeObligationConstraint1,
+    SimpleMazeUntil1,
 )
 from .simple_maze_3d import (
     SimpleMaze3DNav,
     SimpleMaze3DUMazeConstraint,
     SimpleMaze3DSingleSubgoal,
+    SimpleMaze3DTwoSubgoals,
     SimpleMaze3DBranching1,
 )
 from .drone_maze import (
@@ -66,8 +68,11 @@ from .ant import (
     AntStraightSequence,
     AntTurnSequence
 )
-from .ur5e_envs.ur5e_reach import (
-    UR5eReachNav,
+from .panda import (
+    PandaReach,
+)
+from .ur5e import (
+    UR5eReachTask,
 )
 
 
@@ -126,11 +131,13 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "branching1": SimpleMazeBranching1,
             "branching2": SimpleMazeBranching2,
             "obligation1": SimpleMazeObligationConstraint1,
+            "until1": SimpleMazeUntil1,
         },
         "simple_maze_3d": {
             "true": SimpleMaze3DNav,
             "umaze_constraint": SimpleMaze3DUMazeConstraint,
             "subgoal": SimpleMaze3DSingleSubgoal,
+            "two_subgoals": SimpleMaze3DTwoSubgoals,
             "branching1": SimpleMaze3DBranching1,
         },
         "drone_maze": {
@@ -147,8 +154,11 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             # "loop": PointLoop,
             # "signal": PointSignal
         },
-        "ur5e_reach": {
-            "true": UR5eReachNav,
+        "panda": {
+            "reach": PandaReach,
+        },
+        "ur5e": {
+            "reach": UR5eReachTask,
         },
         # "car": {
         #     "seq": CarSequence,
