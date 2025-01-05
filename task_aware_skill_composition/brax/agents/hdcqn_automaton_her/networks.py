@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Optional
 
 import spot
 
@@ -13,6 +13,7 @@ from brax.training import types
 from brax.training.types import PRNGKey
 import flax
 from flax import linen
+from flax import nnx
 
 from task_aware_skill_composition.brax.training.acme import running_statistics
 from task_aware_skill_composition.hierarchy.training import networks as h_networks
@@ -203,6 +204,56 @@ def make_inference_fn(
   return make_policy
 
 
+class MultiHeadMLP(linen.Module):
+  """MLP module."""
+
+  num_heads: int
+  shared_layer_sizes: Sequence[int]
+  head_layer_sizes: Sequence[int]
+  activation: ActivationFn = linen.relu
+  kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
+  bias: bool = True
+  layer_norm: bool = False
+  final_activation: ActivationFn = lambda x: x
+
+  @linen.compact
+  def __call__(self, data: jnp.ndarray, condition: jnp.ndarray):
+    hidden = data
+    for i, hidden_size in enumerate(self.shared_layer_sizes):
+      hidden = linen.Dense(
+          hidden_size,
+          name=f'shared_hidden_{i}',
+          kernel_init=self.kernel_init,
+          use_bias=self.bias)(
+              hidden)
+
+      hidden = self.activation(hidden)
+      if self.layer_norm:
+        hidden = linen.LayerNorm()(hidden)
+
+    for i, hidden_size in enumerate(self.head_layer_sizes):
+      heads_i = [
+        linen.Dense(
+          hidden_size,
+          name=f'head_{j}_hidden_{i}',
+          kernel_init=self.kernel_init,
+          use_bias=self.bias)
+        for j in range(self.num_heads)
+      ]
+
+      get_hidden_i = jax.vmap(lambda x, c: jax.lax.switch(c, heads_i, x))
+      hidden = get_hidden_i(hidden, condition)
+
+      if i != len(self.head_layer_sizes) - 1:
+        hidden = self.activation(hidden)
+        if self.layer_norm:
+          hidden = linen.LayerNorm()(hidden)
+
+    hidden = self.final_activation(hidden)
+
+    return hidden
+
+
 class FiLM(linen.Module):
   feature_dim: int
   condition_dim: int
@@ -268,8 +319,11 @@ def make_option_cost_q_network(
     obs_size: int,
     aut_states: int,
     num_options: int,
+    num_heads: int,
+    env,
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-    hidden_layer_sizes: Sequence[int] = (256, 256),
+    shared_hidden_layer_sizes: Sequence[int] = (256,),
+    head_hidden_layer_sizes: Sequence[int] = (256,),
     activation: ActivationFn = linen.relu,
     n_critics: int = 2) -> FeedForwardNetwork:
   """Creates a value network."""
@@ -286,11 +340,12 @@ def make_option_cost_q_network(
       hidden = jnp.concatenate([obs], axis=-1)
       res = []
       for _ in range(self.n_critics):
-        critic_option_qs = FiLMedMLP(
-          condition_dim=aut_states,
-          layer_sizes=list(hidden_layer_sizes) + [num_options],
+        critic_option_qs = MultiHeadMLP(
+          num_heads=num_heads,
+          shared_layer_sizes=list(shared_hidden_layer_sizes),
+          head_layer_sizes=list(head_hidden_layer_sizes) + [num_options],
           activation=activation,
-          # final_activation=linen.tanh,
+          final_activation=linen.tanh,
           # layer_norm=True,
           kernel_init=jax.nn.initializers.lecun_uniform()
         )(hidden, aut_obs)
@@ -304,12 +359,19 @@ def make_option_cost_q_network(
     trimmed_proc_params = jax.tree.map(lambda x: x[..., :plain_obs_size] if x.ndim >= 1 else x, processor_params)
     state_obs, aut_state_obs = obs[..., :plain_obs_size], obs[..., plain_obs_size:]
     norm_state_obs = preprocess_observations_fn(state_obs, trimmed_proc_params)
-    return q_module.apply(q_params, norm_state_obs, aut_state_obs)
+
+    # get aut state and then unique safety state
+    aut_state = env.automaton.one_hot_decode(aut_state_obs)
+    safety_branch = jax.vmap(lambda i: env.state_to_unique_safety_cond_idx_arr.at[i].get())(aut_state)
+
+    return q_module.apply(q_params, norm_state_obs, safety_branch)
 
   dummy_obs = jnp.zeros((1, plain_obs_size))
-  dummy_aut_obs = jnp.zeros((1, aut_states))
+  # dummy_aut_obs = jnp.zeros((1, aut_states))
+  dummy_safety_branch = jnp.zeros((1,), dtype=jnp.int32)
+
   return FeedForwardNetwork(
-      init=lambda key: q_module.init(key, dummy_obs, dummy_aut_obs), apply=apply)
+      init=lambda key: q_module.init(key, dummy_obs, dummy_safety_branch), apply=apply)
 
 
 def make_hdcq_networks(
@@ -317,6 +379,8 @@ def make_hdcq_networks(
     cost_observation_size: int,
     num_aut_states: int,
     action_size: int,
+    num_unique_safety_conditions: int,
+    env,
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     preprocess_cost_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     hidden_layer_sizes: Sequence[int] = (256, 256),
@@ -325,6 +389,7 @@ def make_hdcq_networks(
 ) -> HDCQNetworks:
 
   assert len(options) > 0, "Must pass at least one option"
+  assert num_unique_safety_conditions == 1, "Right now testing with one safety condition"
 
   # parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
   # policy_network = networks.make_policy_network(
@@ -344,8 +409,11 @@ def make_hdcq_networks(
       cost_observation_size,
       num_aut_states,
       len(options),
+      num_unique_safety_conditions,
+      env,
       preprocess_observations_fn=preprocess_cost_observations_fn,
-      hidden_layer_sizes=(64, 64, 64, 32),
+      shared_hidden_layer_sizes=(64, 64, 64),
+      head_hidden_layer_sizes=(32,),
       activation=activation
   )
 
