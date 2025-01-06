@@ -231,8 +231,6 @@ def train(
       cost_observation_size=cost_input_obs_size,
       num_aut_states=env.automaton.n_states,
       action_size=action_size,
-      num_unique_safety_conditions=env.n_unique_safety_conds,
-      env=env,
       options=options,
       preprocess_observations_fn=normalize_fn,
       preprocess_cost_observations_fn=cost_normalize_fn,
