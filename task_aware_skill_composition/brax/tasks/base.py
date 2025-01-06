@@ -37,6 +37,10 @@ class TaskBase(ABC):
     def _build_lo_spec(self, obs_var: Var) -> Expression:
         raise NotImplementedError()
 
+    @property
+    def rm_config(self) -> dict:
+        raise NotImplementedError()
+
     # @abstractmethod
     # def demo(self, n_trajs: int) -> jnp.ndarray:
     #     raise NotImplementedError()
@@ -110,4 +114,93 @@ class TaskBase(ABC):
             **self.hdqn_her_hps,
             "cost_scaling": 1.0,
             "safety_minimum": 0.0,
+        }
+
+
+    @property
+    def qrm_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            # "learning_rate": 3e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            "unroll_length": 62,
+            "multiplier_num_sgd_steps": 1,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            "min_replay_size": 1000,
+            "use_her": True,
+        }
+
+    @property
+    def crm_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            # "learning_rate": 3e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            # "unroll_length": 62,
+            # "multiplier_num_sgd_steps": 1,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            "min_replay_size": 1000,
+            # "use_her": True,
+        }
+
+    @property
+    def hrm_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            # "learning_rate": 3e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            "unroll_length": 62,
+            "multiplier_num_sgd_steps": 1,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            "min_replay_size": 1000,
+            "use_her": True,
+        }
+
+    @property
+    def rm_reward_shaping_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            # "learning_rate": 3e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            "unroll_length": 62,
+            "multiplier_num_sgd_steps": 1,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            "min_replay_size": 1000,
+            "use_her": True,
         }

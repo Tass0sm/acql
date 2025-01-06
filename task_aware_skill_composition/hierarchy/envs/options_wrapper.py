@@ -25,7 +25,7 @@ class OptionsWrapper(Wrapper):
 
         self.options = options
 
-        if hasattr(env, "automaton"):
+        if hasattr(env, "automaton") and env.augment_obs:
             def augment_adapter(option):
                 old_adapter = option.obs_adapter
                 new_adapter = lambda x: old_adapter(env.original_obs(x))
@@ -40,6 +40,8 @@ class OptionsWrapper(Wrapper):
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
         state.info['low_steps'] = jnp.zeros(rng.shape[:-1])
+        if 'cost' not in state.info:
+            state.info['cost'] = 0.0
         return state
 
     # def step(self, state: State, option: jax.Array, key: PRNGKey) -> State:
@@ -81,7 +83,7 @@ class OptionsWrapper(Wrapper):
                 a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
-                c_t1 = jnp.minimum(c_t, s_t1.info["cost"])
+                c_t1 = jnp.minimum(c_t, s_t1.info.get("cost", 0.0))
                 return (s_t1, iters+1, r_t1, c_t1, key)
     
             # run body at least once

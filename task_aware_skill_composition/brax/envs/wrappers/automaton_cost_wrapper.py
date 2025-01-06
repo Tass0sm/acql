@@ -77,6 +77,23 @@ class AutomatonCostWrapper(Wrapper):
                                                    self.automaton.state_var,
                                                    self.automaton.aps)
 
+        # For the number of conditioning inputs to Q functions
+        self.unique_safety_conds = []
+        self.state_to_unique_safety_cond_idx = {}
+        self.n_unique_safety_conds = 0
+        for k, cond in self.safety_conditions.items():
+            if cond not in self.unique_safety_conds:
+                self.state_to_unique_safety_cond_idx[k] = self.n_unique_safety_conds
+                self.unique_safety_conds.append(cond)
+                self.n_unique_safety_conds += 1
+            else:
+                unique_safety_cond_idx = self.unique_safety_conds.index(cond)
+                self.state_to_unique_safety_cond_idx[k] = unique_safety_cond_idx
+
+        self.state_to_unique_safety_cond_idx_arr = jnp.array([
+            self.state_to_unique_safety_cond_idx[q] for q in range(self.automaton.num_states)
+        ], dtype=jnp.int32)
+
     def cost_obs(self, obs):
         return jnp.concatenate((self.goalless_obs(obs),
                                 self.automaton_obs(obs)), axis=-1)

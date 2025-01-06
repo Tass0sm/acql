@@ -1,5 +1,6 @@
 """Wrapper for adding specification automata to an environment."""
 
+from functools import reduce
 from typing import Callable, Dict, Optional, Tuple
 from operator import itemgetter
 
@@ -19,9 +20,10 @@ from corallab_stl.automata import get_spot_formula_and_aps, eval_spot_formula, m
 class JaxAutomaton:
 
     def __init__(self, exp, state_var):
-        formula, aps = get_spot_formula_and_aps(exp)
+        formula, aps, spot_aps = get_spot_formula_and_aps(exp)
 
         self.aps = aps
+        self.spot_aps = spot_aps
         self.n_aps = len(aps)
         self.formula = formula
         self.automaton = formula.translate('Buchi', 'state-based', 'complete')
@@ -108,48 +110,56 @@ class AutomatonWrapper(Wrapper):
             specification: Expression,
             state_var,
             augment_obs: bool = True,
-            augment_with_subgoals: bool = True,
+            # augment_with_subgoals: bool = True,
     ):
         super().__init__(env)
 
         self.automaton = JaxAutomaton(specification, state_var)
         self.augment_obs = augment_obs
-        self.augment_with_subgoals = augment_with_subgoals
+        # self.augment_with_subgoals = augment_with_subgoals
+
+        self.original_obs_dim = env.observation_size
 
     def original_obs(self, obs):
-        if self.augment_with_subgoals and self.augment_obs:
-            n_subgoals = 1
-            subgoal_dim = 2
-            return obs[..., :-(n_subgoals * subgoal_dim + self.automaton.n_states)]
-        elif self.augment_obs:
-            return obs[..., :-self.automaton.n_states]
-        else:
-            return obs
+        return obs[..., :self.original_obs_dim]
 
-    def split_obs(self, obs):
-        if self.augment_with_subgoals and self.augment_obs:
-            n_subgoals = 1
-            subgoal_dim = 2
-            return (
-                obs[..., :-(n_subgoals * subgoal_dim + self.automaton.n_states)],
-                obs[..., -(n_subgoals * subgoal_dim + self.automaton.n_states):],
-            )
-        elif self.augment_obs:
-            return (
-                obs[..., :-self.automaton.n_states],
-                obs[..., -self.automaton.n_states:]
-            )
-        else:
-            return (
-                obs,
-                None,
-            )
+    def automaton_obs(self, obs):
+        return obs[..., -self.automaton.n_states:]
 
-    def get_obs_goal(self, obs, i):
-        # if i > 0 and not self.augment_with_subgoals:
-        #     raise NotImplementedError
-        goal_start_idx = 4 + 2*i
-        return obs[..., goal_start_idx:goal_start_idx+2]
+    # def original_obs(self, obs):
+    #     if self.augment_with_subgoals and self.augment_obs:
+    #         n_subgoals = 1
+    #         subgoal_dim = 2
+    #         return obs[..., :-(n_subgoals * subgoal_dim + self.automaton.n_states)]
+    #     elif self.augment_obs:
+    #         return obs[..., :-self.automaton.n_states]
+    #     else:
+    #         return obs
+
+    # def split_obs(self, obs):
+    #     if self.augment_with_subgoals and self.augment_obs:
+    #         n_subgoals = 1
+    #         subgoal_dim = 2
+    #         return (
+    #             obs[..., :-(n_subgoals * subgoal_dim + self.automaton.n_states)],
+    #             obs[..., -(n_subgoals * subgoal_dim + self.automaton.n_states):],
+    #         )
+    #     elif self.augment_obs:
+    #         return (
+    #             obs[..., :-self.automaton.n_states],
+    #             obs[..., -self.automaton.n_states:]
+    #         )
+    #     else:
+    #         return (
+    #             obs,
+    #             None,
+    #         )
+
+    # def get_obs_goal(self, obs, i):
+    #     # if i > 0 and not self.augment_with_subgoals:
+    #     #     raise NotImplementedError
+    #     goal_start_idx = 4 + 2*i
+    #     return obs[..., goal_start_idx:goal_start_idx+2]
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
@@ -159,15 +169,7 @@ class AutomatonWrapper(Wrapper):
         state.info["automata_state"] = automata_state
         state.info["made_transition"] = jnp.uint32(0)
 
-        if self.augment_with_subgoals and self.augment_obs:
-            # new_obs = jnp.concatenate((state.obs,
-            #                            jnp.array([12.0, 4.0]),
-            #                            self.automaton.embed(automata_state)), axis=-1)
-            new_obs = jnp.concatenate((state.obs,
-                                       jnp.array([12.0, 4.0]),
-                                       self.automaton.one_hot_encode(automata_state)), axis=-1)
-            state = state.replace(obs=new_obs)
-        elif self.augment_obs:
+        if self.augment_obs:
             # new_obs = jnp.concatenate((state.obs, self.automaton.embed(automata_state)), axis=-1)
             new_obs = jnp.concatenate((state.obs, self.automaton.one_hot_encode(automata_state)), axis=-1)
             state = state.replace(obs=new_obs)
@@ -193,28 +195,24 @@ class AutomatonWrapper(Wrapper):
             made_transition=made_transition
         )
 
-        if self.augment_with_subgoals and self.augment_obs:
-            # new_obs = jnp.concatenate((nstate.obs,
-            #                            jnp.array([12.0, 4.0]),
-            #                            self.automaton.embed(nautomata_state)), axis=-1)
-            new_obs = jnp.concatenate((nstate.obs,
-                                       jnp.array([12.0, 4.0]),
-                                       self.automaton.one_hot_encode(nautomata_state)), axis=-1)
-            nstate = nstate.replace(obs=new_obs)
-        elif self.augment_obs:
+        if self.augment_obs:
             # new_obs = jnp.concatenate((nstate.obs, self.automaton.embed(nautomata_state)), axis=-1)
             new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomata_state)), axis=-1)
             nstate = nstate.replace(obs=new_obs)
 
         return nstate
 
+    def make_augmented_obs(self, obs, aut_state):
+        return jnp.concatenate((obs, self.automaton.one_hot_encode(aut_state)), axis=-1)
+    
     @property
     def observation_size(self) -> int:
-        if self.augment_with_subgoals and self.augment_obs:
-            n_subgoals = 1
-            subgoal_dim = 2
-            return self.env.observation_size + (n_subgoals * subgoal_dim) + self.automaton.n_states
-        elif self.augment_obs:
+        # if self.augment_with_subgoals and self.augment_obs:
+        #     n_subgoals = 1
+        #     subgoal_dim = 2
+        #     return self.env.observation_size + (n_subgoals * subgoal_dim) + self.automaton.n_states
+        # el
+        if self.augment_obs:
             return self.env.observation_size + self.automaton.n_states
         else:
             return self.env.observation_size
@@ -241,6 +239,17 @@ def get_automaton_goal_array(shape, out_conditions, bdd_dict, aps, state_and_ap_
     return goal_array
 
 
+def partition(pred, d):
+    fs = {}
+    ts = {}
+    for q, item in d.items():
+        if not pred(q, item):
+            fs[q] = (item)
+        else:
+            ts[q] = (item)
+    return fs, ts
+
+
 class AutomatonGoalConditionedWrapper(Wrapper):
     """Tracks automaton state and adds goal condition inputs as necessary"""
 
@@ -256,8 +265,18 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         self.augment_obs = True
         self.augment_with_subgoals = True
 
+        no_goal_aps, goal_aps = partition(lambda _, v: "goal" in v.info, self.automaton.aps)
+        no_goal_spot_aps, goal_spot_aps = partition(lambda k, _: k in goal_aps, self.automaton.spot_aps)
+        no_goal_spot_aps_bdds = [spot.formula_to_bdd(x, self.automaton.bdd_dict, None) for x in no_goal_spot_aps.values()]
+        no_goal_spot_aps_union_bdd = reduce(buddy.bdd_or, no_goal_spot_aps_bdds, buddy.bddfalse)
+
         self.liveness_automaton = make_just_liveness_automaton(self.automaton.automaton)
-        self.out_conditions = get_outgoing_conditions(self.liveness_automaton)
+        plain_out_conditions = get_outgoing_conditions(self.liveness_automaton)
+        self.out_conditions = {}
+
+        for q, cond in plain_out_conditions.items():
+            self.out_conditions[q] = buddy.bdd_exist(cond, buddy.bdd_support(no_goal_spot_aps_union_bdd))
+
         self.live_states = jnp.array([k for k in self.out_conditions])
 
         # Scan the liveness automaton to identify the maximum number of goals

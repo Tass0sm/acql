@@ -46,6 +46,7 @@ from .simple_maze import (
     SimpleMazeBranching1,
     SimpleMazeBranching2,
     SimpleMazeObligationConstraint1,
+    SimpleMazeObligationConstraint2,
     SimpleMazeUntil1,
 )
 from .simple_maze_3d import (
@@ -131,6 +132,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "branching1": SimpleMazeBranching1,
             "branching2": SimpleMazeBranching2,
             "obligation1": SimpleMazeObligationConstraint1,
+            "obligation2": SimpleMazeObligationConstraint2,
             "until1": SimpleMazeUntil1,
         },
         "simple_maze_3d": {
