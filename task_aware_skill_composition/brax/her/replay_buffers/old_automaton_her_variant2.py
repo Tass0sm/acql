@@ -36,7 +36,7 @@ from jaxgcrl.src.replay_buffer import QueueBase, Sample
 ReplayBufferState = Any
 
 
-class AutomatonTrajectoryUniformSamplingQueueVariantTwo(QueueBase[Sample], Generic[Sample]):
+class OldAutomatonTrajectoryUniformSamplingQueueVariantTwo(QueueBase[Sample], Generic[Sample]):
     """Implements an uniform sampling limited-size replay queue but with trajectories."""
 
     def sample_internal(self, buffer_state: ReplayBufferState) -> Tuple[ReplayBufferState, Sample]:

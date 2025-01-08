@@ -9,6 +9,7 @@ from jaxgcrl.envs.ant_maze import AntMaze
 from task_aware_skill_composition.brax.envs.base import GoalConditionedEnv
 from task_aware_skill_composition.brax.tasks.base import TaskBase
 from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from task_aware_skill_composition.brax.tasks.mixins import *
 from task_aware_skill_composition.hierarchy.ant.load import load_ant_options
 from task_aware_skill_composition.hierarchy.option import FixedLengthTerminationPolicy
 
@@ -19,6 +20,14 @@ import corallab_stl.expression_jax2 as stl
 class AntMazeTaskBase(TaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = AntMaze(
+            terminate_when_unhealthy=False,
+            maze_layout_name="open_maze",
+            backend=backend
+        )
+        return env
 
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=2)
@@ -36,48 +45,10 @@ class AntMazeTaskBase(TaskBase):
     def get_hard_coded_options(self):
         raise NotImplementedError()
 
-    # @property
-    # def hdqn_her_hps(self):
-    #     return {
-    #         "num_timesteps": 3_000_000,
-    #         "reward_scaling": 1,
-    #         "num_evals": 50,
-    #         "episode_length": 300,
-    #         "normalize_observations": True,
-    #         "action_repeat": 1,
-    #         "discounting": 0.99,
-    #         # "learning_rate": 3e-4,
-    #         "num_envs": 256,
-    #         "batch_size": 256,
-    #         "unroll_length": 20,
-    #         "multiplier_num_sgd_steps": 1,
-    #         "max_devices_per_host": 1,
-    #         "max_replay_size": 10000,
-    #         # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
-    #         "min_replay_size": 1000,
-    #         "use_her": True,
-    #     }
-
-    # @property
-    # def hdcqn_her_hps(self):
-    #     return {
-    #         **self.hdqn_her_hps,
-    #         "cost_scaling": 1.0,
-    #         "safety_minimum": 0.0,
-    #     }
-
 
 class AntMazeNav(AntMazeTaskBase):
     def __init__(self, backend="mjx"):
         super().__init__(None, 1000, backend=backend)
-
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
     def _build_hi_spec(self, wp_var: Var) -> Expression:
         pass
@@ -86,54 +57,22 @@ class AntMazeNav(AntMazeTaskBase):
         return true_exp(obs_var)
 
 
-class AntMazeUMazeConstraint(AntMazeTaskBase):
+class AntMazeUMazeConstraint(UMazeConstraintMixin, AntMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.obs_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        at_obs1 = inside_box(obs_var.position, *self.obs_corners)
-        phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
-        return phi
-
-
-class AntMazeSingleSubgoal(AntMazeTaskBase):
+class AntMazeSingleSubgoal(SingleSubgoalMixin, AntMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([12.0, 4.0])
         self.goal1_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
-        phi = stl.STLUntimedEventually(in_goal1)
-        return phi
-
-
-class AntMazeTwoSubgoals(AntMazeTaskBase):
+class AntMazeTwoSubgoals(TwoSubgoalsMixin, AntMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([12.0, 4.0])
         self.goal1_radius = 2.0
@@ -142,27 +81,8 @@ class AntMazeTwoSubgoals(AntMazeTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
-        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
-        phi = stl.STLUntimedEventually(
-            stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
-        )
-        return phi
-
-
-class AntMazeBranching1(AntMazeTaskBase):
+class AntMazeBranching1(Branching1Mixin, AntMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([12.0, 4.0])
         self.goal1_radius = 2.0
@@ -171,26 +91,8 @@ class AntMazeBranching1(AntMazeTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
-        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
-        phi = stl.STLAnd(stl.STLUntimedEventually(in_goal1),
-                         stl.STLUntimedEventually(in_goal2))
-        return phi
-
-
-class AntMazeBranching2(AntMazeTaskBase):
+class AntMazeBranching2(Branching2Mixin, AntMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([12.0, 4.0])
         self.goal1_radius = 2.0
@@ -199,26 +101,8 @@ class AntMazeBranching2(AntMazeTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
-        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
-        phi = stl.STLOr(stl.STLUntimedEventually(in_goal1),
-                        stl.STLUntimedEventually(in_goal2))
-        return phi
-
-
-class AntMazeObligationConstraint1(AntMazeTaskBase):
+class AntMazeObligationConstraint1(ObligationConstraint1Mixin, AntMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.obs1_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
 
@@ -227,105 +111,88 @@ class AntMazeObligationConstraint1(AntMazeTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        at_obs1 = inside_box(obs_var.position, *self.obs1_corners)
-        phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
-
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
-        phi_liveness = stl.STLUntimedEventually(in_goal1)
-
-        phi = stl.STLAnd(phi_liveness, phi_safety)
-        return phi
-
-    @property
-    def hdcqn_her_hps(self):
-        return {
-            **self.hdqn_her_hps,
-            "cost_scaling": 1.0,
-            "safety_minimum": -0.2,
-        }
-
-
-class AntMazeObligationConstraint2(AntMazeTaskBase):
+class AntMazeObligationConstraint2(ObligationConstraint2Mixin, AntMazeTaskBase):
     def __init__(self, backend="mjx"):
-        self.obs1_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
+        self.obs1_location = jnp.array([8.0, 8.0])
+        self.obs_radius = 2.0
 
         self.goal1_location = jnp.array([12.0, 4.0])
         self.goal1_radius = 2.0
-        self.goal2_location = jnp.array([4.0, 12.0])
-        self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
+# class AntMazeObligationConstraint2(ObligationConstraint2Mixin, AntMazeTaskBase):
+#     def __init__(self, backend="mjx"):
+#         self.obs1_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
 
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        at_obs1 = inside_box(obs_var.position, *self.obs1_corners)
-        phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+#         self.goal1_location = jnp.array([12.0, 4.0])
+#         self.goal1_radius = 2.0
+#         self.goal2_location = jnp.array([4.0, 12.0])
+#         self.goal2_radius = 2.0
 
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
-        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
-        phi_liveness = stl.STLUntimedEventually(
-            stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
-        )
+#         super().__init__(None, 1000, backend=backend)
 
-        phi = stl.STLAnd(phi_liveness, phi_safety)
-        return phi
+#     def _build_env(self, backend: str) -> GoalConditionedEnv:
+#         env = AntMaze(
+#             terminate_when_unhealthy=False,
+#             maze_layout_name="open_maze",
+#             backend=backend
+#         )
+#         return env
 
-class AntMazeObligationConstraint3(AntMazeTaskBase):
-    def __init__(self, backend="mjx"):
-        self.obs1_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
+#     def _build_hi_spec(self, wp_var: Var) -> Expression:
+#         pass
 
-        self.goal1_location = jnp.array([12.0, 4.0])
-        self.goal1_radius = 2.0
-        self.goal2_location = jnp.array([4.0, 12.0])
-        self.goal2_radius = 2.0
-        self.goal3_location = jnp.array([12.0, 12.0])
-        self.goal3_radius = 2.0
+#     def _build_lo_spec(self, obs_var: Var) -> Expression:
+#         at_obs1 = inside_box(obs_var.position, *self.obs1_corners)
+#         phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
 
-        super().__init__(None, 1000, backend=backend)
+#         in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
+#         in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
+#         phi_liveness = stl.STLUntimedEventually(
+#             stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
+#         )
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = AntMaze(
-            terminate_when_unhealthy=False,
-            maze_layout_name="open_maze",
-            backend=backend
-        )
-        return env
+#         phi = stl.STLAnd(phi_liveness, phi_safety)
+#         return phi
 
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
 
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        at_obs1 = inside_box(obs_var.position, *self.obs1_corners)
-        phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+# class AntMazeObligationConstraint3(ObligationConstraint3Mixin, AntMazeTaskBase):
+#     def __init__(self, backend="mjx"):
+#         self.obs1_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))
 
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
-        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
-        in_goal3 = inside_circle(obs_var.position, self.goal3_location, self.goal3_radius)
-        phi_liveness = stl.STLUntimedEventually(
-            stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
-        )
+#         self.goal1_location = jnp.array([12.0, 4.0])
+#         self.goal1_radius = 2.0
+#         self.goal2_location = jnp.array([4.0, 12.0])
+#         self.goal2_radius = 2.0
+#         self.goal3_location = jnp.array([12.0, 12.0])
+#         self.goal3_radius = 2.0
 
-        phi = stl.STLAnd(phi_liveness, phi_safety)
-        return phi
+#         super().__init__(None, 1000, backend=backend)
+
+#     def _build_env(self, backend: str) -> GoalConditionedEnv:
+#         env = AntMaze(
+#             terminate_when_unhealthy=False,
+#             maze_layout_name="open_maze",
+#             backend=backend
+#         )
+#         return env
+
+#     def _build_hi_spec(self, wp_var: Var) -> Expression:
+#         pass
+
+#     def _build_lo_spec(self, obs_var: Var) -> Expression:
+#         at_obs1 = inside_box(obs_var.position, *self.obs1_corners)
+#         phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+
+#         in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius)
+#         in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius)
+#         in_goal3 = inside_circle(obs_var.position, self.goal3_location, self.goal3_radius)
+#         phi_liveness = stl.STLUntimedEventually(
+#             stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
+#         )
+
+#         phi = stl.STLAnd(phi_liveness, phi_safety)
+#         return phi

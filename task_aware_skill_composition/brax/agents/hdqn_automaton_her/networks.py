@@ -74,7 +74,7 @@ def get_compiled_q_function_branches(
             raise NotImplementedError(f"Formula {root} with kind = {k}")
 
     for k, cond_bdd in sorted(out_conditions.items(), key=lambda x: x[0]):
-        if k == 0:
+        if k == 0 and not env.use_incoming_conditions_for_final_state:
             def default_q(params, obs):
                 nn_input = jnp.concatenate((env.goalless_obs(obs),
                                             env.ith_goal(obs, 0)), axis=-1)

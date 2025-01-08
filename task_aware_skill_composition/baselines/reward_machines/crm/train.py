@@ -12,7 +12,6 @@ from brax.training import gradients
 from brax.training import pmap
 from brax.training import replay_buffers
 from brax.training import types
-from brax.training.acme import running_statistics
 from brax.training.acme import specs
 from brax.training.types import Params
 from brax.training.types import PRNGKey
@@ -22,6 +21,7 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
+from task_aware_skill_composition.brax.training.acme import running_statistics
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
 from task_aware_skill_composition.brax.agents.hdqn import losses as hdqn_losses
 from task_aware_skill_composition.brax.agents.hdqn import networks as hdq_networks
@@ -178,6 +178,7 @@ def train(
   normalize_fn = lambda x, y: x
   if normalize_observations:
     normalize_fn = running_statistics.normalize
+
   hdq_network = network_factory(
       observation_size=obs_size,
       action_size=action_size,
@@ -289,10 +290,14 @@ def train(
         obs = env.original_obs(transition.observation)
         action = transition.action
         next_obs = env.original_obs(transition.next_observation)
-        labels = env.automaton.eval_aps(action, next_obs)
+        labels = env.automaton.eval_aps(action, next_obs, ap_params=env_state.info["ap_params"])
         v = env.automaton.step(u, labels)
         new_reward = env.compute_reward(u, v, obs, action, next_obs)
 
+        if env.strip_goal_obs:
+          obs = obs[..., env.non_goal_indices]
+          next_obs = next_obs[..., env.non_goal_indices]
+        
         return Transition(
           observation=env.make_augmented_obs(obs, u),
           action=action,
@@ -310,7 +315,7 @@ def train(
 
       crm_transitions = jax.lax.map(gen_crm_tran, jnp.arange(env.automaton.num_states))
       return crm_transitions
-
+    
     crm_transitions = jax.vmap(generate_crm_transitions)(transitions)
     crm_transitions = jax.tree_util.tree_map(
       lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), crm_transitions
@@ -486,15 +491,15 @@ def train(
   buffer_state = jax.pmap(replay_buffer.init)(jax.random.split(rb_key, local_devices_to_use))
 
   evaluator = HierarchicalEvaluatorWithSpecification(
-      env,
-      functools.partial(make_policy, deterministic=deterministic_eval),
-      options,
-      specification=specification,
-      state_var=state_var,
-      num_eval_envs=num_eval_envs,
-      episode_length=episode_length,
-      action_repeat=action_repeat,
-      key=eval_key
+    env,
+    functools.partial(make_policy, deterministic=deterministic_eval),
+    options,
+    specification=specification,
+    state_var=state_var,
+    num_eval_envs=num_eval_envs,
+    episode_length=episode_length,
+    action_repeat=action_repeat,
+    key=eval_key
   )
 
   # Run initial eval

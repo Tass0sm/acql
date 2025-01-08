@@ -153,18 +153,18 @@ class UR5eEnvs(ArmEnvs):
 
         return converted_action
 
-    # def _convert_action_to_actuator_input_EEF(self, pipeline_state: base.State, action: jax.Array) -> jax.Array:
-    #     eef_index = 2
-    #     current_position = pipeline_state.x.pos[eef_index]
-    #     delta_range = 0.2 # Unlike arm angle control which is more complex, if this number is 0.2, an action of +/- 1 simply targets +/- 0.2 distance in position
-    #     arm_action = current_position + delta_range * jnp.clip(action[:3], -1, 1)
+    def _convert_action_to_actuator_input_EEF(self, pipeline_state: base.State, action: jax.Array) -> jax.Array:
+        eef_index = 2
+        current_position = pipeline_state.x.pos[eef_index]
+        delta_range = 0.2 # Unlike arm angle control which is more complex, if this number is 0.2, an action of +/- 1 simply targets +/- 0.2 distance in position
+        arm_action = current_position + delta_range * jnp.clip(action, -1, 1)
 
-    #     # Gripper control
-    #     # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
-    #     gripper_action = jnp.where(action[-1] > 0, jnp.array([0, 0], dtype=float), jnp.array([255, 255], dtype=float))
+        # Gripper control
+        # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
+        gripper_action = jnp.where(action[-1] > 0, jnp.array([0, 0], dtype=float), jnp.array([255, 255], dtype=float))
 
-    #     converted_action = jnp.concatenate([arm_action] + [gripper_action])
-    #     return converted_action
+        converted_action = jnp.concatenate([arm_action] + [gripper_action])
+        return converted_action
 
     # # Methods to be overridden by specific environments
     # def _get_xml_path(self):

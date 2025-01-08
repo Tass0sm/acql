@@ -29,7 +29,6 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from jaxgcrl.src.evaluator import CrlEvaluator
 from jaxgcrl.src.replay_buffer import QueueBase, Sample
 
 
@@ -48,7 +47,7 @@ class AutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]
             episode_length: int,
             automaton: Any,
     ):
-        super(AutomatonTrajectoryUniformSamplingQueue, self).__init__(
+        super().__init__(
             max_replay_size,
             dummy_data_sample,
             sample_batch_size,
@@ -68,6 +67,8 @@ class AutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]
         # NOTE: this is the number of envs to sample but it can be modified if there is OOM
         shape = self.num_envs
 
+        breakpoint()
+        
         # Sampling envs idxs
         envs_idxs = jax.random.choice(shuffle_key, jnp.arange(self.num_envs), shape=(shape,), replace=False)
 
@@ -108,16 +109,13 @@ class AutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]
 
         if use_her:
             obs = transition.observation
-            # automaton_obs = transition.observation
             automaton_state = transition.extras["state_extras"]["automata_state"]
             next_obs = transition.next_observation
-            # next_automaton_obs = transition.next_observation
 
             # create a mask where mask[i,j] == 1 if j > i
             seq_len = transition.observation.shape[0]
             arrangement = jnp.arange(seq_len)
             is_future_mask = jnp.array(arrangement[:, None] < arrangement[None], dtype=jnp.float32)
-            is_past_mask = jnp.array(arrangement[:, None] >= arrangement[None], dtype=jnp.float32)
 
             # repeat the seeds sequence in the transition object for every
             # offset into the trajectory possible.
@@ -143,16 +141,6 @@ class AutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]
             truncation_mask = transition.extras["state_extras"]["truncation"]
             final_step_mask = jnp.logical_and(final_step_mask, truncation_mask[None, :])
 
-            first_step_mask = is_past_mask * jnp.equal(single_trajectories, single_trajectories.T) + jnp.eye(seq_len) * 1e-5
-            reset_mask = jnp.concatenate((jnp.float32([1]), transition.extras["state_extras"]["truncation"][:-1]))
-            first_step_mask = jnp.logical_and(first_step_mask, reset_mask[None, :])
-
-            # truncation_or_transition_mask = jnp.logical_or(
-            #     transition.extras["state_extras"]["truncation"],
-            #     transition.extras["state_extras"]["made_transition"]
-            # )
-            # final_or_trans_step_mask = jnp.logical_and(final_step_mask, truncation_or_transition_mask[None, :])
-
             # for every row, get the index of the terminal state
             # non_zero_columns = jnp.nonzero(final_step_mask, size=seq_len)[1]
 
@@ -161,136 +149,54 @@ class AutomatonTrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]
 
             non_zero_columns = jax.vmap(get_first_row_nonzero)(final_step_mask).squeeze()
 
-            def get_last_row_nonzero(row):
-                return 999 - jnp.nonzero(jnp.flip(row), size=1, fill_value=0)[0]
-
-            beginning_idxs = jax.vmap(get_last_row_nonzero)(first_step_mask).squeeze()
-
-
             # If final state is not present use original goal (i.e. don't change anything)
             new_goals_idx = jnp.where(non_zero_columns == 0, arrangement, non_zero_columns)
             binary_mask = jnp.logical_and(non_zero_columns, non_zero_columns)
 
-            new_subgoals_idx = jnp.where(non_zero_columns == 0, 0,
-                                         jnp.array((beginning_idxs+non_zero_columns)/2, dtype=jnp.int32))
+            # by default, use all the original goals.  if no transition or
+            # truncation is present, these will stay unmodified in the sampled
+            # trajectory.
 
-            # final_or_trans_step_idx = jax.vmap(get_first_row_nonzero)(final_step_mask).squeeze()
-            # def is_pre_trans_or_term(col):
-            #     return jax.lax.cond(transition.extras["state_extras"]["made_transition"][col] == 1,
-            #                         lambda: 2,
-            #                         lambda: jax.lax.cond(transition.extras["state_extras"]["truncation"][col] == 1,
-            #                                              lambda: 1,
-            #                                              lambda: 0))
-            # pre_trans_or_term = jax.vmap(is_pre_trans_or_term)(final_or_trans_step_idx)
+            # if truncation is present, change the subgoal/final goal to the
+            # state at termination, depending on the automaton states in the
+            # trajectory.
 
-            ##### TODO: keep trajectories with transition?
-            # new_aut_state_key = sample_key
-            # new_aut_state = jax.random.randint(new_aut_state_key, (), 0, 2, jnp.int32)
-            # new_aut_state_mapping = jnp.array([new_aut_state, 1 - new_aut_state])
-            # in relabelling the traj, don't relable 1 states which led to a transition.
-            # new_aut_state_traj = jnp.where(pre_trans_or_term == 2,
-            #                                automaton_state,
-            #                                # if they didn't lead to a
-            #                                # transition, label the trajectory to
-            #                                # be in a consistently different state.
-            #                                jnp.where(automaton_state == 1,
-            #                                          new_aut_state_mapping[0],
-            #                                          new_aut_state_mapping[1]))
-            # new_made_tran_traj = transition.extras["state_extras"]["made_transition"]
-            # new_aut_state_traj = jnp.where(binary_mask, new_aut_state, 1)
-            # new_made_tran_traj = jnp.where(binary_mask, 0, transition.extras["state_extras"]["made_transition"])
-            # new_aut_state_traj = jnp.where(binary_mask, new_aut_state, automaton_state)
-            # new_made_tran_traj = jnp.where(binary_mask, 0, transition.extras["state_extras"]["made_transition"])
-            # new_aut_state_traj = automaton_state
-            # new_made_tran_traj = transition.extras["state_extras"]["made_transition"]
+            # for now don't introduce any artificial transitions...
+
+            #### TODO: randomly generate index to select subgoal for sections of the trajectory
+            # random_goal_idx_key = sample_key
+            # random_goal_idx = 0 jax.random.randint(new_aut_state_key, (), 0, env.goal_width, jnp.int32)
             #####
 
-            final_position = obs[new_goals_idx][:, env.goal_indices]
-            final_aut_state = automaton_state[new_goals_idx]
+            final_position = obs[new_goals_idx][:, env.pos_indices]
 
-            # after finding the final position, we need to modify the trajectory
-            # so that this position is the final goal. the final goal must come
-            # after the subgoal, so if the final automaton state was "1", we
-            # will pick a random point in the middle of the trajectory to be the
-            # subgoal and cause a transition the first time the trajectory
-            # reaches that point, so that the final goal for the policy was
-            # "q=0, g1=(fpx, fpy)".
+            def update_goal(o, aut_state, final_pos):
+                return o.at[env.goal_indices].set(final_pos)
 
-            subgoal_position = obs[new_subgoals_idx][:, env.goal_indices]
-            subgoal_step_mask = jnp.equal(single_trajectories, single_trajectories.T)
-            in_subgoal_step_mask = (jnp.linalg.norm(subgoal_position - obs.at[:, 0:2].get(), axis=-1) < env.goal_dist)
-            subgoal_step_mask = jnp.logical_and(subgoal_step_mask, jnp.logical_and(in_subgoal_step_mask, binary_mask)[None, :])
-            first_subgoal_idx = jax.vmap(get_first_row_nonzero)(subgoal_step_mask).squeeze()
-
-            def update_trans(o, aut_state, unused1, final_pos):
-                return o.at[4:6].set(final_pos)
-
-            def update_no_trans(o, aut_state, subgoal_pos, final_pos):
-                o = o.at[6:8].set(subgoal_pos)
-                o = o.at[4:6].set(final_pos)
-                o = o.at[8:].set(env.automaton.one_hot_encode(aut_state))
-                # o = jax.lax.cond(aut_state == 0,
-                #                  lambda: o.at[4:6].set(final_pos).at[6:8].set(jnp.array([0.0, 0.0])),
-                #                  lambda: o.at[6:8].set(final_pos).at[4:6].set(jnp.array([0.0, 0.0])))
-                return o
-
-            def conditional_update_goal(should_update, final_aut_state, o, aut_state, subgoal_pos, final_pos):
-                # if the o is part of a trajectory which already transitioned,
-                # update the o accordingly for just the final
-                # position. otherwise, the update will also consider the new
-                # subgoal.
+            def conditional_update_goal(should_update, o, aut_state, final_pos):
                 return jax.lax.cond(should_update,
-                                    lambda: jax.lax.cond(final_aut_state == 0,
-                                                         update_trans,
-                                                         update_no_trans,
-                                                         o, aut_state, subgoal_pos, final_pos),
+                                    lambda: update_goal(o, aut_state, final_pos),
                                     lambda: o)
-
-            new_aut_state_traj = jnp.where(binary_mask,
-                                           jnp.where(arrangement < first_subgoal_idx, jnp.int32(1), jnp.int32(0)),
-                                           automaton_state)
-            new_next_aut_state_traj = jnp.where(binary_mask,
-                                                jnp.where(arrangement+2 < first_subgoal_idx, jnp.int32(1), jnp.int32(0)),
-                                                automaton_state)
-            new_made_tran_traj = jnp.where(binary_mask,
-                                           jnp.where(arrangement == first_subgoal_idx, jnp.int32(1), jnp.int32(0)),
-                                           transition.extras["state_extras"]["made_transition"])
 
             new_obs = jax.vmap(conditional_update_goal)(
                 binary_mask,
-                final_aut_state,
-                #
                 obs,
-                new_aut_state_traj,
-                subgoal_position,
+                automaton_state,
                 final_position,
             )
 
             # Recalculate reward
             def get_new_reward(o, aut_state):
-                return jax.lax.cond(aut_state == 0,
-                                    lambda: jnp.float32(jnp.linalg.norm(o.at[4:6].get() - o.at[0:2].get()) < env.goal_dist),
-                                    lambda: jnp.float32(0.0)
-                                    # lambda: jnp.float32(jnp.linalg.norm(o.at[6:8].get() - o.at[0:2].get()) < 6*env.goal_dist)
-                                    )
+                return jnp.float32(jnp.linalg.norm(o.at[env.goal_indices].get() - o.at[env.pos_indices].get()) < env.goal_dist)
 
-            new_reward = jax.vmap(get_new_reward)(new_obs, new_aut_state_traj)
+            new_reward = jax.vmap(get_new_reward)(new_obs, automaton_state)
 
             # Transform next observation
             new_next_obs = jax.vmap(conditional_update_goal)(
                 binary_mask,
-                final_aut_state,
-                #
                 next_obs,
-                new_next_aut_state_traj,
-                subgoal_position,
+                automaton_state,
                 final_position,
-            )
-
-            # update automaton related extras in-place
-            transition.extras["state_extras"].update(
-                automata_state=new_aut_state_traj,
-                made_transition=new_made_tran_traj
             )
 
             return transition._replace(

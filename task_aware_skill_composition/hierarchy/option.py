@@ -24,6 +24,15 @@ class FixedLengthTerminationPolicy:
     def __call__(self, s_t, key):
         raise NotImplementedError
 
+
+class AutomatonTransitionTerminationPolicy:
+    def __init__(self, u):
+        self.u = u
+
+    def __call__(self, s_t, key):
+        return jnp.where(s_t.info["automata_state"] != self.u, 1, 0).astype(jnp.int32)
+
+
 class Option:
     def __init__(
             self,

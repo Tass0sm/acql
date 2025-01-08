@@ -81,7 +81,7 @@ class UR5eReach(UR5eEnvs):
         """
 
         q_subset = pipeline_state.q[7:13]
-        eef_index = 6 # Cube is 0, then links 1-6 are indices 1-6. The end-effector (eef) base is merged with link 6, so we say link 6 index = eef index.
+        eef_index = 6 # Cube is at index 0, then links 1-6 are indices 1-6. The end-effector (eef) base is merged with link 6, so we say link 6 index = eef index.
         eef_x_pos = pipeline_state.x.pos[eef_index]
         eef_xd_vel = pipeline_state.xd.vel[eef_index]
         

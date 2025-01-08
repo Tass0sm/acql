@@ -7,7 +7,7 @@ from gymnasium.spaces.utils import flatdim
 
 from task_aware_skill_composition.brax.safety_gymnasium_envs.safety_hopper_velocity_v1 import SafetyHopperVelocityEnv as Hopper
 from task_aware_skill_composition.brax.tasks.base import TaskBase
-from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle
+from task_aware_skill_composition.brax.tasks.templates import inside_circle, outside_circle
 
 from corallab_stl import Expression, Var
 import corallab_stl.expression_jax2 as stl

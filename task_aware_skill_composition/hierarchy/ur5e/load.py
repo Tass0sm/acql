@@ -21,44 +21,46 @@ from brax.training.acme import running_statistics
 from brax.training import types
 from brax.training.types import PRNGKey
 
-from task_aware_skill_composition.brax.envs.xy_point import XYPoint
-from task_aware_skill_composition.hierarchy.xy_point import options
+from task_aware_skill_composition.hierarchy.ur5e import options
 from task_aware_skill_composition.hierarchy.option import Option, BernoulliTerminationPolicy
 
 
-def load_hard_coded_ur5e_options(
-        termination_prob: float = 1.0,
-        adapter: Optional[Callable] = None,
+def load_ur5e_options(
+        termination_prob: float = 0.3,
+        termination_policy = None,
+        adapter: Optional[Callable] = None
 ):
 
     # In training environment, not in goal conditioned maze env
-    XY_POINT_OBS_SIZE = 4
-    XY_POINT_ACTION_SIZE = 2
+    UR5E_TRANSLATE_OBS_SIZE = 12
+    UR5E_TRANSLATE_ACTION_SIZE = 4
 
     options_l = []
 
-    ctrl_dict = {
-        "default": jnp.array([1.571, 0.742, 0, -1.571, 0, 3.054]),
-    }
+    for name in ["up", "forward", # "right", "left", "backward", "down"
+                 ]:
+        option_param_file = files(options) / (name + ".pkl")
+        params = model.load_params(option_param_file)
 
-    def hard_policy(
-            ctrl,
-            observations: types.Observation,
-            key_sample: PRNGKey
-    ) -> Tuple[types.Action, types.Extra]:
-        return ctrl, {
-            'log_prob': 0.0,
-            'raw_action': ctrl
-        }
-
-    for name, ctrl in ctrl_dict.items():
-        print(name, ctrl)
-        options_l.append(
-            Option(
-                name, None, None, functools.partial(hard_policy, ctrl),
-                termination_policy=BernoulliTerminationPolicy(termination_prob),
-                adapter=adapter
-            )
+        # Making the network
+        ppo_network = ppo_networks.make_ppo_networks(
+            UR5E_TRANSLATE_OBS_SIZE,
+            UR5E_TRANSLATE_ACTION_SIZE,
+            # Options were trained with "normalize observations"
+            preprocess_observations_fn=running_statistics.normalize
         )
+
+        make_policy = ppo_networks.make_inference_fn(ppo_network)
+        inference_fn = make_policy(params)
+
+        if termination_policy is None:
+            termination_policy = BernoulliTerminationPolicy(termination_prob)
+
+        options_l.append(
+            Option(name, ppo_network, params, inference_fn,
+                   termination_policy=termination_policy,
+                   adapter=adapter)
+        )
+
 
     return options_l

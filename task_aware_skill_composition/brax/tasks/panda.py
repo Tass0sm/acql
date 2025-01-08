@@ -7,7 +7,6 @@ from jaxgcrl.envs.manipulation.arm_reach import ArmReach
 from task_aware_skill_composition.brax.envs.base import GoalConditionedEnv
 from task_aware_skill_composition.brax.tasks.base import TaskBase
 from task_aware_skill_composition.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
-from task_aware_skill_composition.hierarchy.ur5e.load import load_hard_coded_ur5e_options
 
 from corallab_stl import Expression, Var
 import corallab_stl.expression_jax2 as stl

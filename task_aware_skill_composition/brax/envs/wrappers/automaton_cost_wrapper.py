@@ -31,9 +31,9 @@ def get_compiled_conditions(
         k = root.kind()
 
         if k == spot.op_ff:
-            return stl.STLPredicate(state_var, lambda s: -1, lower_bound=0.0)
+            return stl.STLPredicate(state_var, lambda s, _: -1, lower_bound=0.0)
         elif k == spot.op_tt:
-            return stl.STLPredicate(state_var, lambda s: 1, lower_bound=0.0)
+            return stl.STLPredicate(state_var, lambda s, _: 1, lower_bound=0.0)
             # ap_pred = copy.deepcopy(aps[0])
             # ap_pred.lower_bound = -2.0
             # return ap_pred

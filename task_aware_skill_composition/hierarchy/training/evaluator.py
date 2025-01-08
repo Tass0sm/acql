@@ -89,10 +89,18 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
     else:
       obs = data.observation
 
+    ap_param_fields = {}
+
+    if self.env.randomize_goals:
+      for _, ap in self.env.automaton.aps.items():
+        i = 32 + ap.info["ap_i"]
+        ap_param_fields[i] = eval_state.info["ap_params"][:, 0]
+
     # From data, calculate robustness
     robustness_traces = jax.vmap(self.specification)({ self.state_var.idx: obs,
                                                        # "action": data.action
-                                                      })
+                                                      } | ap_param_fields)
+
     robustness = robustness_traces[..., 0]
     eval_metrics.episode_metrics["robustness"] = robustness
 

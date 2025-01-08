@@ -22,13 +22,13 @@ def inside_circle(
         has_goal: bool = False,
 ) -> stl.STLFormula:
 
-    def f(s):
-        return -norm(s - center) + radius
+    def f(s, c):
+        return -norm(s - c) + radius
 
     info = {"name": f"inside_circle ({center}, {radius})"}
     if has_goal:
         info["goal"] = center
-    return stl.STLPredicate(var, f, 0.0, info=info)
+    return stl.STLPredicate(var, f, 0.0, default_params=center, info=info)
 
 
 def outside_circle(
@@ -37,10 +37,10 @@ def outside_circle(
         radius: float
 ) -> stl.STLFormula:
 
-    def f(s):
-        return norm(s - center) - radius
+    def f(s, c):
+        return norm(s - c) - radius
 
-    return stl.STLPredicate(var, f, 0.0, info={"name": f"outside_circle ({center}, {radius})"})
+    return stl.STLPredicate(var, f, 0.0, default_params=center, info={"name": f"outside_circle ({center}, {radius})"})
 
 
 def inside_box(
@@ -56,7 +56,7 @@ def inside_box(
     b = jnp.concatenate((-corner1, corner2))
     # using formula for testing point is inside polytope.
 
-    def f(s):
+    def f(s, unused):
         return (b - A @ s).min(axis=-1)
 
     info = {"name": f"inside_box ({corner1}, {corner2})"}

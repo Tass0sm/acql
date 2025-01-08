@@ -33,14 +33,15 @@ from .ant_maze import (
     AntMazeBranching1,
     AntMazeBranching2,
     AntMazeObligationConstraint1,
+    AntMazeObligationConstraint2,
 )
 from .ant_push import (
     AntPushDefault,
 )
 from .simple_maze import (
     SimpleMazeNav,
-    SimpleMazeCenterConstraint,
     SimpleMazeUMazeConstraint,
+    SimpleMazeCenterConstraint,
     SimpleMazeSingleSubgoal,
     SimpleMazeTwoSubgoals,
     SimpleMazeBranching1,
@@ -52,9 +53,12 @@ from .simple_maze import (
 from .simple_maze_3d import (
     SimpleMaze3DNav,
     SimpleMaze3DUMazeConstraint,
+    SimpleMaze3DCenterConstraint,
     SimpleMaze3DSingleSubgoal,
     SimpleMaze3DTwoSubgoals,
     SimpleMaze3DBranching1,
+    SimpleMaze3DObligationConstraint1,
+    SimpleMaze3DObligationConstraint2,
 )
 from .drone_maze import (
     DroneMazeNav,
@@ -74,6 +78,7 @@ from .panda import (
 )
 from .ur5e import (
     UR5eReachTask,
+    UR5eTranslateTask,
 )
 
 
@@ -119,28 +124,31 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "branching1": AntMazeBranching1,
             "branching2": AntMazeBranching2,
             "obligation1": AntMazeObligationConstraint1,
+            "obligation2": AntMazeObligationConstraint2,
         },
         "ant_push": {
             "true": AntPushDefault,
         },
         "simple_maze": {
             "true": SimpleMazeNav,
-            "center_constraint": SimpleMazeCenterConstraint,
             "umaze_constraint": SimpleMazeUMazeConstraint,
+            "center_constraint": SimpleMazeCenterConstraint,
             "subgoal": SimpleMazeSingleSubgoal,
             "two_subgoals": SimpleMazeTwoSubgoals,
             "branching1": SimpleMazeBranching1,
             "branching2": SimpleMazeBranching2,
             "obligation1": SimpleMazeObligationConstraint1,
             "obligation2": SimpleMazeObligationConstraint2,
-            "until1": SimpleMazeUntil1,
         },
         "simple_maze_3d": {
             "true": SimpleMaze3DNav,
             "umaze_constraint": SimpleMaze3DUMazeConstraint,
+            "center_constraint": SimpleMaze3DCenterConstraint,
             "subgoal": SimpleMaze3DSingleSubgoal,
             "two_subgoals": SimpleMaze3DTwoSubgoals,
             "branching1": SimpleMaze3DBranching1,
+            "obligation1": SimpleMaze3DObligationConstraint1,
+            "obligation2": SimpleMazeObligationConstraint2,
         },
         "drone_maze": {
             "true": DroneMazeNav,
@@ -161,6 +169,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "ur5e": {
             "reach": UR5eReachTask,
+            "translate": UR5eTranslateTask
         },
         # "car": {
         #     "seq": CarSequence,
