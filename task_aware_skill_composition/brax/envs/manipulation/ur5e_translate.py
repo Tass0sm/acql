@@ -4,6 +4,7 @@ from brax.io import mjcf
 import mujoco
 import jax
 from jax import numpy as jnp
+from jax.scipy.spatial.transform import Rotation
 
 from task_aware_skill_composition.brax.envs.manipulation.ur5e_envs import UR5eEnvs
 
@@ -20,9 +21,13 @@ class UR5eTranslate(PipelineEnv):
     def __init__(
             self,
             backend="mjx",
+            healthy_angle_range=(-0.523598775598, 0.523598775598),
+            healthy_reward=1.0,
             target_velocity_vec: jnp.array = jnp.array([1.0, 0.0, 0.0]),
             **kwargs
     ):
+        self.healthy_reward = healthy_reward
+        self.healthy_angle_range = healthy_angle_range
         self.target_velocity_vec = target_velocity_vec
 
         # links 1-6 are indices 0-5. The end-effector (eef) base is merged with
@@ -57,9 +62,13 @@ class UR5eTranslate(PipelineEnv):
         pipeline_state = self.pipeline_init(q, qd)
         timestep = 0.0
 
-        # Sample a goal and fill info variable
+        # Fill info variable
+        initial_eef_rot = Rotation.from_quat(pipeline_state.x.rot[self.eef_index])
+        initial_eef_out_vector = initial_eef_rot.apply(jnp.array([1.0, 0.0, 0.0]))
+
         rng, subkey1, subkey2 = jax.random.split(rng, 3)
         info = {
+            "initial_eef_out_vector": initial_eef_out_vector,
             "seed": 0, # Seed is required, but fill it with a dummy value
             "timestep": 0.0,
             "postexplore_timestep": jax.random.uniform(subkey2) # Assumes timestep is normalized between 0 and 1
@@ -88,7 +97,21 @@ class UR5eTranslate(PipelineEnv):
         eef_velocity = (pipeline_state.x.pos[self.eef_index] - pipeline_state0.x.pos[self.eef_index]) / self.dt
 
         forward_reward = jnp.dot(eef_velocity, self.target_velocity_vec)
-        reward = forward_reward
+
+        u = state.info["initial_eef_out_vector"]
+        eef_rot = Rotation.from_quat(pipeline_state.x.rot[self.eef_index])
+        v = eef_out_vector = eef_rot.apply(jnp.array([1.0, 0.0, 0.0]))
+        deviation_angle = jnp.arccos(jnp.dot(u, v) / (jnp.linalg.norm(u) * jnp.linalg.norm(v)))
+
+        min_angle, max_angle = self.healthy_angle_range
+        is_healthy = jnp.where(deviation_angle < min_angle, 0.0, 1.0)
+        is_healthy = jnp.where(deviation_angle > max_angle, 0.0, is_healthy)
+        healthy_reward = self.healthy_reward * is_healthy
+
+        breakpoint()
+        jax.debug.breakpoint()
+
+        reward = forward_reward + healthy_reward
         done = 0.0
         info = {**state.info, "timestep": timestep}
 
@@ -133,6 +156,9 @@ class UR5eTranslate(PipelineEnv):
         # Gripper control
         # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
         # The UR5e Gripper (Robotiq-85), has a single control input
+
+        # NEVER USED FOR THIS ENV
+
         if self.env_name not in ("ur5e_reach"):
             gripper_action = jnp.where(action[-1] > 0, jnp.array([0], dtype=float), jnp.array([255], dtype=float))
             converted_action = jnp.concatenate([arm_action] + [gripper_action])
