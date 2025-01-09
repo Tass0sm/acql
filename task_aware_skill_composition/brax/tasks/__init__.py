@@ -78,6 +78,7 @@ from .panda import (
 )
 from .ur5e import (
     UR5eReachTask,
+    UR5eReachShelfTask,
     UR5eTranslateTask,
 )
 
@@ -148,7 +149,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "two_subgoals": SimpleMaze3DTwoSubgoals,
             "branching1": SimpleMaze3DBranching1,
             "obligation1": SimpleMaze3DObligationConstraint1,
-            "obligation2": SimpleMazeObligationConstraint2,
+            "obligation2": SimpleMaze3DObligationConstraint2,
         },
         "drone_maze": {
             "true": DroneMazeNav,
@@ -169,7 +170,8 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "ur5e": {
             "reach": UR5eReachTask,
-            "translate": UR5eTranslateTask
+            "reach_shelf": UR5eReachShelfTask,
+            "translate": UR5eTranslateTask,
         },
         # "car": {
         #     "seq": CarSequence,

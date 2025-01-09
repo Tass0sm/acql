@@ -15,26 +15,26 @@ RESET = R = 'r'
 GOAL = G = 'g'
 
 # Z, X, Y / k, i, j (therefore, not viewing from typical x-y viewpoint)
-OPEN_MAZE = [[[1, 1, 1, 1, 1],
-              [1, R, G, R, 1],
-              [1, G, 0, G, 1],
-              [1, R, G, R, 1],
-              [1, 1, 1, 1, 1]],
-             [[1, 1, 1, 1, 1],
-              [1, G, G, G, 1],
-              [1, G, 0, G, 1],
-              [1, G, G, G, 1],
-              [1, 1, 1, 1, 1]],
-             [[1, 1, 1, 1, 1],
-              [1, G, G, G, 1],
-              [1, G, G, G, 1],
-              [1, G, G, G, 1],
-              [1, 1, 1, 1, 1]],
-             [[1, 1, 1, 1, 1],
-              [1, 1, 1, 1, 1],
-              [1, 1, 1, 1, 1],
-              [1, 1, 1, 1, 1],
-              [1, 1, 1, 1, 1]]]
+OPEN_MAZE = [[['T', 1, 1, 1, 1],
+              ['T', R, G, R, 1],
+              ['T', G, 0, G, 1],
+              ['T', R, G, R, 1],
+              ['T', 1, 1, 1, 1]],
+             [['T', 1, 1, 1, 1],
+              ['T', G, G, G, 1],
+              ['T', G, 0, G, 1],
+              ['T', G, G, G, 1],
+              ['T', 1, 1, 1, 1]],
+             [['T', 1, 1, 1, 1],
+              ['T', G, G, G, 1],
+              ['T', G, G, G, 1],
+              ['T', G, G, G, 1],
+              ['T', 1, 1, 1, 1]],
+             [['T', 1, 1, 1, 1],
+              ['T', 1, 1, 1, 1],
+              ['T', 1, 1, 1, 1],
+              ['T', 1, 1, 1, 1],
+              ['T', 1, 1, 1, 1]]]
 
 MAZE_HEIGHT = 0.5
 
@@ -81,7 +81,10 @@ def make_maze(maze_layout_name, maze_size_scaling):
         for i in range(len(maze_layout[0])):
             for j in range(len(maze_layout[0][0])):
                 struct = maze_layout[k][i][j]
-                if struct == 1:
+
+                # add a block for every '1' or 'T'. '1' yields an opaque block
+                # and 'T' yields a transparent block.
+                if struct == 1 or struct == 'T':
                     ET.SubElement(
                         worldbody, "geom",
                         name="block_%d_%d_%d" % (i, j, k),
@@ -95,7 +98,7 @@ def make_maze(maze_layout_name, maze_size_scaling):
                         material="",
                         contype="1",
                         conaffinity="1",
-                        rgba="0.7 0.5 0.3 0.1",
+                        rgba=f"0.5 0.5 0.5 {0.0 if struct == 'T' else 1.0}",
                     )
 
     tree = tree.getroot()

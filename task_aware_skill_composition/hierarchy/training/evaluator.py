@@ -91,7 +91,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
 
     ap_param_fields = {}
 
-    if self.env.randomize_goals:
+    if getattr(self.env, "randomize_goals", False):
       for _, ap in self.env.automaton.aps.items():
         i = 32 + ap.info["ap_i"]
         ap_param_fields[i] = eval_state.info["ap_params"][:, 0]
@@ -118,6 +118,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
           }
       )
 
+    metrics['eval/proportion_robustness_over_zero'] = jnp.mean(jnp.where(robustness > 0, 1.0, 0.0))
     metrics['eval/min_episode_robustness'] = jnp.min(robustness)
     metrics['eval/max_episode_robustness'] = jnp.max(robustness)
     metrics['eval/avg_episode_length'] = np.mean(eval_metrics.episode_steps)

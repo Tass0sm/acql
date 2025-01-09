@@ -780,6 +780,7 @@ packages:
   sha256: 15178282de646f2fdaca2dad781456d38f3b86371d8140171c6f47fc77966b69
   requires_dist:
   - absl-py
+  - dataclasses ; python_full_version < '3.7'
   - dm-env
   - etils
   - flask
@@ -803,7 +804,6 @@ packages:
   - tensorboardx
   - trimesh
   - typing-extensions
-  - dataclasses ; python_full_version < '3.7'
   - pytest ; extra == 'develop'
   - transforms3d ; extra == 'develop'
   editable: true
@@ -965,9 +965,9 @@ packages:
   requires_python: '>=3.9'
 - kind: pypi
   name: corallab-lib
-  version: 0.2.2
+  version: 0.2.3
   path: /home/tassos/phd/research/corallab-lib
-  sha256: 1258ecb5006ba87350779b2db801fef836a9091fee78d424d4f108da093e802b
+  sha256: c331468fc8d82260aeba318e6c67caa1860cbc4fef6dcb37b0a6b1b84bd8d6ec
   requires_dist:
   - gymnasium>=1.0.0a2 ; extra == 'gymnasium-robotics' or extra == 'torch-robotics'
   - gymnasium-robotics @ git+https://github.com/Farama-Foundation/Gymnasium-Robotics ; extra == 'gymnasium-robotics'
@@ -2122,18 +2122,18 @@ packages:
   - importlib-metadata>=4.8.0 ; python_full_version < '3.10'
   - dataclasses==0.8 ; python_full_version == '3.6.*'
   - autorom[accept-rom-license]~=0.4.2 ; extra == 'accept-rom-license'
-  - box2d-py==2.3.5 ; extra == 'all'
-  - matplotlib>=3.0 ; extra == 'all'
-  - opencv-python>=3.0 ; extra == 'all'
-  - moviepy>=1.0.0 ; extra == 'all'
-  - imageio>=2.14.1 ; extra == 'all'
-  - pytest==7.0.1 ; extra == 'all'
-  - mujoco==2.2 ; extra == 'all'
-  - mujoco-py<2.2,>=2.1 ; extra == 'all'
-  - ale-py~=0.8.0 ; extra == 'all'
-  - lz4>=3.1.0 ; extra == 'all'
-  - swig==4.* ; extra == 'all'
   - pygame==2.1.0 ; extra == 'all'
+  - box2d-py==2.3.5 ; extra == 'all'
+  - opencv-python>=3.0 ; extra == 'all'
+  - matplotlib>=3.0 ; extra == 'all'
+  - moviepy>=1.0.0 ; extra == 'all'
+  - swig==4.* ; extra == 'all'
+  - lz4>=3.1.0 ; extra == 'all'
+  - pytest==7.0.1 ; extra == 'all'
+  - mujoco-py<2.2,>=2.1 ; extra == 'all'
+  - mujoco==2.2 ; extra == 'all'
+  - ale-py~=0.8.0 ; extra == 'all'
+  - imageio>=2.14.1 ; extra == 'all'
   - ale-py~=0.8.0 ; extra == 'atari'
   - box2d-py==2.3.5 ; extra == 'box2d'
   - pygame==2.1.0 ; extra == 'box2d'
@@ -2146,16 +2146,16 @@ packages:
   - opencv-python>=3.0 ; extra == 'other'
   - matplotlib>=3.0 ; extra == 'other'
   - moviepy>=1.0.0 ; extra == 'other'
-  - box2d-py==2.3.5 ; extra == 'testing'
-  - matplotlib>=3.0 ; extra == 'testing'
-  - opencv-python>=3.0 ; extra == 'testing'
-  - moviepy>=1.0.0 ; extra == 'testing'
-  - imageio>=2.14.1 ; extra == 'testing'
-  - mujoco==2.2 ; extra == 'testing'
-  - mujoco-py<2.2,>=2.1 ; extra == 'testing'
-  - lz4>=3.1.0 ; extra == 'testing'
-  - swig==4.* ; extra == 'testing'
   - pygame==2.1.0 ; extra == 'testing'
+  - box2d-py==2.3.5 ; extra == 'testing'
+  - swig==4.* ; extra == 'testing'
+  - opencv-python>=3.0 ; extra == 'testing'
+  - matplotlib>=3.0 ; extra == 'testing'
+  - moviepy>=1.0.0 ; extra == 'testing'
+  - lz4>=3.1.0 ; extra == 'testing'
+  - mujoco-py<2.2,>=2.1 ; extra == 'testing'
+  - mujoco==2.2 ; extra == 'testing'
+  - imageio>=2.14.1 ; extra == 'testing'
   - pytest==7.0.1 ; extra == 'testing'
   - pygame==2.1.0 ; extra == 'toy-text'
   requires_python: '>=3.6'
@@ -3787,10 +3787,10 @@ packages:
   url: https://files.pythonhosted.org/packages/aa/ea/853aa32dfa1006d3eb43384712f35b8f2d6f0a757b8c779d40c29e3e8515/ml_collections-0.1.1.tar.gz
   sha256: 3fefcc72ec433aa1e5d32307a3e474bbb67f405be814ea52a2166bfc9dbe68cc
   requires_dist:
-  - absl-py
   - pyyaml
-  - six
+  - absl-py
   - contextlib2
+  - six
   - typing ; python_full_version < '3.5'
   - dataclasses ; python_full_version < '3.7'
   requires_python: '>=2.6'
@@ -5614,6 +5614,13 @@ packages:
   - cloudpickle
   - pandas
   - matplotlib
+  - pytest ; extra == 'tests'
+  - pytest-cov ; extra == 'tests'
+  - pytest-env ; extra == 'tests'
+  - pytest-xdist ; extra == 'tests'
+  - mypy ; extra == 'tests'
+  - ruff>=0.3.1 ; extra == 'tests'
+  - black<25,>=24.2.0 ; extra == 'tests'
   - sphinx<8,>=5 ; extra == 'docs'
   - sphinx-autobuild ; extra == 'docs'
   - sphinx-rtd-theme>=1.3.0 ; extra == 'docs'
@@ -5636,13 +5643,6 @@ packages:
   - rich ; extra == 'extra-no-roms'
   - shimmy[atari]~=1.3.0 ; extra == 'extra-no-roms'
   - pillow ; extra == 'extra-no-roms'
-  - pytest ; extra == 'tests'
-  - pytest-cov ; extra == 'tests'
-  - pytest-env ; extra == 'tests'
-  - pytest-xdist ; extra == 'tests'
-  - mypy ; extra == 'tests'
-  - ruff>=0.3.1 ; extra == 'tests'
-  - black<25,>=24.2.0 ; extra == 'tests'
   requires_python: '>=3.8'
   editable: true
 - kind: pypi
@@ -6081,8 +6081,8 @@ packages:
   url: https://files.pythonhosted.org/packages/a3/8b/9dd44781a4e87746a426c56c3368c3da64fd90a130f582340cbf74397f8e/urdf_parser_py-0.0.4.tar.gz
   sha256: e983f637145fded67bcff6a542302069bb975b2edf1b18318c093abba1b794cc
   requires_dist:
-  - pyyaml
   - lxml
+  - pyyaml
 - kind: pypi
   name: uri-template
   version: 1.3.0

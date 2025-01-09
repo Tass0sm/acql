@@ -11,7 +11,7 @@ import corallab_stl.expression_jax2 as stl
 
 
 def true_exp(var: Var):
-    true = stl.STLPredicate(var, lambda s: 999, lower_bound=0.0, info={"true": True})
+    true = stl.STLPredicate(var, lambda s, _: 999, lower_bound=0.0, info={"true": True})
     return true
 
 

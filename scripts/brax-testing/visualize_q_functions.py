@@ -35,18 +35,19 @@ import corallab_stl.expression_jax2 as stl
 
 # tasks
 from task_aware_skill_composition.brax.tasks import get_task
-from task_aware_skill_composition.brax.cmdp import make_cmdp, make_aut_goal_cmdp
-from task_aware_skill_composition.brax.reward_shaping import make_shaped_reward_mdp, make_shaped_reward_mdp2, make_aut_goal_mdp
+from task_aware_skill_composition.brax.utils import make_cmdp, make_aut_goal_cmdp, make_shaped_reward_mdp, make_shaped_reward_mdp2, make_aut_goal_mdp
 
 mlflow.set_tracking_uri(f"file:///home/tassos/.local/share/mlflow")
-mlflow.set_experiment("proj2-hierarchy-comparison")
+# mlflow.set_experiment("proj2-hierarchy-comparison")
+mlflow.set_experiment("proj2-main-algorithm-modification")
 
 # %%
 backend = 'mjx'
 
 # task = get_task("simple_maze", "umaze_constraint")
+task = get_task("simple_maze", "subgoal")
 # task = get_task("simple_maze_3d", "subgoal")
-task = get_task("ant_maze", "true")
+# task = get_task("ant_maze", "umaze_constraint")
 env = task.env
 
 spec = task.lo_spec
@@ -83,7 +84,7 @@ from brax.training.acme import running_statistics
 
 
 # %%
-training_run_id = "47c7d22f481f47a5a58ad3873b865b78"
+training_run_id = "f35165c594144d7491123fad03a510c5"
 logged_model_path = f'runs:/{training_run_id}/policy_params'
 real_path = mlflow.artifacts.download_artifacts(logged_model_path)
 params = model.load_params(real_path)
@@ -108,14 +109,32 @@ hdcq_aut_network = hdcq_aut_networks.make_hdcq_networks(
       preprocess_observations_fn=normalize,
       preprocess_cost_observations_fn=cost_normalize_fn,
 )
-make_policy = hdcq_aut_networks.make_option_inference_fn(hdcq_aut_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_minimum"])
+make_option_policy = hdcq_aut_networks.make_option_inference_fn(hdcq_aut_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_minimum"])
 
 from task_aware_skill_composition.brax.agents.hdcqn_automaton_her import networks as hdcq_networks
-from task_aware_skill_composition.visualization.critic import make_plots_for_hdcqn, make_plots_for_hdcqn_aut
+from task_aware_skill_composition.visualization.critic import (
+    make_plots_for_hdcqn, make_plots_for_hdcqn_aut, make_plots_for_forbidden_actions
+)
+
+# def make_test_option_policy(unused, **kwargs):
+#     def test_option_policy(unused, unused2):
+#         return jnp.ones((unused.shape[0], ), dtype=jnp.int32) * 2, {}
+#     return test_option_policy
+
+# make_plots_for_forbidden_actions(
+#         aut_goal_cmdp,
+#         task.hdcqn_her_hps["safety_minimum"],
+#         make_option_policy,
+#         # make_test_option_policy,
+#         hdcq_aut_network,
+#         params,
+#         "test",
+#         save_and_close=True,
+# )
 
 plot1, plot2 = make_plots_for_hdcqn_aut(
         aut_goal_cmdp,
-        make_policy,
+        make_option_policy,
         hdcq_aut_network,
         params,
         "test",

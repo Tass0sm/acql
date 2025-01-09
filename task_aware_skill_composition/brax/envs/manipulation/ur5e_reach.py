@@ -35,7 +35,7 @@ class UR5eReach(UR5eEnvs):
         self.goal_dist = 0.1
 
         self.arm_noise_scale = 0
-        self.goal_noise_scale = 0.2
+        self.goal_noise_scale = jnp.array([0.2, 0.2, 0.4])
         
     def _get_initial_state(self, rng):
         target_q = self.sys.init_q[:7]
@@ -48,9 +48,9 @@ class UR5eReach(UR5eEnvs):
 
     def _get_initial_goal(self, pipeline_state: base.State, rng):
         """
-        Generate goals in a box. x: [-0.2, 0.2], y: [0.3, 0.7], z: [0.1, 0.5]
+        Generate goals in a box. x: [-0.2, 0.2], y: [0.3, 0.7], z: [0.0, 0.8]
         """
-        goal = jnp.array([0, 0.5, 0.3]) + self.goal_noise_scale * jax.random.uniform(rng, [3], minval=-1)
+        goal = jnp.array([0, 0.5, 0.4]) + self.goal_noise_scale * jax.random.uniform(rng, [3], minval=-1)
         return goal
         
     def _compute_goal_completion(self, obs, goal):
