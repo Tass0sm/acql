@@ -91,7 +91,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
 
     ap_param_fields = {}
 
-    if getattr(self.env, "randomize_goals", False):
+    if hasattr(self.env, "randomize_goals") and getattr(self.env, "randomize_goals", False):
       for _, ap in self.env.automaton.aps.items():
         i = 32 + ap.info["ap_i"]
         ap_param_fields[i] = eval_state.info["ap_params"][:, 0]

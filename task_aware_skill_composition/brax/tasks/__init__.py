@@ -34,6 +34,7 @@ from .ant_maze import (
     AntMazeBranching2,
     AntMazeObligationConstraint1,
     AntMazeObligationConstraint2,
+    AntMazeObligationConstraint3,
 )
 from .ant_push import (
     AntPushDefault,
@@ -48,6 +49,7 @@ from .simple_maze import (
     SimpleMazeBranching2,
     SimpleMazeObligationConstraint1,
     SimpleMazeObligationConstraint2,
+    SimpleMazeObligationConstraint3,
     SimpleMazeUntil1,
 )
 from .simple_maze_3d import (
@@ -59,6 +61,7 @@ from .simple_maze_3d import (
     SimpleMaze3DBranching1,
     SimpleMaze3DObligationConstraint1,
     SimpleMaze3DObligationConstraint2,
+    SimpleMaze3DObligationConstraint3,
 )
 from .drone_maze import (
     DroneMazeNav,
@@ -79,6 +82,8 @@ from .panda import (
 from .ur5e import (
     UR5eReachTask,
     UR5eReachShelfTask,
+    UR5eReachShelfEEFTask,
+    UR5eScalabilityTestTask,
     UR5eTranslateTask,
 )
 
@@ -126,6 +131,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "branching2": AntMazeBranching2,
             "obligation1": AntMazeObligationConstraint1,
             "obligation2": AntMazeObligationConstraint2,
+            "obligation3": AntMazeObligationConstraint3,
         },
         "ant_push": {
             "true": AntPushDefault,
@@ -140,6 +146,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "branching2": SimpleMazeBranching2,
             "obligation1": SimpleMazeObligationConstraint1,
             "obligation2": SimpleMazeObligationConstraint2,
+            "obligation3": SimpleMazeObligationConstraint3,
         },
         "simple_maze_3d": {
             "true": SimpleMaze3DNav,
@@ -150,6 +157,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "branching1": SimpleMaze3DBranching1,
             "obligation1": SimpleMaze3DObligationConstraint1,
             "obligation2": SimpleMaze3DObligationConstraint2,
+            "obligation3": SimpleMaze3DObligationConstraint3,
         },
         "drone_maze": {
             "true": DroneMazeNav,
@@ -171,7 +179,9 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         "ur5e": {
             "reach": UR5eReachTask,
             "reach_shelf": UR5eReachShelfTask,
+            "reach_shelf_eef": UR5eReachShelfEEFTask,
             "translate": UR5eTranslateTask,
+            "scalability_test": UR5eScalabilityTestTask,
         },
         # "car": {
         #     "seq": CarSequence,

@@ -123,6 +123,17 @@ class AntMazeObligationConstraint2(ObligationConstraint2Mixin, AntMazeTaskBase):
         super().__init__(None, 1000, backend=backend)
 
 
+class AntMazeObligationConstraint3(ObligationConstraint3Mixin, AntMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0])
+        self.obs_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 12.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+
 # class AntMazeObligationConstraint2(ObligationConstraint2Mixin, AntMazeTaskBase):
 #     def __init__(self, backend="mjx"):
 #         self.obs1_corners = (jnp.array([6.0, 2.0]), jnp.array([10.0, 10.0]))

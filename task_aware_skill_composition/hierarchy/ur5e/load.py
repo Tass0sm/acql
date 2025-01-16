@@ -33,11 +33,11 @@ def load_ur5e_options(
 
     # In training environment, not in goal conditioned maze env
     UR5E_TRANSLATE_OBS_SIZE = 12
-    UR5E_TRANSLATE_ACTION_SIZE = 4
+    UR5E_TRANSLATE_ACTION_SIZE = 5
 
     options_l = []
 
-    for name in ["up", "forward", # "right", "left", "backward", "down"
+    for name in ["up", # "forward", "right", "left", "backward", "down"
                  ]:
         option_param_file = files(options) / (name + ".pkl")
         params = model.load_params(option_param_file)
@@ -62,5 +62,44 @@ def load_ur5e_options(
                    adapter=adapter)
         )
 
+
+    return options_l
+
+
+def load_ur5e_eef_options(
+        termination_prob: float = 1.0,
+        adapter: Optional[Callable] = None,
+):
+
+    options_l = []
+
+    ctrl_dict = {
+        "up": jnp.array([0.0, 0.0, 1.0]),
+        "forward": jnp.array([0.0, 1.0, 0.0]),
+        "right": jnp.array([1.0, 0.0, 0.0]),
+        "left": jnp.array([-1.0, 0.0, 0.0]),
+        "backward": jnp.array([0.0, -1.0, 0.0]),
+        "down": jnp.array([0.0, 0.0, -1.0]),
+    }
+
+    def hard_policy(
+            ctrl,
+            observations: types.Observation,
+            key_sample: PRNGKey
+    ) -> Tuple[types.Action, types.Extra]:
+        return ctrl, {
+            'log_prob': 0.0,
+            'raw_action': ctrl
+        }
+
+    for name, ctrl in ctrl_dict.items():
+        print(name, ctrl)
+        options_l.append(
+            Option(
+                name, None, None, functools.partial(hard_policy, ctrl),
+                termination_policy=BernoulliTerminationPolicy(termination_prob),
+                adapter=adapter
+            )
+        )
 
     return options_l

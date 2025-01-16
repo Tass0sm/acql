@@ -11,7 +11,7 @@ from task_aware_skill_composition.brax.envs.manipulation.ur5e_envs import UR5eEn
 """
 Reach: Move end of arm to random goal.
 - Observation space: 13-dim obs + 3-dim goal.
-- Action space:      4-dim, each element in [-1, 1], corresponding to target angles for joints 1, 2, 4, 6.
+- Action space:      5-dim, each element in [-1, 1], corresponding to target angles for joints 0, 1, 2, 3, 4.
 
 See _get_obs() and ArmEnvs._convert_action() for details.
 """
@@ -21,7 +21,7 @@ class UR5eReach(UR5eEnvs):
     
     @property
     def action_size(self) -> int:
-        return 4 # Override default (actuator count)
+        return 5 # Override default (actuator count)
     
     # See ArmEnvs._set_environment_attributes for descriptions of attributes
     def _set_environment_attributes(self):

@@ -121,7 +121,7 @@ def semimdp_actor_step(
   actions, policy_extras = policy(env_state.obs, policy_key)
 
   # split step key so that all vectorized envs get their own key
-  step_keys = jax.random.split(step_key, actions.shape[0])
+  step_keys = jax.random.split(step_key, env_state.obs.shape[0])
   nstate = env.step(env_state, (actions, step_keys))
 
   state_extras = {x: nstate.info[x] for x in extra_fields}

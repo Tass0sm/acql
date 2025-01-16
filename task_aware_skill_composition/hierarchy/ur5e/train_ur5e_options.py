@@ -46,7 +46,7 @@ def progress_fn(num_steps, metrics):
 
 def train_ur5e_options(seed=0):
 
-    target_velocity_vecs = {
+    target_disp_vecs = {
         "up": jnp.array([0.0, 0.0, 1.0]),
         "forward": jnp.array([0.0, 1.0, 0.0]),
         "right": jnp.array([1.0, 0.0, 0.0]),
@@ -57,9 +57,10 @@ def train_ur5e_options(seed=0):
 
     train_fn = functools.partial(ppo.train, seed=seed, **ppo_hps)
 
-    for name, target_vec in target_velocity_vecs.items():
+    for name, target_vec in target_disp_vecs.items():
         option_mdp = UR5eTranslate(
-            target_velocity_vec=target_vec,
+            target_velocity_vec=None,
+            target_disp_vec=target_vec,
             backend="mjx"
         )
 

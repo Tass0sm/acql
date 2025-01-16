@@ -21,12 +21,14 @@ from brax.io import html
 
 
 def get_rollout(env, flat_policy, n_steps=200, render_every=1, seed=0):
-    jit_reset = jax.jit(env.reset)
-    jit_step = jax.jit(env.step)
+    reset = jax.jit(env.reset)
+    step = jax.jit(env.step)
+    # reset = env.reset
+    # step = env.step
 
     # reset the environment
     rng = jax.random.PRNGKey(seed)
-    state = jit_reset(rng)
+    state = reset(rng)
 
     rollout = [state]
     actions = []
@@ -38,7 +40,7 @@ def get_rollout(env, flat_policy, n_steps=200, render_every=1, seed=0):
         ctrl, _ = flat_policy(obs, act_rng)
         ctrl = ctrl.squeeze(0)
 
-        state = jit_step(state, ctrl)
+        state = step(state, ctrl)
 
         if state.done:
             break

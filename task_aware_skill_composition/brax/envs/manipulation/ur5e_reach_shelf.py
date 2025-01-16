@@ -32,3 +32,30 @@ class UR5eReachShelf(UR5eReach):
 
         self.arm_noise_scale = 0
         self.goal_noise_scale = 0.2
+
+    def step(self, state: State, action: jax.Array) -> State:
+        """Run one timestep of the environment's dynamics."""
+
+        # Run mujoco step
+        pipeline_state0 = state.pipeline_state
+        if "EEF" in self.env_name:
+            action = self._convert_action_to_actuator_input_EEF(pipeline_state0, action)
+        else:
+            arm_angles = self._get_arm_angles(pipeline_state0)
+            action = self._convert_action_to_actuator_input_joint_angle(action, arm_angles, delta_control=True)
+
+        pipeline_state = self.pipeline_step(pipeline_state0, action)
+
+        # Compute variables for state update, including observation and goal/reward
+        timestep = state.info["timestep"] + 1 / self.episode_length
+        obs = self._get_obs(pipeline_state, state.info["goal"], timestep)
+
+        success, success_easy, success_hard = self._compute_goal_completion(obs, state.info["goal"])
+        state.metrics.update(success=success, success_easy=success_easy, success_hard=success_hard)
+
+        reward = success
+        done = 0.0
+        info = {**state.info, "timestep": timestep}
+
+        new_state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done, info=info)
+        return new_state

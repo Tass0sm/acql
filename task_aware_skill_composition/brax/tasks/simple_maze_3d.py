@@ -111,6 +111,17 @@ class SimpleMaze3DObligationConstraint2(ObligationConstraint2Mixin, SimpleMaze3D
         super().__init__(None, 1000, backend=backend)
 
 
+class SimpleMaze3DObligationConstraint3(ObligationConstraint3Mixin, SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0, 6.0])
+        self.obs_radius = 2.0
+
+        self.goal1_location = jnp.array([8.0, 8.0, 10.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):
 #     def __init__(self, backend="mjx"):
 #         self.obs1_location = jnp.array([8.0, 8.0])

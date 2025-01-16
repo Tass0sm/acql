@@ -124,9 +124,9 @@ class UR5eEnvs(ArmEnvs):
         targeting an absolute angle. Using delta control might improve convergence by reducing the effective action space at any timestep.
         """
 
-        arm_action = jnp.array([action[0], action[1], 1.9000, action[2], action[3], 0.0000]) # Expand to 4-dim to 6-dim, and fill in fixed values for joints 3, 5
-        min_value = jnp.array([0.0000, -3.2000, 1.9000, -2.3830, -2.5700, 0.0000])
-        max_value = jnp.array([3.1415, -1.2000, 1.9000, -0.3830, -0.5700, 0.0000])
+        arm_action = jnp.array([action[0], action[1], action[2], action[3], action[4], 0.0000]) # Expand from 5-dim to 6-dim, and fill in fixed values for joint 5
+        min_value = jnp.array([0.0000, -2.2000 - 1.57, 1.9000 - 1.57, -1.3830 - 1.57, -1.5700 - 1.57, 0.0000])
+        max_value = jnp.array([3.1415, -2.2000 + 1.57, 1.9000 + 1.57, -1.3830 + 1.57, -1.5700 + 1.57, 0.0000])
 
         # If f(x) = offset + x * multiplier, then this offset and multiplier yield f(-1) = min_value, f(1) = max_value.
         offset = (min_value + max_value) / 2
@@ -145,7 +145,7 @@ class UR5eEnvs(ArmEnvs):
         # Gripper control
         # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
         # The UR5e Gripper (Robotiq-85), has a single control input
-        if self.env_name not in ("ur5e_reach"):
+        if self.env_name not in ("ur5e_reach", "ur5e_reach_shelf"):
             gripper_action = jnp.where(action[-1] > 0, jnp.array([0], dtype=float), jnp.array([255], dtype=float))
             converted_action = jnp.concatenate([arm_action] + [gripper_action])
         else:
@@ -154,16 +154,17 @@ class UR5eEnvs(ArmEnvs):
         return converted_action
 
     def _convert_action_to_actuator_input_EEF(self, pipeline_state: base.State, action: jax.Array) -> jax.Array:
-        eef_index = 2
+        eef_index = 1
         current_position = pipeline_state.x.pos[eef_index]
-        delta_range = 0.2 # Unlike arm angle control which is more complex, if this number is 0.2, an action of +/- 1 simply targets +/- 0.2 distance in position
+        delta_range = 0.05 # Unlike arm angle control which is more complex, if this number is 0.2, an action of +/- 1 simply targets +/- 0.2 distance in position
         arm_action = current_position + delta_range * jnp.clip(action, -1, 1)
 
         # Gripper control
         # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
-        gripper_action = jnp.where(action[-1] > 0, jnp.array([0, 0], dtype=float), jnp.array([255, 255], dtype=float))
+        # gripper_action = jnp.where(action[-1] > 0, jnp.array([0, 0], dtype=float), jnp.array([255, 255], dtype=float))
 
-        converted_action = jnp.concatenate([arm_action] + [gripper_action])
+        # converted_action = jnp.concatenate([arm_action] + [gripper_action])
+        converted_action = arm_action
         return converted_action
 
     # # Methods to be overridden by specific environments

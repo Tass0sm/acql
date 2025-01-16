@@ -63,7 +63,7 @@ def make_aut_mdp(task):
     return mdp
 
 
-def make_reward_machine_mdp(task):
+def make_reward_machine_mdp(task, reward_shaping=False):
     mdp = AutomatonWrapper(
         task.env,
         task.lo_spec,
@@ -74,6 +74,7 @@ def make_reward_machine_mdp(task):
     mdp = AutomatonRewardMachineWrapper(
         mdp,
         task.rm_config,
+        reward_shaping=reward_shaping
     )
 
     return mdp
@@ -90,7 +91,7 @@ def make_aut_goal_mdp(task, randomize_goals=True):
     return mdp
 
 
-def make_aut_goal_cmdp(task, randomize_goals=True):
+def make_aut_goal_cmdp(task, randomize_goals=True, margin=1.0):
     mdp = AutomatonGoalConditionedWrapper(
         task.env,
         task.lo_spec,
@@ -98,6 +99,6 @@ def make_aut_goal_cmdp(task, randomize_goals=True):
         randomize_goals=randomize_goals,
     )
 
-    cmdp = AutomatonCostWrapper(mdp)
+    cmdp = AutomatonCostWrapper(mdp, margin=margin)
 
     return cmdp

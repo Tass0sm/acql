@@ -41,6 +41,7 @@ class Option:
             params,
             inference_fn,
             termination_policy: Callable = BernoulliTerminationPolicy(0.2),
+            reward_model = None,
             adapter: Optional[Callable] = None,
     ):
         self.name = name
@@ -52,6 +53,10 @@ class Option:
 
         # beta_o
         self.termination_policy = termination_policy
+
+        # R_o
+        if reward_model is not None:
+            self.reward_model = reward_model
 
         # The option may only consider a subset of the observation/state space
         if adapter is not None:

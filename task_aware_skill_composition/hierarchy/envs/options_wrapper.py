@@ -20,10 +20,12 @@ class OptionsWrapper(Wrapper):
             env: Env,
             options: Sequence[Option],
             discounting: float,
+            takes_key = True,
     ):
         super().__init__(env)
 
         self.options = options
+        self.takes_key = takes_key
 
         if hasattr(env, "automaton") and env.augment_obs:
             def augment_adapter(option):
@@ -53,7 +55,11 @@ class OptionsWrapper(Wrapper):
 
         """
 
-        o_t, key = option_and_key
+        if self.takes_key:
+            o_t, key = option_and_key
+        else:
+            o_t = option_and_key
+            key = jax.random.PRNGKey(0)
 
         if isinstance(self.options[0].termination_policy, FixedLengthTerminationPolicy):
             length = self.options[0].termination_policy.t
@@ -73,10 +79,10 @@ class OptionsWrapper(Wrapper):
 
         else:
             def while_cond(x):
-                s_t, _, _, _, key = x
+                s_t, iters, _, _, key = x
                 beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t.obs, key)
-                return beta_t != 1
-    
+                return jnp.logical_and(beta_t != 1, iters < 5)
+
             def while_body(x):
                 s_t, iters, r_t, c_t, key = x
                 key, inf_key = jax.random.split(key)

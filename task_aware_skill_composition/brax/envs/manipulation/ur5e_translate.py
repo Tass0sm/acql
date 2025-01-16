@@ -21,14 +21,18 @@ class UR5eTranslate(PipelineEnv):
     def __init__(
             self,
             backend="mjx",
-            healthy_angle_range=(-0.523598775598, 0.523598775598),
-            healthy_reward=1.0,
+            healthy_angle_range=(-0.196349540849, 0.196349540849),
+            healthy_reward=5.0,
+            terminate_when_unhealthy=False,
             target_velocity_vec: jnp.array = jnp.array([1.0, 0.0, 0.0]),
+            target_disp_vec: jnp.array = None,
             **kwargs
     ):
         self.healthy_reward = healthy_reward
+        self.terminate_when_unhealthy = terminate_when_unhealthy
         self.healthy_angle_range = healthy_angle_range
         self.target_velocity_vec = target_velocity_vec
+        self.target_disp_vec = target_disp_vec
 
         # links 1-6 are indices 0-5. The end-effector (eef) base is merged with
         # link 5, so we say link 5 index = eef index.
@@ -62,10 +66,13 @@ class UR5eTranslate(PipelineEnv):
         pipeline_state = self.pipeline_init(q, qd)
         timestep = 0.0
 
-        # Fill info variable
-        initial_eef_rot = Rotation.from_quat(pipeline_state.x.rot[self.eef_index])
-        initial_eef_out_vector = initial_eef_rot.apply(jnp.array([1.0, 0.0, 0.0]))
+        # The default out vector of the EEF on the model is 0,0,1
+        # initial_eef_rot = Rotation.from_quat(pipeline_state.x.rot[self.eef_index])
+        # initial_eef_out_vector = initial_eef_rot.apply(jnp.array([0.0, 0.0, 1.0]))
+        initial_eef_out_vector = jnp.array([0.0, 0.0, -1.0])
+        eef_position = pipeline_state.x.pos[self.eef_index]
 
+        # Fill info variable.
         rng, subkey1, subkey2 = jax.random.split(rng, 3)
         info = {
             "initial_eef_out_vector": initial_eef_out_vector,
@@ -77,7 +84,16 @@ class UR5eTranslate(PipelineEnv):
         # Get components for state (observation, reward, metrics)
         obs = self._get_obs(pipeline_state, timestep)
         reward, done, zero = jnp.zeros(3)
-        metrics = {} # "success": zero, "success_easy": zero, "success_hard": zero}
+        metrics = {
+            "reward_forward": zero,
+            "reward_healthy": zero,
+            "x_position": eef_position[0],
+            "y_position": eef_position[1],
+            "z_position": eef_position[2],
+            "x_velocity": zero,
+            "y_velocity": zero,
+            "z_velocity": zero,
+        }
         return State(pipeline_state, obs, reward, done, metrics, info)
 
     def step(self, state: State, action: jax.Array) -> State:
@@ -86,7 +102,7 @@ class UR5eTranslate(PipelineEnv):
         # Run mujoco step
         pipeline_state0 = state.pipeline_state
         arm_angles = self._get_arm_angles(pipeline_state0)
-        action = self._convert_action_to_actuator_input_joint_angle(action, arm_angles, delta_control=False)
+        action = self._convert_action_to_actuator_input_joint_angle(action, arm_angles, delta_control=True)
 
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
@@ -94,33 +110,49 @@ class UR5eTranslate(PipelineEnv):
         timestep = state.info["timestep"] + 1 / self.episode_length
         obs = self._get_obs(pipeline_state, timestep)
 
+        eef_position = pipeline_state.x.pos[self.eef_index]
         eef_velocity = (pipeline_state.x.pos[self.eef_index] - pipeline_state0.x.pos[self.eef_index]) / self.dt
 
-        forward_reward = jnp.dot(eef_velocity, self.target_velocity_vec)
+        if self.target_velocity_vec is not None:
+            forward_reward = jnp.dot(eef_velocity, self.target_velocity_vec)
+        elif self.target_disp_vec is not None:
+            forward_reward = jnp.dot(eef_position, self.target_disp_vec)
+        else:
+            raise NotImplementedError()
 
         u = state.info["initial_eef_out_vector"]
         eef_rot = Rotation.from_quat(pipeline_state.x.rot[self.eef_index])
-        v = eef_out_vector = eef_rot.apply(jnp.array([1.0, 0.0, 0.0]))
+        v = eef_out_vector = eef_rot.apply(jnp.array([0.0, 0.0, 1.0]))
         deviation_angle = jnp.arccos(jnp.dot(u, v) / (jnp.linalg.norm(u) * jnp.linalg.norm(v)))
 
         min_angle, max_angle = self.healthy_angle_range
         is_healthy = jnp.where(deviation_angle < min_angle, 0.0, 1.0)
         is_healthy = jnp.where(deviation_angle > max_angle, 0.0, is_healthy)
-        healthy_reward = self.healthy_reward * is_healthy
-
-        breakpoint()
-        jax.debug.breakpoint()
+        if self.terminate_when_unhealthy:
+            healthy_reward = self.healthy_reward
+        else:
+            healthy_reward = self.healthy_reward * is_healthy
 
         reward = forward_reward + healthy_reward
-        done = 0.0
+        done = 1.0 - is_healthy if self.terminate_when_unhealthy else 0.0
         info = {**state.info, "timestep": timestep}
 
         new_state = state.replace(pipeline_state=pipeline_state, obs=obs, reward=reward, done=done, info=info)
+        new_state.metrics.update(
+            reward_forward=forward_reward,
+            reward_healthy=healthy_reward,
+            x_position=eef_position[0],
+            y_position=eef_position[1],
+            z_position=eef_position[2],
+            x_velocity=eef_velocity[0],
+            y_velocity=eef_velocity[1],
+            z_velocity=eef_velocity[2],
+        )
         return new_state
 
     @property
     def action_size(self) -> int:
-        return 4 # Override default (actuator count)
+        return 5 # Override default (actuator count)
 
     def _convert_action_to_actuator_input_joint_angle(self, action: jax.Array, arm_angles: jax.Array, delta_control=False) -> jax.Array:
         """
@@ -135,9 +167,9 @@ class UR5eTranslate(PipelineEnv):
         targeting an absolute angle. Using delta control might improve convergence by reducing the effective action space at any timestep.
         """
 
-        arm_action = jnp.array([action[0], action[1], 1.9000, action[2], action[3], 0.0000]) # Expand to 4-dim to 6-dim, and fill in fixed values for joints 3, 5
-        min_value = jnp.array([0.0000, -3.2000, 1.9000, -2.3830, -2.5700, 0.0000])
-        max_value = jnp.array([3.1415, -1.2000, 1.9000, -0.3830, -0.5700, 0.0000])
+        arm_action = jnp.array([action[0], action[1], action[2], action[3], action[4], 0.0000]) # Expand from 5-dim to 6-dim, and fill in fixed values for joint 5
+        min_value = jnp.array([0.0000, -2.2000 - 1.57, 1.9000 - 1.57, -1.3830 - 1.57, -1.5700 - 1.57, 0.0000])
+        max_value = jnp.array([3.1415, -2.2000 + 1.57, 1.9000 + 1.57, -1.3830 + 1.57, -1.5700 + 1.57, 0.0000])
 
         # If f(x) = offset + x * multiplier, then this offset and multiplier yield f(-1) = min_value, f(1) = max_value.
         offset = (min_value + max_value) / 2
@@ -156,10 +188,7 @@ class UR5eTranslate(PipelineEnv):
         # Gripper control
         # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
         # The UR5e Gripper (Robotiq-85), has a single control input
-
-        # NEVER USED FOR THIS ENV
-
-        if self.env_name not in ("ur5e_reach"):
+        if self.env_name not in ("ur5e_reach", "ur5e_reach_shelf"):
             gripper_action = jnp.where(action[-1] > 0, jnp.array([0], dtype=float), jnp.array([255], dtype=float))
             converted_action = jnp.concatenate([arm_action] + [gripper_action])
         else:
@@ -191,7 +220,7 @@ class UR5eTranslate(PipelineEnv):
         self.state_dim = 12
         self.goal_dist = 0.1
 
-        self.arm_noise_scale = 0
+        self.arm_noise_scale = 0.0
         self.goal_noise_scale = 0.2
 
     def _get_initial_state(self, rng):

@@ -27,6 +27,15 @@ def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, 
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
 
+    if hasattr(env, "automaton") and env.augment_obs:
+        def augment_adapter(option):
+            old_adapter = option.obs_adapter
+            new_adapter = lambda x: old_adapter(env.original_obs(x))
+            option.obs_adapter = new_adapter
+
+        for o in options:
+            augment_adapter(o)
+
     # reset the environment
     rng = jax.random.PRNGKey(seed)
     state = jit_reset(rng)

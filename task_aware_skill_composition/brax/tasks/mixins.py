@@ -19,15 +19,16 @@ class CenterConstraintMixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [1],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [1],
+            "reward_functions": {
                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
                 (0, 1): lambda s_t, a_t, s_t1: 0.0,
                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
             },
-            [(0, 0)]
-        )
+            "pruned_edges": [(0, 0)]
+        }
 
 
 class UMazeConstraintMixin:
@@ -42,15 +43,16 @@ class UMazeConstraintMixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [1],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [1],
+            "reward_functions": {
                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
                 (0, 1): lambda s_t, a_t, s_t1: 0.0,
                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
             },
-            [(0, 0)]
-        )
+            "pruned_edges": [(0, 0)]
+        }
 
 
 class SingleSubgoalMixin:
@@ -65,15 +67,16 @@ class SingleSubgoalMixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [],
+            "reward_functions": {
                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
                 (1, 0): lambda s_t, a_t, s_t1: 1.0,
                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
             },
-            [(1, 0), (0, 0)]
-        )
+            "pruned_edges": [(1, 0), (0, 0)]
+        }
 
 
 class TwoSubgoalsMixin:
@@ -91,17 +94,18 @@ class TwoSubgoalsMixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [],
+            "reward_functions": {
                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
                 (1, 2): lambda s_t, a_t, s_t1: 0.0,
                 (2, 2): lambda s_t, a_t, s_t1: 0.0,
                 (2, 0): lambda s_t, a_t, s_t1: 1.0,
                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
             },
-            [(1, 2), (2, 0), (0, 0)]
-        )
+            "pruned_edges": [(1, 2), (2, 0), (0, 0)]
+        }
 
 
 class Branching1Mixin:
@@ -118,9 +122,10 @@ class Branching1Mixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [],
+            "reward_functions": {
                 (3, 2): lambda s_t, a_t, s_t1: 0.0,
                 (3, 1): lambda s_t, a_t, s_t1: 0.0,
                 (3, 0): lambda s_t, a_t, s_t1: 1.0,
@@ -128,8 +133,8 @@ class Branching1Mixin:
                 (1, 0): lambda s_t, a_t, s_t1: 1.0,
                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
             },
-            [(3, 2), (3, 1), (3, 0), (2, 0), (1, 0), (0, 0)]
-        )
+            "pruned_edges": [(3, 2), (3, 1), (3, 0), (2, 0), (1, 0), (0, 0)]
+        }
 
 
 class Branching2Mixin:
@@ -146,15 +151,16 @@ class Branching2Mixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [],
+            "reward_functions": {
                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
                 (1, 0): lambda s_t, a_t, s_t1: 1.0,
                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
             },
-            [(1, 0), (0, 0)]
-        )
+            "pruned_edges": [(1, 0), (0, 0)]
+        }
 
 
 
@@ -175,9 +181,10 @@ class ObligationConstraint1Mixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [2],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [2],
+            "reward_functions": {
                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
                 (1, 0): lambda s_t, a_t, s_t1: 1.0,
                 (1, 2): lambda s_t, a_t, s_t1: 0.0,
@@ -185,8 +192,8 @@ class ObligationConstraint1Mixin:
                 (0, 2): lambda s_t, a_t, s_t1: 0.0,
                 (2, 2): lambda s_t, a_t, s_t1: 0.0,
             },
-            [(1, 0), (0, 0)]
-        )
+            "pruned_edges": [(1, 0), (0, 0)]
+        }
 
 
 class ObligationConstraint2Mixin:
@@ -206,9 +213,10 @@ class ObligationConstraint2Mixin:
 
     @property
     def rm_config(self) -> dict:
-        return (
-            [2],
-            {
+        return {
+            "final_state": 0,
+            "terminal_states": [2],
+            "reward_functions": {
                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
                 (1, 0): lambda s_t, a_t, s_t1: 1.0,
                 (1, 2): lambda s_t, a_t, s_t1: 0.0,
@@ -216,5 +224,9 @@ class ObligationConstraint2Mixin:
                 (0, 2): lambda s_t, a_t, s_t1: 0.0,
                 (2, 2): lambda s_t, a_t, s_t1: 0.0,
             },
-            [(1, 0), (0, 0)]
-        )
+            "pruned_edges": [(1, 0), (0, 0)]
+        }
+
+
+class ObligationConstraint3Mixin(ObligationConstraint2Mixin):
+    pass
