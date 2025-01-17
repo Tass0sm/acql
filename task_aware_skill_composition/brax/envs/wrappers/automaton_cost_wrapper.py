@@ -68,6 +68,7 @@ class AutomatonCostWrapper(Wrapper):
     def __init__(
             self,
             env: Env,
+            margin: float = 1.0,
     ):
         super().__init__(env)
 
@@ -76,7 +77,8 @@ class AutomatonCostWrapper(Wrapper):
         self.safety_conditions = get_safety_conditions(self.automaton.automaton)
         self.safety_exps = get_compiled_conditions(self.safety_conditions,
                                                    self.automaton.state_var,
-                                                   self.automaton.aps)
+                                                   self.automaton.aps,
+                                                   margin=margin)
 
         # For the number of conditioning inputs to Q functions
         self.unique_safety_conds = []
