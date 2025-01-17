@@ -113,7 +113,7 @@ class TaskBase(ABC):
         return {
             **self.hdqn_her_hps,
             "cost_scaling": 1.0,
-            "safety_minimum": 0.0,
+            "safety_threshold": 0.0,
         }
 
 

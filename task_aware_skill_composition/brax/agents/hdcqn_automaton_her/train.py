@@ -130,7 +130,7 @@ def train(
     max_devices_per_host: Optional[int] = None,
     reward_scaling: float = 1.,
     cost_scaling: float = 1.0,
-    safety_minimum: float = 0.0,
+    safety_threshold: float = 0.0,
     tau: float = 0.005,
     min_replay_size: int = 0,
     max_replay_size: Optional[int] = 10_0000,
@@ -154,6 +154,7 @@ def train(
     gamma_decay = 0.15,
     gamma_end_value = 0.98,
     gamma_goal_value = 1.0,
+    use_sum_cost_critic = False,
 ):
   process_id = jax.process_index()
   local_devices_to_use = jax.local_device_count()
@@ -188,7 +189,8 @@ def train(
   env = OptionsWrapper(
     environment,
     options,
-    discounting=discounting
+    discounting=discounting,
+    use_sum_cost_critic=use_sum_cost_critic,
   )
   if wrap_env:
     if isinstance(env, envs.Env):
@@ -239,9 +241,10 @@ def train(
       options=options,
       preprocess_observations_fn=normalize_fn,
       preprocess_cost_observations_fn=cost_normalize_fn,
+      use_sum_cost_critic=use_sum_cost_critic
   )
-  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, safety_minimum)
-  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, safety_minimum)
+  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, safety_threshold)
+  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, safety_threshold)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
@@ -297,8 +300,9 @@ def train(
       env=env,
       reward_scaling=reward_scaling,
       cost_scaling=cost_scaling,
-      safety_minimum=safety_minimum,
+      safety_threshold=safety_threshold,
       discounting=discounting,
+      use_sum_cost_critic=use_sum_cost_critic,
   )
   critic_update = gradients.gradient_update_fn(
       critic_loss, option_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
@@ -434,6 +438,9 @@ def train(
     )
     
     training_state, buffer_state, metrics = additional_sgds(training_state, buffer_state, training_key)
+
+    jax.debug.breakpoint()
+
     return training_state, env_state, buffer_state, metrics
 
   def prefill_replay_buffer(
@@ -597,7 +604,8 @@ def train(
       eval_env = OptionsWrapper(
         eval_env,
         options,
-        discounting=discounting
+        discounting=discounting,
+        use_sum_cost_critic=use_sum_cost_critic
       )
 
       eval_env = wrap_for_training(

@@ -21,6 +21,7 @@ class OptionsWrapper(Wrapper):
             options: Sequence[Option],
             discounting: float,
             takes_key = True,
+            use_sum_cost_critic = False,
     ):
         super().__init__(env)
 
@@ -35,6 +36,7 @@ class OptionsWrapper(Wrapper):
         self.num_options = len(options)
         self.discounting = discounting
 
+        self.use_sum_cost_critic = use_sum_cost_critic
 
         # we need this to prevent infinite loops if an option never decides to terminate.
         self.max_option_iters = 10
@@ -71,11 +73,22 @@ class OptionsWrapper(Wrapper):
                 a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], self.extra_adapter(s_t.obs), inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
-                c_t1 = jnp.minimum(c_t, s_t1.info["cost"])
+
+                if self.use_sum_cost_critic:
+                    c_t1 = c_t + jnp.pow(self.discounting, iters) * s_t1.info["cost"]
+                else:
+                    c_t1 = jnp.minimum(c_t, s_t1.info.get("cost", 0.0))
+
                 return (s_t1, iters+1, r_t1, c_t1, key)
 
+            if self.use_sum_cost_critic:
+                cost_identity = 0.0
+            else:
+                # positive infinity is the identity element for the min operation
+                cost_identity = jnp.inf
+
             # run body <length> times
-            fstate, k, freward, fcost, _ = jax.lax.fori_loop(0, length, for_body, (state, 0, 0, jnp.inf, key))
+            fstate, k, freward, fcost, _ = jax.lax.fori_loop(0, length, for_body, (state, 0, 0, cost_identity, key))
 
         else:
             def while_cond(x):
@@ -86,14 +99,24 @@ class OptionsWrapper(Wrapper):
             def while_body(x):
                 s_t, iters, r_t, c_t, key = x
                 key, inf_key = jax.random.split(key)
-                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
+                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], self.extra_adapter(s_t.obs), inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
-                c_t1 = jnp.minimum(c_t, s_t1.info.get("cost", 0.0))
+
+                if self.use_sum_cost_critic:
+                    c_t1 = c_t + jnp.pow(self.discounting, iters) * s_t1.info["cost"]
+                else:
+                    c_t1 = jnp.minimum(c_t, s_t1.info.get("cost", 0.0))
+
                 return (s_t1, iters+1, r_t1, c_t1, key)
     
+            if self.use_sum_cost_critic:
+                cost_identity = 0.0
+            else:
+                cost_identity = jnp.inf
+
             # run body at least once
-            nstate, steps, reward, cost, nkey = while_body((state, 0, 0, jnp.inf, key))
+            nstate, steps, reward, cost, nkey = while_body((state, 0, 0, cost_identity, key))
     
             # then continue running until terminated
             fstate, k, freward, fcost, _ = jax.lax.while_loop(while_cond, while_body, (nstate, steps, reward, cost, nkey))
