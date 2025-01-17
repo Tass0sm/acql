@@ -22,6 +22,7 @@ def get_compiled_conditions(
         state_var,
         aps,
         margin=1.0,
+        using_relu_cost=False,
 ):
     stls = []
 
@@ -56,8 +57,13 @@ def get_compiled_conditions(
 
     for k, form_k in sorted(safety_conditions.items(), key=lambda x: x[0]):
         stl_k = fold_spot_formula(to_stl_helper, form_k)
-        not_stl_k = stl.STLNegation(stl_k)
-        stls.append(not_stl_k)
+
+        if using_relu_cost:
+            # For the ablation
+            stls.append(stl_k)
+        else:
+            not_stl_k = stl.STLNegation(stl_k)
+            stls.append(not_stl_k)
 
     return stls
 
@@ -69,6 +75,7 @@ class AutomatonCostWrapper(Wrapper):
             self,
             env: Env,
             margin: float = 1.0,
+            relu_cost: bool = False,
     ):
         super().__init__(env)
 
@@ -78,7 +85,8 @@ class AutomatonCostWrapper(Wrapper):
         self.safety_exps = get_compiled_conditions(self.safety_conditions,
                                                    self.automaton.state_var,
                                                    self.automaton.aps,
-                                                   margin=margin)
+                                                   margin=margin,
+                                                   using_relu_cost=relu_cost)
 
         # For the number of conditioning inputs to Q functions
         self.unique_safety_conds = []
@@ -97,6 +105,8 @@ class AutomatonCostWrapper(Wrapper):
             self.state_to_unique_safety_cond_idx[q] for q in range(self.automaton.num_states)
         ], dtype=jnp.int32)
 
+        self.relu_cost = relu_cost
+
     def cost_obs(self, obs):
         return jnp.concatenate((self.goalless_obs(obs),
                                 self.automaton_obs(obs)), axis=-1)
@@ -107,12 +117,20 @@ class AutomatonCostWrapper(Wrapper):
         """
 
         nobs = jnp.expand_dims(self.original_obs(nstate.obs), 0)
+
+        # Unless using the ablation "relu_cost", this should be negative when
+        # unsafe, positive when safe.  That way taking the min over the whole
+        # trajectory returns the least safe point.
         safety_rho = jax.lax.switch(nstate.info["automata_state"],
                                     self.safety_exps,
                                     { self.state_var.idx: nobs }).squeeze()
-        # return jax.nn.relu(safety_rho)
-        # return jnp.tanh(safety_rho)
-        return safety_rho
+
+        if self.relu_cost:
+            # in the ablation, its only positive non-zero when unsafe.
+            return jax.nn.relu(safety_rho)
+        else:
+            # return jnp.tanh(safety_rho)
+            return safety_rho
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)

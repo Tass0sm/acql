@@ -35,7 +35,8 @@ class HDCQNetworks:
 def make_option_q_fn(
     hdcq_networks: HDCQNetworks,
     env: envs.Env,
-    safety_minimum: float
+    safety_threshold: float,
+    use_sum_cost_critic: bool = False,
 ):
 
   q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
@@ -62,7 +63,8 @@ def make_option_q_fn(
 def make_option_inference_fn(
     hdcq_networks: HDCQNetworks,
     env: envs.Env,
-    safety_minimum: float
+    safety_threshold: float,
+    use_sum_cost_critic : bool = False,
 ):
 
   q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
@@ -93,7 +95,10 @@ def make_option_inference_fn(
       double_cqs = hdcq_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
       cqs = jnp.max(double_cqs, axis=-1)
 
-      masked_q = jnp.where(cqs > safety_minimum, qs, -jnp.inf)
+      if use_sum_cost_critic:
+        masked_q = jnp.where(cqs < safety_threshold, qs, -jnp.inf)
+      else:
+        masked_q = jnp.where(cqs > safety_threshold, qs, -jnp.inf)
 
       option = masked_q.argmax(axis=-1)
       return option, {}
@@ -117,7 +122,8 @@ def make_option_inference_fn(
 def make_inference_fn(
     hdcq_networks: HDCQNetworks,
     env: envs.Env,
-    safety_minimum: float
+    safety_threshold: float,
+    use_sum_cost_critic : bool = False,
 ):
 
   q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
@@ -150,7 +156,10 @@ def make_inference_fn(
       double_cqs = hdcq_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
       cqs = jnp.max(double_cqs, axis=-1)
 
-      masked_q = jnp.where(cqs > safety_minimum, qs, -jnp.inf)
+      if use_sum_cost_critic:
+        masked_q = jnp.where(cqs < safety_threshold, qs, -jnp.inf)
+      else:
+        masked_q = jnp.where(cqs > safety_threshold, qs, -jnp.inf)
 
       option = masked_q.argmax(axis=-1)
       return option
@@ -271,7 +280,9 @@ def make_option_cost_q_network(
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     hidden_layer_sizes: Sequence[int] = (256, 256),
     activation: ActivationFn = linen.relu,
-    n_critics: int = 2) -> FeedForwardNetwork:
+    n_critics: int = 2,
+    use_sum_cost_critic: bool = False,
+) -> FeedForwardNetwork:
   """Creates a value network."""
 
   plain_obs_size = obs_size - aut_states
@@ -290,7 +301,7 @@ def make_option_cost_q_network(
           condition_dim=aut_states,
           layer_sizes=list(hidden_layer_sizes) + [num_options],
           activation=activation,
-          # final_activation=linen.tanh,
+          final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
           # layer_norm=True,
           kernel_init=jax.nn.initializers.lecun_uniform()
         )(hidden, aut_obs)
@@ -322,6 +333,7 @@ def make_hdcq_networks(
     hidden_layer_sizes: Sequence[int] = (256, 256),
     activation: networks.ActivationFn = linen.relu,
     options: Sequence[Option] = [],
+    use_sum_cost_critic: bool = False,
 ) -> HDCQNetworks:
 
   assert len(options) > 0, "Must pass at least one option"
@@ -346,7 +358,8 @@ def make_hdcq_networks(
       len(options),
       preprocess_observations_fn=preprocess_cost_observations_fn,
       hidden_layer_sizes=(64, 64, 64, 32),
-      activation=activation
+      activation=activation,
+      use_sum_cost_critic=use_sum_cost_critic
   )
 
   return HDCQNetworks(
