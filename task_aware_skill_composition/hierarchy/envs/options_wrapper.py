@@ -80,13 +80,13 @@ class OptionsWrapper(Wrapper):
         else:
             def while_cond(x):
                 s_t, iters, _, _, key = x
-                beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t.obs, key)
+                beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], self.extra_adapter(s_t.obs), key)
                 return jnp.logical_and(beta_t != 1, iters < self.max_option_iters)
 
             def while_body(x):
                 s_t, iters, r_t, c_t, key = x
                 key, inf_key = jax.random.split(key)
-                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
+                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], self.extra_adapter(s_t.obs), inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
                 c_t1 = jnp.minimum(c_t, s_t1.info.get("cost", 0.0))
