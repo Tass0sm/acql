@@ -21,6 +21,7 @@ def get_compiled_conditions(
         safety_conditions,
         state_var,
         aps,
+        margin=1.0,
 ):
     stls = []
 
@@ -42,7 +43,7 @@ def get_compiled_conditions(
             ap_id = int(root.ap_name()[3:])
             # return aps[ap_id]
             ap_pred = copy.deepcopy(aps[ap_id])
-            ap_pred.lower_bound = -1.0
+            ap_pred.lower_bound = -margin
             return ap_pred
         elif k == spot.op_Not:
             return stl.STLNegation(children[0])

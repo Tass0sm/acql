@@ -50,6 +50,9 @@ class LOFWrapper(Wrapper):
 
         return obs
 
+    def stripped_obs(self, obs):
+        return obs[..., self.non_goal_indices]
+
     def reset(self, rng: jax.Array) -> State:
         start_rng, rng = jax.random.split(rng)
 

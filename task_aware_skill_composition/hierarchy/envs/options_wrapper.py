@@ -28,16 +28,16 @@ class OptionsWrapper(Wrapper):
         self.takes_key = takes_key
 
         if hasattr(env, "automaton") and env.augment_obs:
-            def augment_adapter(option):
-                old_adapter = option.obs_adapter
-                new_adapter = lambda x: old_adapter(env.original_obs(x))
-                option.obs_adapter = new_adapter
-
-            for o in self.options:
-                augment_adapter(o)
+            self.extra_adapter = env.original_obs
+        else:
+            self.extra_adapter = lambda x: x
 
         self.num_options = len(options)
         self.discounting = discounting
+
+
+        # we need this to prevent infinite loops if an option never decides to terminate.
+        self.max_option_iters = 10
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
@@ -68,7 +68,7 @@ class OptionsWrapper(Wrapper):
                 s_t, iters, r_t, c_t, key = x
                 c_t = s_t.info["cost"]
                 key, inf_key = jax.random.split(key)
-                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], s_t.obs, inf_key)
+                a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], self.extra_adapter(s_t.obs), inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward
                 c_t1 = jnp.minimum(c_t, s_t1.info["cost"])
@@ -81,7 +81,7 @@ class OptionsWrapper(Wrapper):
             def while_cond(x):
                 s_t, iters, _, _, key = x
                 beta_t = jax.lax.switch(o_t, [o.termination for o in self.options], s_t.obs, key)
-                return jnp.logical_and(beta_t != 1, iters < 5)
+                return jnp.logical_and(beta_t != 1, iters < self.max_option_iters)
 
             def while_body(x):
                 s_t, iters, r_t, c_t, key = x

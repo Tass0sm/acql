@@ -22,6 +22,22 @@ class HDQNetworks:
   # parametric_option_distribution: distribution.ParametricDistribution
 
 
+def make_q_fn(hdq_networks: HDQNetworks):
+
+  def make_q(
+      params: types.PolicyParams,
+  ) -> types.Policy:
+
+    def q_fn(observation: types.Observation,) -> jnp.ndarray:
+      qs = hdq_networks.option_q_network.apply(*params, observation)
+      min_q = jnp.min(qs, axis=-1)
+      return min_q
+
+    return q_fn
+
+  return make_q
+
+
 def make_option_inference_fn(hdq_networks: HDQNetworks):
 
   def make_policy(

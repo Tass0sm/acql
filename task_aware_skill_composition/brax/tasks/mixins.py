@@ -30,6 +30,10 @@ class CenterConstraintMixin:
             "pruned_edges": [(0, 0)]
         }
 
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
+
 
 class UMazeConstraintMixin:
 
@@ -54,6 +58,10 @@ class UMazeConstraintMixin:
             "pruned_edges": [(0, 0)]
         }
 
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
+
 
 class SingleSubgoalMixin:
 
@@ -77,6 +85,10 @@ class SingleSubgoalMixin:
             },
             "pruned_edges": [(1, 0), (0, 0)]
         }
+
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
 
 
 class TwoSubgoalsMixin:
@@ -107,6 +119,10 @@ class TwoSubgoalsMixin:
             "pruned_edges": [(1, 2), (2, 0), (0, 0)]
         }
 
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        return jnp.array([0.0, 1.0, 1.0])
+
 
 class Branching1Mixin:
 
@@ -136,6 +152,10 @@ class Branching1Mixin:
             "pruned_edges": [(3, 2), (3, 1), (3, 0), (2, 0), (1, 0), (0, 0)]
         }
 
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
+
 
 class Branching2Mixin:
 
@@ -162,6 +182,9 @@ class Branching2Mixin:
             "pruned_edges": [(1, 0), (0, 0)]
         }
 
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
 
 
 class ObligationConstraint1Mixin:
@@ -195,6 +218,10 @@ class ObligationConstraint1Mixin:
             "pruned_edges": [(1, 0), (0, 0)]
         }
 
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
+
 
 class ObligationConstraint2Mixin:
 
@@ -226,6 +253,10 @@ class ObligationConstraint2Mixin:
             },
             "pruned_edges": [(1, 0), (0, 0)]
         }
+
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
 
 
 class ObligationConstraint3Mixin(ObligationConstraint2Mixin):

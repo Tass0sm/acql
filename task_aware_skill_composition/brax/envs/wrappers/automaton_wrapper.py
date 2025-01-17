@@ -63,14 +63,14 @@ class JaxAutomaton:
     # L :: S x A x S -> 2^P
     # We instead just use the current action and next state.
     # L :: A x S -> 2^P
-    def eval_aps(self, action, nstate, ap_params):
+    def eval_aps(self, action, nobs, ap_params):
         bit_vector = 0
 
         for i, ap in self.aps.items():
             # If ap_i is true for an env, flip the i-th bit in its
             # bit-vector. vectorize over all envs.
             bit_vector = jnp.bitwise_or(bit_vector, (ap({
-                self.state_var.idx: jnp.expand_dims(nstate, 0),
+                self.state_var.idx: jnp.expand_dims(nobs, 0),
                 # 32 + i is a special input which predicate i will look up for params
                 32 + i: ap_params[i],
             }) > 0.0).squeeze() * 2**i)
@@ -362,6 +362,12 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         self.augment_obs = True
         self.augment_with_subgoals = True
 
+        # get accepting state
+        accepting_states = [self.automaton.automaton.state_is_accepting(i) for i in range(self.automaton.automaton.num_states())]
+        assert sum(accepting_states) == 1, "Can't handle more than one accepting state"
+        self.accepting_state = accepting_states.index(True)
+
+
         # To determine the necessary goal inputs, the atomic propositions used
         # in the task specification are filtered based on weather or not a goal
         # has been associated with them. Non goal APs are collected into a
@@ -390,11 +396,11 @@ class AutomatonGoalConditionedWrapper(Wrapper):
             incoming_conds = []
 
             for edge in self.liveness_automaton.edges():
-                if edge.src != 0 and edge.dst == 0:
+                if edge.src != self.accepting_state and edge.dst == self.accepting_state:
                     incoming_conds.append(edge.cond)
 
             incoming_cond_bdd = reduce(buddy.bdd_or, incoming_conds, buddy.bddfalse)
-            plain_out_conditions[0] = incoming_cond_bdd
+            plain_out_conditions[self.accepting_state] = incoming_cond_bdd
 
         # At this point, we filter out the non-goal APs from the liveness
         # constraints for each step in the trajectory. For instance, the
@@ -454,6 +460,7 @@ class AutomatonGoalConditionedWrapper(Wrapper):
             elif ap.default_params is not None:
                 dim = ap.default_params.size
                 automaton_ap_params = automaton_ap_params.at[k, :dim].set(ap.default_params)
+
         self.automaton_ap_params = automaton_ap_params
         self.automaton_goal_array = get_automaton_goal_array((self.automaton.n_states, self.all_goals_dim),
                                                              self.out_conditions,
@@ -551,11 +558,16 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
         # In this environment, these keys are sometimes meaningless because
         # there may be multiple goals, or no goals, or changing goals.
-        del state.metrics["dist"]
-        del state.metrics["success"]
-        del state.metrics["success_easy"]
+        if "dist" in state.metrics:
+            del state.metrics["dist"]
+        if "success" in state.metrics:
+            del state.metrics["success"]
+        if "success_easy" in state.metrics:
+            del state.metrics["success_easy"]
+        if "success_hard" in state.metrics:
+            del state.metrics["success_hard"]
 
-        automaton_success = jnp.array(automaton_state == 0, dtype=float)
+        automaton_success = jnp.array(automaton_state == self.accepting_state, dtype=float)
         state.metrics.update(
             automaton_success=automaton_success,
         )
@@ -575,19 +587,24 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
         made_transition = jnp.where(automaton_state != nautomaton_state, jnp.uint32(1), jnp.uint32(0))
 
-        state.info.update(
+        nstate.info.update(
             automata_state=nautomaton_state,
             made_transition=made_transition
         )
 
         # In this environment, these keys are sometimes meaningless because
         # there may be multiple goals, or no goals, or changing goals.
-        del nstate.metrics["dist"]
-        del nstate.metrics["success"]
-        del nstate.metrics["success_easy"]
+        if "dist" in state.metrics:
+            del state.metrics["dist"]
+        if "success" in state.metrics:
+            del state.metrics["success"]
+        if "success_easy" in state.metrics:
+            del state.metrics["success_easy"]
+        if "success_hard" in state.metrics:
+            del state.metrics["success_hard"]
 
         # For now the only reward comes from completing the task.
-        reward = jnp.array(nautomaton_state == 0, dtype=float)
+        reward = jnp.array(nautomaton_state == self.accepting_state, dtype=float)
         automaton_success = reward
         nstate.metrics.update(
             automaton_success=automaton_success,

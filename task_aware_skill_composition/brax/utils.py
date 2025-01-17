@@ -58,6 +58,7 @@ def make_aut_mdp(task):
         task.env,
         task.lo_spec,
         task.obs_var,
+        strip_goal_obs = True,
     )
 
     return mdp

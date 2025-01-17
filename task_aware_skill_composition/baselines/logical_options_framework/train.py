@@ -27,9 +27,10 @@ import numpy as np
 from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
 from task_aware_skill_composition.hierarchy.option import Option
 from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsWrapper
+from task_aware_skill_composition.hierarchy.state import OptionState
 
 from task_aware_skill_composition.brax.agents.hdqn import networks as hdq_networks
-from task_aware_skill_composition.brax.envs.wrappers.automaton_wrapper import JaxAutomaton
+from task_aware_skill_composition.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
 from task_aware_skill_composition.baselines.logical_options_framework.lof_wrapper import LOFWrapper
 
 from corallab_stl.automata import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
@@ -66,6 +67,7 @@ def train(
     specification: Callable[..., jnp.ndarray],
     state_var,
     task_name,
+    task_state_costs=jnp.ones((1,)),
     # num_timesteps,
     # episode_length: int = 1000,
     # wrap_env: bool = True,
@@ -123,7 +125,7 @@ def train(
     # Train or load options
 
     if logical_option_run_ids is None:
-        logical_options = train_logical_option_policies(
+        logical_options = train_logical_options(
             environment,
             no_goal_aps,
             goal_aps,
@@ -139,7 +141,7 @@ def train(
             randomization_fn=randomization_fn,
         )
     else:
-        logical_options = load_logical_option_policies(
+        logical_options = load_logical_options(
             logical_option_run_ids,
             environment,
             no_goal_aps,
@@ -162,7 +164,7 @@ def train(
     # O
     # logical_options
 
-    mu = train_logical_option_metapolicy(
+    make_flat_policy, Q, _ = train_logical_option_metapolicy(
         environment,
         no_goal_aps,
         goal_aps,
@@ -171,15 +173,16 @@ def train(
         live_states,
         start_states,
         logical_options,
+        task_state_costs,
         specification,
         state_var,
         options=options,
     )
 
-    return None, None, None
+    return make_flat_policy, Q, None
 
 
-def train_logical_option_policies(
+def train_logical_options(
     environment: envs.Env,
     no_goal_aps,
     goal_aps,
@@ -299,7 +302,7 @@ def train_logical_option_policies(
             ap.info["name"], hdq_network, params, inference_fn,
             termination_policy=termination_policy,
             reward_model=reward_model,
-            adapter=lambda x: x[:4]
+            adapter=option_env.stripped_obs
         )
 
         logical_options.append(logical_option)
@@ -307,7 +310,7 @@ def train_logical_option_policies(
     return logical_options
 
 
-def load_logical_option_policies(
+def load_logical_options(
     logical_option_run_ids,
     environment: envs.Env,
     no_goal_aps,
@@ -386,7 +389,7 @@ def load_logical_option_policies(
             ap.info["name"], hdq_network, params, inference_fn,
             termination_policy=termination_policy,
             reward_model=reward_model,
-            adapter=lambda x: x[:4]
+            adapter=option_env.stripped_obs
         )
 
         logical_options.append(logical_option)
@@ -404,6 +407,7 @@ def train_logical_option_metapolicy(
     live_states,
     start_states,
     logical_options,
+    task_state_costs,
     specification: Callable[..., jnp.ndarray],
     state_var,
     # num_timesteps,
@@ -449,10 +453,12 @@ def train_logical_option_metapolicy(
     # whole start states (assumes goal space subset of state space is first n features.
     n = environment.pos_indices.size
     rem = environment.state_dim - n
-    whole_start_states = jnp.hstack((jnp.array(start_states), jnp.zeros((len(start_states), rem))))
+    start_states_array = jnp.array(start_states)
+    whole_start_states = jnp.hstack((start_states_array, jnp.zeros((len(start_states), rem))))
 
     # R_F
-    R_F = lambda f: 1.0
+    def R_F(f):
+        return task_state_costs[f]
 
     # R_o
     # comes from logical_options[i].reward_model
@@ -496,7 +502,7 @@ def train_logical_option_metapolicy(
         return r + next_v
 
     for k in range(15):
-        jax.debug.breakpoint()
+        # jax.debug.breakpoint()
         for f in range(len(live_states)):
             for s in range(len(start_states)):
                 Q_os = []
@@ -506,12 +512,24 @@ def train_logical_option_metapolicy(
                     Q = Q.at[f, s, o].set(Q_o)
 
                 V = V.at[f, s].set(max(Q_os))
+
+    jax.debug.breakpoint()
                 
-    make_policy = make_option_inference_fn(Q, logical_options)
-    make_flat_policy = make_inference_fn(Q, logical_options)
+    prod_mdp = AutomatonWrapper(
+        environment,
+        specification,
+        state_var,
+        strip_goal_obs = True,
+    )
+
+    make_policy = make_option_inference_fn(prod_mdp, logical_options, start_states_array)
+
+    # this is flat only with respect to the logical options, it is expected to
+    # use it with an option wrapper that takes care of the second level.
+    make_flat_policy1 = make_inference_fn1(prod_mdp, logical_options, options, start_states_array)
 
     first_env = OptionsWrapper(
-        environment,
+        prod_mdp,
         options,
         discounting=discounting,
         takes_key=False
@@ -547,115 +565,254 @@ def train_logical_option_metapolicy(
         key=key
     )
 
-    metrics = evaluator.run_evaluation(None, training_metrics={})
+    metrics = evaluator.run_evaluation(Q, training_metrics={})
     print(metrics)
 
-    return make_flat_policy, None, None
+    return make_flat_policy1, Q, None
 
 
+def make_option_inference_fn(env, logical_options, start_states):
 
+    def make_policy(
+        Q: types.PolicyParams,
+        deterministic: bool = False,
+    ) -> types.Policy:
+  
+        n_options = len(logical_options)
+    
+        def random_option_policy(observation: types.Observation,
+                                 option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            # suboption_keys = jax.random.split(option_key, observation.shape[0])
+            option = jax.random.randint(option_key, (observation.shape[0],), 0, n_options)
+            return option, {}
+    
+        def greedy_option_policy(observation: types.Observation,
+                                 option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            aut_state = env.automaton_obs(observation).argmax(axis=-1)
 
-def make_option_inference_fn(Q, logical_options):
+            position = observation[..., env.pos_indices]
 
-  def make_policy(
-      params: types.PolicyParams,
-      deterministic: bool = False,
-  ) -> types.Policy:
+            # expand dims to compare each posiiton with every start state
+            p = jnp.expand_dims(position, 1)
+            ss = jnp.expand_dims(start_states, 0)
 
-    n_options = len(logical_options)
+            # first nearest neighbor
+            distances = jnp.sqrt(jnp.square(ss - p).sum(axis=-1))
+            closest_state = jnp.argsort(distances, axis=-1)[..., 0]
 
-    def random_option_policy(observation: types.Observation,
-                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      # suboption_keys = jax.random.split(option_key, observation.shape[0])
-      option = jax.random.randint(option_key, (observation.shape[0],), 0, n_options)
-      return option, {}
-
-    def greedy_option_policy(observation: types.Observation,
-                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      # TODO: Fix this..  
-      # suboption_keys = jax.random.split(option_key, observation.shape[0])
-      return jnp.zeros((observation.shape[0],), dtype=jnp.int32), {}
-
-    epsilon = jnp.float32(0.1)
-
-    def eps_greedy_option_policy(observation: types.Observation,
-                                 key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      key_sample, key_coin = jax.random.split(key_sample)
-      coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
-      return jax.lax.cond(coin_flip, greedy_option_policy, random_option_policy, observation, key_sample)
-
-    if deterministic:
-      return greedy_option_policy
-    else:
-      return eps_greedy_option_policy
-
-  return make_policy
-
-
-def make_inference_fn(Q: jnp.ndarray, logical_options):
-
-  def make_policy(
-      params: types.PolicyParams,
-      deterministic: bool = False
-  ) -> types.Policy:
-
-    n_options = len(logical_options)
-
-    def random_option_policy(observation: types.Observation,
-                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      option = jax.random.randint(option_key, (), 0, n_options)
-      return option
-
-    def greedy_option_policy(observation: types.Observation,
-                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      qs = hdq_networks.option_q_network.apply(*params, observation)
-      min_q = jnp.min(qs, axis=-1)
-      option = min_q.argmax(axis=-1)
-      return option
-
-    epsilon = jnp.float32(0.1)
-
-    def eps_greedy_option_policy(observation: types.Observation,
-                                 key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      key_sample, key_coin = jax.random.split(key_sample)
-      coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
-      return jax.lax.cond(coin_flip, greedy_option_policy, random_option_policy, observation, key_sample)
-
-    def policy(
-        observations: types.Observation,
-        option_state: OptionState,
-        key_sample: PRNGKey
-    ) -> Tuple[types.Action, types.Extra]:
-
-      option_key, inference_key = jax.random.split(key_sample, 2)
-
-      def get_new_option(s_t, new_option_key):
+            return Q[aut_state, closest_state].argmax(axis=-1), {}
+    
+        epsilon = jnp.float32(0.1)
+    
+        def eps_greedy_option_policy(observation: types.Observation,
+                                     key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            key_sample, key_coin = jax.random.split(key_sample)
+            coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
+            return jax.lax.cond(coin_flip, greedy_option_policy, random_option_policy, observation, key_sample)
+    
         if deterministic:
-          option_idx = greedy_option_policy(s_t, new_option_key)
+            return greedy_option_policy
         else:
-          option_idx = eps_greedy_option_policy(s_t, new_option_key)
-        return option_idx
+            return eps_greedy_option_policy
+    
+    return make_policy
 
-      # calculate o_t from s_t, b_t, o_t-1
-      def get_option(s_t, b_t, o_t_minus_1, option_key):
-        return jax.lax.cond((b_t == 1),
-                            lambda: get_new_option(s_t, option_key),
-                            lambda: o_t_minus_1)
 
-      option_keys = jax.random.split(option_key, observations.shape[0])
-      option = jax.vmap(get_option)(observations, option_state.option_beta, option_state.option, option_keys)
+def make_inference_fn1(env, logical_options, options, start_states):
 
-      def low_level_inference(s_t, o_t, inf_key):
-        # ignore info for now
-        actions, _ = jax.lax.switch(o_t, [o.inference for o in logical_options], s_t, inf_key)
-        return actions, {}
+    def make_policy(
+            Q: types.PolicyParams,
+            deterministic: bool = False
+    ) -> types.Policy:
 
-      inf_keys = jax.random.split(inference_key, observations.shape[0])
-      actions, info = jax.vmap(low_level_inference)(observations, option, inf_keys)
-      info.update(option=option)
+        n_options = len(logical_options)
 
-      return actions, info
+        def random_logical_option_policy(observation: types.Observation,
+                                 option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            option = jax.random.randint(option_key, (), 0, n_options)
+            return option
 
-    return policy
+        def greedy_logical_option_policy(observation: types.Observation,
+                                         option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            aut_state = env.automaton_obs(observation).argmax(axis=-1)
 
-  return make_policy
+            position = observation[..., env.pos_indices]
+
+            # expand dims to compare each posiiton with every start state
+            p = jnp.expand_dims(position, -2)
+            ss = start_states
+
+            # first nearest neighbor
+            distances = jnp.sqrt(jnp.square(ss - p).sum(axis=-1))
+            closest_state = jnp.argsort(distances, axis=-1)[..., 0]
+
+            return Q[aut_state, closest_state].argmax(axis=-1)
+    
+        epsilon = jnp.float32(0.1)
+    
+        def eps_greedy_logical_option_policy(observation: types.Observation,
+                                     key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            key_sample, key_coin = jax.random.split(key_sample)
+            coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
+            return jax.lax.cond(coin_flip, greedy_logical_option_policy, random_logical_option_policy, observation, key_sample)
+    
+        def policy(
+            observations: types.Observation,
+            logical_option_state: OptionState,
+            key_sample: PRNGKey
+        ) -> Tuple[types.Action, types.Extra]:
+    
+            logical_option_key, inference_key = jax.random.split(key_sample, 2)
+
+            #
+            # STAGE 1: DETERMINING LOGICAL OPTION
+            #
+    
+            def get_new_logical_option(s_t, new_option_key):
+                if deterministic:
+                    option_idx = greedy_logical_option_policy(s_t, new_option_key)
+                else:
+                    option_idx = eps_greedy_logical_option_policy(s_t, new_option_key)
+                return option_idx
+      
+            # calculate o_t from s_t, b_t, o_t-1
+            def get_logical_option(s_t, logical_b_t, logical_o_t_minus_1, option_key):
+                return jax.lax.cond((logical_b_t == 1),
+                                    lambda: get_new_logical_option(s_t, option_key),
+                                    lambda: logical_o_t_minus_1)
+      
+            logical_option_keys = jax.random.split(logical_option_key, observations.shape[0])
+            logical_option = jax.vmap(get_logical_option)(observations,
+                                                          logical_option_state.option_beta,
+                                                          logical_option_state.option,
+                                                          logical_option_keys)
+
+            # does one level of inference!
+            def low_level_inference(s_t, o_t, inf_key):
+                high_key, low_key = jax.random.split(inf_key) 
+
+                # at lower level, the automaton obs isn't important.
+                # ignore info for now
+                lower_options, _ = jax.lax.switch(o_t, [o.inference for o in logical_options], env.original_obs(s_t), high_key)
+                
+                return lower_options, {}
+      
+            inf_keys = jax.random.split(inference_key, observations.shape[0])
+            actions, info = jax.vmap(low_level_inference)(observations, logical_option, inf_keys)
+            info.update(logical_option=logical_option)
+      
+            return actions, info
+    
+        return policy
+
+    return make_policy
+
+
+# def make_inference_fn(env, logical_options, options, start_states):
+
+#     def make_policy(
+#             Q: types.PolicyParams,
+#             deterministic: bool = False
+#     ) -> types.Policy:
+
+#         n_options = len(logical_options)
+
+#         def random_option_policy(observation: types.Observation,
+#                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+#             option = jax.random.randint(option_key, (), 0, n_options)
+#             return option
+
+#         def greedy_option_policy(observation: types.Observation,
+#                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+#             aut_state = env.automaton_obs(observation).argmax(axis=-1)
+
+#             position = observation[..., env.pos_indices]
+#             distances = jnp.sqrt(jnp.square(start_states - position).sum(axis=-1))
+#             closest_state = jnp.argsort(distances, axis=-1)[0]
+
+#             return Q[aut_state, closest_state].argmax(axis=-1)
+    
+#         epsilon = jnp.float32(0.1)
+    
+#         def eps_greedy_option_policy(observation: types.Observation,
+#                                      key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
+#             key_sample, key_coin = jax.random.split(key_sample)
+#             coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
+#             return jax.lax.cond(coin_flip, greedy_option_policy, random_option_policy, observation, key_sample)
+    
+#         def policy(
+#             observations: types.Observation,
+#             logical_option_state: OptionState,
+#             option_state: OptionState,
+#             key_sample: PRNGKey
+#         ) -> Tuple[types.Action, types.Extra]:
+    
+#             logical_option_key, option_key, inference_key = jax.random.split(key_sample, 3)
+
+#             #
+#             # STAGE 1: DETERMINING LOGICAL OPTION
+#             #
+    
+#             def get_new_logical_option(s_t, new_option_key):
+#                 if deterministic:
+#                     option_idx = greedy_option_policy(s_t, new_option_key)
+#                 else:
+#                     option_idx = eps_greedy_option_policy(s_t, new_option_key)
+#                 return option_idx
+      
+#             # calculate o_t from s_t, b_t, o_t-1
+#             def get_logical_option(s_t, logical_b_t, logical_o_t_minus_1, option_key):
+#                 return jax.lax.cond((logical_b_t == 1),
+#                                     lambda: get_new_logical_option(s_t, option_key),
+#                                     lambda: logical_o_t_minus_1)
+      
+#             logical_option_keys = jax.random.split(logical_option_key, observations.shape[0])
+#             logical_option = jax.vmap(get_logical_option)(observations,
+#                                                           logical_option_state.option_beta,
+#                                                           logical_option_state.option,
+#                                                           option_keys)
+
+#             #
+#             # STAGE 2: DETERMINING LOW OPTION
+#             # 
+
+#             def get_new_option(s_t, new_option_key):
+#                 if deterministic:
+#                     option_idx = greedy_option_policy(s_t, new_option_key)
+#                 else:
+#                     option_idx = eps_greedy_option_policy(s_t, new_option_key)
+#                 return option_idx
+      
+#             # calculate o_t from s_t, b_t, o_t-1
+#             def get_option(s_t, b_t, o_t_minus_1, option_key):
+#                 return jax.lax.cond((b_t == 1),
+#                                     lambda: get_new_option(s_t, option_key),
+#                                     lambda: o_t_minus_1)
+
+#             option_keys = jax.random.split(option_key, observations.shape[0])
+#             option = jax.vmap(get_option)(observations,
+#                                           option_state.option_beta,
+#                                           option_state.option,
+#                                           option_keys)
+
+      
+#             # does two levels of inference!
+#             def low_level_inference(s_t, o_t, inf_key):
+#                 high_key, low_key = jax.random.split(inf_key) 
+
+#                 # at two lower levels, the automaton obs isn't important.
+#                 # ignore info for now
+#                 lower_option, _ = jax.lax.switch(o_t, [o.inference for o in logical_options], env.no_automaton_obs(s_t), high_key)
+#                 actions, _ = jax.lax.switch(lower_option, [o.inference for o in options], env.no_automaton_obs(s_t), low_key)
+                
+#                 return actions, {}
+      
+#             inf_keys = jax.random.split(inference_key, observations.shape[0])
+#             actions, info = jax.vmap(low_level_inference)(observations, option, inf_keys)
+#             info.update(option=option)
+      
+#             return actions, info
+    
+#         return policy
+
+#     return make_policy
