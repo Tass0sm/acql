@@ -52,7 +52,7 @@ def actor_step(
   # calculate o_t from s_t, b_t, o_t-1
   # calculate a_t from s_t, o_t
   actions, policy_extras = policy(env_state.obs, option_state, key)
-  option = policy_extras["option"]
+  option = policy_extras["logical_option"]
 
   # calculate s_t+1 from s_t, a_t
   nstate = env.step(env_state, actions)

@@ -154,7 +154,7 @@ class Branching1Mixin:
 
     @property
     def lof_task_state_costs(self) -> jnp.ndarray:
-        raise NotImplementedError()
+        return jnp.array([0.0, 1.0, 1.0, 1.0])
 
 
 class Branching2Mixin:
@@ -220,7 +220,7 @@ class ObligationConstraint1Mixin:
 
     @property
     def lof_task_state_costs(self) -> jnp.ndarray:
-        raise NotImplementedError()
+        return jnp.array([0.0, 1.0, 1.0])
 
 
 class ObligationConstraint2Mixin:
@@ -256,7 +256,7 @@ class ObligationConstraint2Mixin:
 
     @property
     def lof_task_state_costs(self) -> jnp.ndarray:
-        raise NotImplementedError()
+        return jnp.array([0.0, 1.0, 1.0])
 
 
 class ObligationConstraint3Mixin(ObligationConstraint2Mixin):

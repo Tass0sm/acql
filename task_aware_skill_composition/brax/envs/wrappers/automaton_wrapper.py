@@ -503,6 +503,9 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
     def automaton_obs(self, obs):
         return obs[..., -self.automaton.n_states:]
+
+    def no_automaton_obs(self, obs):
+        return obs[..., :-self.automaton.n_states]
     
     def default_goal(self, obs):
         original_goal = obs[..., self.env.goal_indices]

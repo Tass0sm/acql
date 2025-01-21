@@ -29,7 +29,8 @@ class OptionsWrapper(Wrapper):
         self.takes_key = takes_key
 
         if hasattr(env, "automaton") and env.augment_obs:
-            self.extra_adapter = env.original_obs
+            # self.extra_adapter = env.original_obs
+            self.extra_adapter = env.no_automaton_obs
         else:
             self.extra_adapter = lambda x: x
 
@@ -39,7 +40,7 @@ class OptionsWrapper(Wrapper):
         self.use_sum_cost_critic = use_sum_cost_critic
 
         # we need this to prevent infinite loops if an option never decides to terminate.
-        self.max_option_iters = 10
+        self.max_option_iters = 100
 
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
