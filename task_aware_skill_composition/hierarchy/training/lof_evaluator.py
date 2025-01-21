@@ -19,12 +19,12 @@ Env = Union[envs.Env]
 
 from brax.training.acting import Evaluator
 
-from task_aware_skill_composition.hierarchy.training.acting import semimdp_generate_unroll
+from task_aware_skill_composition.hierarchy.training.acting import generate_unroll
 from task_aware_skill_composition.hierarchy.state import OptionState
 from task_aware_skill_composition.hierarchy.option import Option
 
 
-class HierarchicalEvaluatorWithSpecification(Evaluator):
+class LOFEvaluatorWithSpecification(Evaluator):
   """Class to run evaluations."""
 
   def __init__(
@@ -38,6 +38,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
           episode_length: int,
           action_repeat: int,
           key: PRNGKey,
+          low_step_limit: Optional[int] = None,
   ):
       self._key = key
       self._eval_walltime = 0.
@@ -53,10 +54,16 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
                                key: PRNGKey) -> State:
           reset_keys = jax.random.split(key, num_eval_envs)
           eval_first_state = eval_env.reset(reset_keys)
-          return semimdp_generate_unroll(
+
+          eval_first_option_state = OptionState(option=jnp.zeros_like(eval_first_state.reward, dtype=jnp.int32),
+                                                option_beta=jnp.ones_like(eval_first_state.reward, dtype=jnp.int32))
+
+          return generate_unroll(
               eval_env,
               eval_first_state,
+              eval_first_option_state,
               eval_policy_fn(policy_params),
+              options,
               key,
               unroll_length=episode_length // action_repeat,
           )
@@ -67,6 +74,8 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
       self.specification = specification
       self.state_var = state_var
 
+      self.low_step_limit = low_step_limit
+
   def run_evaluation(self,
                      policy_params: PolicyParams,
                      training_metrics: Metrics,
@@ -76,7 +85,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
 
     t = time.time()
 
-    eval_state, data = self._generate_eval_unroll(policy_params, unroll_key)
+    eval_state, eval_option_state, data = self._generate_eval_unroll(policy_params, unroll_key)
 
     # put the batch dim first
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)

@@ -24,7 +24,8 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+# from task_aware_skill_composition.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from task_aware_skill_composition.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
 from task_aware_skill_composition.hierarchy.option import Option
 from task_aware_skill_composition.hierarchy.envs.options_wrapper import OptionsWrapper
 from task_aware_skill_composition.hierarchy.state import OptionState
@@ -102,8 +103,6 @@ def train(
     ] = None,
 ):
 
-    mlflow.set_experiment("proj2-lof")
-
     # Common useful things
 
     full_automaton = JaxAutomaton(specification, state_var)
@@ -164,7 +163,7 @@ def train(
     # O
     # logical_options
 
-    make_flat_policy, Q, _ = train_logical_option_metapolicy(
+    make_flat_policy, Q, metrics = train_logical_option_metapolicy(
         environment,
         no_goal_aps,
         goal_aps,
@@ -179,7 +178,9 @@ def train(
         options=options,
     )
 
-    return make_flat_policy, Q, None
+    progress_fn(200, metrics)
+
+    return make_flat_policy, Q, metrics
 
 
 def train_logical_options(
@@ -258,7 +259,7 @@ def train_logical_options(
 
     logical_options = []
     for _, ap in goal_aps.items():
-        with mlflow.start_run(tags={"task_name": task_name, "ap_name": ap.info["name"]}) as run:
+        with mlflow.start_run(tags={"task_name": task_name, "ap_name": ap.info["name"]}, nested=True) as run:
 
             mlflow.log_params({
                 **option_train_fn_hps,
@@ -292,10 +293,11 @@ def train_logical_options(
               options=options,
               preprocess_observations_fn=normalize_fn,
         )
-        inference_fn = make_flat_policy(params, deterministic=True)
+        make_policy = hdq_networks.make_option_inference_fn(hdq_network)
+        inference_fn = make_policy(params, deterministic=True)
 
         make_q = hdq_networks.make_q_fn(hdq_network)
-        reward_model = lambda obs: make_q(params)(obs).max(axis=-1)
+        reward_model = lambda params, obs: make_q(params)(obs).max(axis=-1)
 
         termination_policy = PredicateTerminationPolicy(ap, state_var)
         logical_option = Option(
@@ -461,6 +463,22 @@ def train_logical_option_metapolicy(
         return task_state_costs[f]
 
     # R_o
+    def R_o(o, s):
+        lo = logical_options[o]
+        return lo.reward_model(lo.params, whole_start_states[s])
+
+        # if o == 0:
+        #     if s == 1:
+        #         return 0
+        #     else:
+        #         return -5
+        # else:
+        #     if s == 2:
+        #         return 0
+        #     else:
+        #         return -5
+
+
     # comes from logical_options[i].reward_model
 
     ####################################
@@ -475,21 +493,18 @@ def train_logical_option_metapolicy(
         return full_automaton.eval_aps(None, s, automaton_ap_params)
 
     def T_o(o, s, s_prime):
-        if jnp.bitwise_and(2**o, T_P(s_prime)):
-            return 1
-        else:
-            return 0
+        return jnp.where(jnp.bitwise_and(2**o, T_P(s_prime)) > 0, 1.0, 0.0)
 
     # initialize the value function
-    Q = jnp.zeros((len(live_states), len(start_states), len(logical_options)))
-    V = jnp.zeros((len(live_states), len(start_states)))
+    Q_init = jnp.zeros((len(live_states), len(start_states), len(logical_options)))
+    V_init = jnp.zeros((len(live_states), len(start_states)))
 
     # Q function for state u and symbol sigma
-    def get_Q(f, s, o):
-        lo = logical_options[o]
-
-        # get the reward for the transition.
-        r = R_F(f) * lo.reward_model(lo.params, whole_start_states[s])
+    def get_Q(f, s, o, V_k):
+        # get the reward for the transition. One must include this negative
+        # constant to ensure the value iteration progresses and self-loops
+        # aren't taken forever.
+        r = R_F(f) * (R_o(o, s) - 30.0)
 
         # next state value
         next_v = 0
@@ -497,24 +512,30 @@ def train_logical_option_metapolicy(
             for s_prime in range(len(start_states)):
                 whole_s_prime = whole_start_states[s_prime]
                 sigma = T_P(whole_s_prime)
-                next_v += T_F(f, sigma, f_prime) * T_o(o, s, whole_s_prime) * V[f_prime, s_prime]
+                next_v += T_F(f, sigma, f_prime) * T_o(o, s, whole_s_prime) * V_k[f_prime, s_prime]
+
+                # if (T_F(f, sigma, f_prime) * T_o(o, s, whole_s_prime)) != 0:
+                #     print(f"Non zero at {f_prime}, {s_prime}")
 
         return r + next_v
 
-    for k in range(15):
-        # jax.debug.breakpoint()
+    def one_value_iteration(i, V_and_Q_k):
+        V_k, Q_k = V_and_Q_k
+
         for f in range(len(live_states)):
             for s in range(len(start_states)):
                 Q_os = []
                 for o in range(len(logical_options)):
-                    Q_o = get_Q(f, s, o)
+                    Q_o = get_Q(f, s, o, V_k)
                     Q_os.append(Q_o)
-                    Q = Q.at[f, s, o].set(Q_o)
+                    Q_k = Q_k.at[f, s, o].set(Q_o)
 
-                V = V.at[f, s].set(max(Q_os))
+                V_k = V_k.at[f, s].set(jnp.stack(Q_os).max())
 
-    jax.debug.breakpoint()
-                
+        return (V_k, Q_k)
+
+    V, Q = jax.lax.fori_loop(0, 200, one_value_iteration, (V_init, Q_init))
+
     prod_mdp = AutomatonWrapper(
         environment,
         specification,
@@ -528,17 +549,48 @@ def train_logical_option_metapolicy(
     # use it with an option wrapper that takes care of the second level.
     make_flat_policy1 = make_inference_fn1(prod_mdp, logical_options, options, start_states_array)
 
+    # first_env = OptionsWrapper(
+    #     prod_mdp,
+    #     options,
+    #     discounting=discounting,
+    #     takes_key=False
+    # )
+
+    # second_env = OptionsWrapper(
+    #     first_env,
+    #     logical_options,
+    #     discounting=1.0,
+    # )
+
+    # wrap_for_training = envs.training.wrap
+
+    # rng = jax.random.PRNGKey(seed)
+    # rng, key = jax.random.split(rng)
+    # v_randomization_fn = None
+    # env = wrap_for_training(
+    #     second_env,
+    #     episode_length=episode_length,
+    #     action_repeat=action_repeat,
+    #     randomization_fn=v_randomization_fn,
+    # )
+
+    # evaluator = HierarchicalEvaluatorWithSpecification(
+    #     env,
+    #     functools.partial(make_policy, deterministic=deterministic_eval),
+    #     logical_options,
+    #     specification=specification,
+    #     state_var=state_var,
+    #     num_eval_envs=16,
+    #     episode_length=1000,
+    #     action_repeat=action_repeat,
+    #     key=key,
+    # )
+
     first_env = OptionsWrapper(
         prod_mdp,
         options,
         discounting=discounting,
         takes_key=False
-    )
-
-    second_env = OptionsWrapper(
-        first_env,
-        logical_options,
-        discounting=1.0,
     )
 
     wrap_for_training = envs.training.wrap
@@ -547,28 +599,27 @@ def train_logical_option_metapolicy(
     rng, key = jax.random.split(rng)
     v_randomization_fn = None
     env = wrap_for_training(
-        second_env,
+        first_env,
         episode_length=episode_length,
         action_repeat=action_repeat,
         randomization_fn=v_randomization_fn,
     )
 
-    evaluator = HierarchicalEvaluatorWithSpecification(
+    evaluator = LOFEvaluatorWithSpecification(
         env,
-        functools.partial(make_policy, deterministic=deterministic_eval),
+        functools.partial(make_flat_policy1, deterministic=deterministic_eval),
         logical_options,
         specification=specification,
         state_var=state_var,
         num_eval_envs=16,
-        episode_length=10,
+        episode_length=1000,
         action_repeat=action_repeat,
-        key=key
+        key=key,
     )
 
     metrics = evaluator.run_evaluation(Q, training_metrics={})
-    print(metrics)
 
-    return make_flat_policy1, Q, None
+    return make_flat_policy1, Q, metrics
 
 
 def make_option_inference_fn(env, logical_options, start_states):

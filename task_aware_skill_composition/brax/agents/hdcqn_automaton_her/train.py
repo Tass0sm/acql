@@ -438,9 +438,6 @@ def train(
     )
     
     training_state, buffer_state, metrics = additional_sgds(training_state, buffer_state, training_key)
-
-    jax.debug.breakpoint()
-
     return training_state, env_state, buffer_state, metrics
 
   def prefill_replay_buffer(
