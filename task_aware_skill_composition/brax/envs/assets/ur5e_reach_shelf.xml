@@ -33,7 +33,8 @@
   </default>
 
   <asset>
-    <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100"/>
+    <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="1 1 1" type="skybox" width="100"/>
+    <texture builtin="checker" height="100" name="texplane" rgb1="1.0 1.0 1.0" rgb2="1.0 1.0 1.0" type="2d" width="100"/>
     <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane"/>
 
     <material class="ur5e" name="black" rgba="0.033 0.033 0.033 1"/>
@@ -64,9 +65,12 @@
   </asset>
 
   <worldbody>
-    <light name="spotlight" mode="targetbodycom" target="wrist_2_link" pos="0 -1 2"/>
-    <geom conaffinity="1" condim="3" material="MatPlane" name="floor" pos="0 0 -0.6" size="100 100 40" type="plane"/>
-    <camera name="overview" pos="0.4 -0.8 0.5" xyaxes="1 0.3 0 0 0 1" fovy="90"/>
+
+    <light cutoff="100" diffuse="1 1 1" dir="0 1.3 0" directional="true" exponent="1" pos="8 -5.5 8" specular=".1 .1 .1"/>
+    <!-- <light name="spotlight" mode="targetbodycom" target="wrist_2_link" pos="0 -1 2"/> -->
+
+    <!-- <geom conaffinity="1" condim="3" material="MatPlane" name="floor" pos="0 0 -0.6" size="100 100 40" type="plane"/> -->
+    <camera name="overview" pos="0.35 -0.7 0.45" xyaxes="1 0.3 0 -0.05 0.05 1" fovy="90"/>
     <body name="base" quat="1 0 0 1" childclass="ur5e">
       <!-- <inertial mass="4.0" pos="0 0 0" diaginertia="0.00443333156 0.00443333156 0.0072"/> -->
       <geom mesh="base_0" material="black" class="visual"/>

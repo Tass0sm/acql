@@ -15,26 +15,26 @@ RESET = R = 'r'
 GOAL = G = 'g'
 
 # Z, X, Y / k, i, j (therefore, not viewing from typical x-y viewpoint)
-OPEN_MAZE = [[['T', 1, 1, 1, 1],
-              ['T', R, G, R, 1],
-              ['T', G, 0, G, 1],
-              ['T', R, G, R, 1],
-              ['T', 1, 1, 1, 1]],
-             [['T', 1, 1, 1, 1],
-              ['T', G, G, G, 1],
-              ['T', G, 0, G, 1],
-              ['T', G, G, G, 1],
-              ['T', 1, 1, 1, 1]],
-             [['T', 1, 1, 1, 1],
-              ['T', G, G, G, 1],
-              ['T', G, G, G, 1],
-              ['T', G, G, G, 1],
-              ['T', 1, 1, 1, 1]],
-             [['T', 1, 1, 1, 1],
-              ['T', 1, 1, 1, 1],
-              ['T', 1, 1, 1, 1],
-              ['T', 1, 1, 1, 1],
-              ['T', 1, 1, 1, 1]]]
+OPEN_MAZE = [[['T', 1, 1, 1, 'T'],
+              ['T', R, G, R, 'T'],
+              ['T', G, 0, G, 'T'],
+              ['T', R, G, R, 'T'],
+              ['T', 1, 1, 1, 'T']],
+             [['T', 1, 1, 1, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', G, 0, G, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', 1, 1, 1, 'T']],
+             [['T', 1, 1, 1, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', 1, 1, 1, 'T']],
+             [['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T']]]
 
 MAZE_HEIGHT = 0.5
 
@@ -73,6 +73,8 @@ def make_maze(maze_layout_name, maze_size_scaling):
 
     possible_starts = find_starts(maze_layout, maze_size_scaling)
     possible_goals = find_goals(maze_layout, maze_size_scaling)
+
+    # possible_goals = possible_goals.at[:].set(jnp.array([12., 12., 10.]))
 
     tree = ET.parse(xml_path)
     worldbody = tree.find(".//worldbody")
