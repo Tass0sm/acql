@@ -368,6 +368,7 @@ def load_logical_options(
         params = model.load_params(real_path)
 
         run = mlflow.get_run(run_id=training_run_id)
+
         if run.data.params["normalize_observations"] == "True":
             normalize_fn = running_statistics.normalize
         else:

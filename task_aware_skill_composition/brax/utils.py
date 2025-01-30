@@ -92,10 +92,10 @@ def make_aut_goal_mdp(task, randomize_goals=True):
     return mdp
 
 
-def make_aut_goal_cmdp(task, randomize_goals=True, margin=1.0, relu_cost=False):
+def make_aut_goal_cmdp(task, randomize_goals=True, margin=1.0, relu_cost=False, spec_overwriter=lambda x: x):
     mdp = AutomatonGoalConditionedWrapper(
         task.env,
-        task.lo_spec,
+        spec_overwriter(task.lo_spec),
         task.obs_var,
         randomize_goals=randomize_goals,
     )

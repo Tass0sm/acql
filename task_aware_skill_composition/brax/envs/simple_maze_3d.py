@@ -74,7 +74,8 @@ def make_maze(maze_layout_name, maze_size_scaling):
     possible_starts = find_starts(maze_layout, maze_size_scaling)
     possible_goals = find_goals(maze_layout, maze_size_scaling)
 
-    # possible_goals = possible_goals.at[:].set(jnp.array([12., 12., 10.]))
+    # possible_goals = possible_goals.at[:].set(jnp.array([12., 12., 12.]))
+    # possible_goals = possible_goals.at[:].set(jnp.array([4., 12., 10.]))
 
     tree = ET.parse(xml_path)
     worldbody = tree.find(".//worldbody")

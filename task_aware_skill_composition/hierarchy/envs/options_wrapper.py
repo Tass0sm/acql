@@ -28,8 +28,9 @@ class OptionsWrapper(Wrapper):
         self.options = options
         self.takes_key = takes_key
 
-        if hasattr(env, "automaton") and env.augment_obs:
-            # self.extra_adapter = env.original_obs
+        if hasattr(env, "automaton") and hasattr(env, "strip_goal_obs") and env.strip_goal_obs and env.augment_obs:
+            self.extra_adapter = env.original_obs
+        elif hasattr(env, "automaton") and env.augment_obs:
             self.extra_adapter = env.no_automaton_obs
         else:
             self.extra_adapter = lambda x: x
@@ -69,7 +70,6 @@ class OptionsWrapper(Wrapper):
 
             def for_body(unused, x):
                 s_t, iters, r_t, c_t, key = x
-                c_t = s_t.info["cost"]
                 key, inf_key = jax.random.split(key)
                 a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], self.extra_adapter(s_t.obs), inf_key)
                 s_t1 = self.env.step(s_t, a_t)

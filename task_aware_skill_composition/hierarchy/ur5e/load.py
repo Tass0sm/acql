@@ -68,7 +68,9 @@ def load_ur5e_options(
 
 def load_ur5e_eef_options(
         termination_prob: float = 1.0,
+        termination_policy = None,
         adapter: Optional[Callable] = None,
+        ctrl_scale: float = 1.0,
 ):
 
     options_l = []
@@ -87,17 +89,20 @@ def load_ur5e_eef_options(
             observations: types.Observation,
             key_sample: PRNGKey
     ) -> Tuple[types.Action, types.Extra]:
-        return ctrl, {
+        return ctrl * ctrl_scale, {
             'log_prob': 0.0,
             'raw_action': ctrl
         }
+
+    if termination_policy is None:
+        termination_policy = BernoulliTerminationPolicy(termination_prob)
 
     for name, ctrl in ctrl_dict.items():
         print(name, ctrl)
         options_l.append(
             Option(
                 name, None, None, functools.partial(hard_policy, ctrl),
-                termination_policy=BernoulliTerminationPolicy(termination_prob),
+                termination_policy=termination_policy,
                 adapter=adapter
             )
         )

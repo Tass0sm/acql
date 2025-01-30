@@ -39,25 +39,3 @@ class PandaReach(PandaTaskBase):
 
     def _build_lo_spec(self, obs_var: Var) -> Expression:
         return true_exp(obs_var)
-
-    @property
-    def sac_her_hps(self):
-        return {
-            "num_timesteps": 2_000_000,
-            "reward_scaling": 10,
-            "num_evals": 50,
-            "episode_length": 1000,
-            "normalize_observations": True,
-            "action_repeat": 1,
-            "unroll_length": 62, # TODO: Reducing this increases time. What else does it affect?
-            "multiplier_num_sgd_steps": 1,
-            "max_devices_per_host": 1,
-            "max_replay_size": 10000,
-            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
-            "min_replay_size": 1000,
-            "use_her": False,
-            "discounting": 0.97,
-            # "learning_rate": 3e-4,
-            "num_envs": 512,
-            "batch_size": 256,
-        }

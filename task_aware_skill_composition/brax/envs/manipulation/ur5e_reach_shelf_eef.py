@@ -32,22 +32,26 @@ class UR5eReachShelfEEF(UR5eReach):
         self.goal_indices = jnp.array([6, 7, 8]) # End-effector position
         self.completion_goal_indices = jnp.array([0, 1, 2]) # Identical
         self.state_dim = 6
-        self.goal_dist = 0.1
+        self.goal_dist = 0.05
 
-        self.eef_noise_scale = 0.2
-        # self.goal_noise_scale = 0.2
+        self.eef_noise_scale = jnp.array([0.2, 0.0, 0.2])
+        self.goal_noise_scale = jnp.array([0.0, 0.1, 0.0])
 
         # Upper Right, Upper Left, Lower Left, Lower Right
         self.possible_goals = jnp.array([[0.225, 0.5, 0.5],
                                          [-0.225, 0.5, 0.5],
                                          [-0.225, 0.5, 0.1],
                                          [0.225, 0.5, 0.1]])
+        # self.possible_goals = jnp.array([[-0.225, 0.5, 0.1],
+        #                                  [0.000, 0.5, 0.5],
+        #                                  [0.3048, 0.5, 0.5],
+        #                                  [-0.3048, 0.5, 0.5]])
 
     def _get_initial_state(self, rng):
         rng, subkey = jax.random.split(rng)
 
         target_q = self.sys.init_q[:7] # 3 pos + 4 quat
-        eef_q_default = jnp.array([0, 0.1, 0.3]) # Start closer to the relevant area
+        eef_q_default = jnp.array([0.00, 0.25, 0.30]) # Start closer to the relevant area
         eef_q = eef_q_default + self.eef_noise_scale * jax.random.uniform(subkey, [self.sys.q_size() - 7], minval=-1)
 
         q = jnp.concatenate([target_q] + [eef_q])
@@ -83,5 +87,7 @@ class UR5eReachShelfEEF(UR5eReach):
 
     def _random_target(self, rng: jax.Array) -> jax.Array:
         """Returns a random target location chosen from possibilities specified in the maze layout."""
+        rng, subkey = jax.random.split(rng)
         idx = jax.random.randint(rng, (1,), 0, len(self.possible_goals))
-        return jnp.array(self.possible_goals[idx])[0]
+        base_goal = jnp.array(self.possible_goals[idx])[0]
+        return base_goal + self.goal_noise_scale * jax.random.uniform(subkey, base_goal.shape, minval=-1)

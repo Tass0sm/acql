@@ -51,7 +51,7 @@ def get_compiled_conditions(
         elif k == spot.op_And:
             return stl.STLAnd(children[0], children[1])
         elif k == spot.op_Or:
-            return stl.STLOr(children[0], children[1])
+            return stl.STLDisjunction(children)
         else:
             raise NotImplementedError(f"Formula {root} with kind = {k}")
 
@@ -135,7 +135,7 @@ class AutomatonCostWrapper(Wrapper):
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
 
-        cost = 0.0
+        cost = self._compute_cost(None, None, state)
 
         # putting cost into the info dict for now...
         state.info.update(

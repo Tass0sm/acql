@@ -53,15 +53,22 @@ def plot_function_grid(
         function_values_grid: jax.Array,
         start_position, goal_position,
         label,
+        with_dressing=True,
 ):
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(8, 8), frameon=with_dressing)
+
+    if not with_dressing:
+        ax.set_axis_off()
+
     im = ax.imshow(function_values_grid, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap='plasma', zorder=1)
-    plt.colorbar(im, ax=ax, label='Value (Goal-Conditioned)')
+
+    if with_dressing:
+        plt.colorbar(im, ax=ax, label='Value (Goal-Conditioned)')
 
     # Add contour lines
-    # contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 50)  # Adjust levels if needed
-    # ax.contour(X, Y, function_values_grid, levels=contour_levels, colors='black', linewidths=0.5, zorder=2)
+    contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 50)  # Adjust levels if needed
+    ax.contour(X, Y, function_values_grid, levels=contour_levels, colors='black', linewidths=0.5, zorder=2)
 
     # # Overlay the maze structure (with higher zorder)
     # draw(env, ax)
@@ -69,20 +76,22 @@ def plot_function_grid(
     #     patch.set_zorder(3)  # Ensure maze patches have the highest z-order
 
     # Mark start position
-    ax.plot(start_position[0], start_position[1], 'ro', markersize=10, label='Start', zorder=4)
+    # ax.plot(start_position[0], start_position[1], 'ro', markersize=10, label='Start', zorder=4)
 
-    # Mark goal position
+    # # Mark goal position
     # subgoal_position = jnp.array([12.0, 4.0])
     # ax.plot(subgoal_position[0], subgoal_position[1], 'bo', markersize=10, label='Subgoal', zorder=4)
 
     # Mark goal position
-    ax.plot(goal_position[0], goal_position[1], 'go', markersize=10, label='Goal', zorder=4)
+    # ax.plot(goal_position[0], goal_position[1], 'go', markersize=10, label='Goal', zorder=4)
 
     # Plot Details
-    ax.set_title(f"Goal-Conditioned Value Function - {label}")
+    if with_dressing:
+        ax.set_title(f"Goal-Conditioned Value Function - {label}")
+        # ax.legend(loc='lower left')
+
     ax.set_xlabel("X Position")
     ax.set_ylabel("Y Position")
-    ax.legend(loc='lower left')
 
     return fig, ax
     
@@ -95,7 +104,8 @@ def make_plots_for_hdqn(
         grid_size=100,
         tmp_state_fn = lambda x: x,
         save_and_close = True,
-        seed=0
+        seed=0,
+        with_dressing=True,
 ):
     reset_key = jax.random.PRNGKey(seed)
     tmp_state = env.reset(reset_key)
@@ -143,7 +153,8 @@ def make_plots_for_hdqn(
         y_min, y_max,
         value_function_grid,
         start_position, goal_position,
-        label
+        label,
+        with_dressing=with_dressing
     )
 
     plot_simple_maze_option_arrows([ax], X, Y, options, grid_size)
@@ -413,6 +424,7 @@ def make_plots_for_hdcqn_aut(
         x_max: float = 16.0,
         y_min: float = 0.0,
         y_max: float = 16.0,
+        with_dressing=True,
 ):
     reset_key = jax.random.PRNGKey(seed)
     tmp_state = env.reset(reset_key)
@@ -459,7 +471,8 @@ def make_plots_for_hdcqn_aut(
         y_min, y_max,
         value_function_grid,
         start_position, goal_position,
-        f"Reward - {label}"
+        f"Reward - {label}",
+        with_dressing=with_dressing
     )
 
     plot_simple_maze_option_arrows([ax1], X, Y, options, grid_size)
@@ -467,6 +480,7 @@ def make_plots_for_hdcqn_aut(
     if save_and_close:
         fig1.savefig(f"figures/value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
         # fig1.savefig(f"figures/value_function_{label}.pdf", format="pdf", bbox_inches='tight', pad_inches=0)
+        fig1.savefig(f"figures/value_function_{label}.svg", format="svg", bbox_inches='tight', pad_inches=0)
         plt.close(fig1)
 
     fig2, ax2 = plot_function_grid(
@@ -475,7 +489,8 @@ def make_plots_for_hdcqn_aut(
         y_min, y_max,
         cost_value_function_grid,
         start_position, goal_position,
-        f"Cost - {label}"
+        f"Cost - {label}",
+        with_dressing=with_dressing
     )
 
     plot_simple_maze_option_arrows([ax2], X, Y, options, grid_size)
@@ -483,6 +498,7 @@ def make_plots_for_hdcqn_aut(
     if save_and_close:
         fig2.savefig(f"figures/cost_value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
         # fig2.savefig(f"figures/cost_value_function_{label}.pdf", format="pdf", bbox_inches='tight', pad_inches=0)
+        fig2.savefig(f"figures/cost_value_function_{label}.svg", format="svg", bbox_inches='tight', pad_inches=0)
         plt.close(fig2)
 
     # return (fig1, ax1), (fig2, ax2)

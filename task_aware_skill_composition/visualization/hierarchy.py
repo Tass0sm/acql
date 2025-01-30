@@ -27,19 +27,11 @@ def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, 
     jit_reset = jax.jit(env.reset)
     jit_step = jax.jit(env.step)
 
-    if hasattr(env, "automaton") and env.augment_obs:
-        extra_adapter = env.original_obs
-    else:
-        extra_adapter = lambda x: x
-
     # if hasattr(env, "automaton") and env.augment_obs:
-    #     def augment_adapter(option):
-    #         old_adapter = option.obs_adapter
-    #         new_adapter = lambda x: old_adapter(env.original_obs(x))
-    #         option.obs_adapter = new_adapter
-
-    #     for o in options:
-    #         augment_adapter(o)
+    #     # extra_adapter = env.original_obs
+    #     extra_adapter = env.original_obs
+    # else:
+    #     extra_adapter = lambda x: x
 
     # reset the environment
     rng = jax.random.PRNGKey(seed)
@@ -59,7 +51,7 @@ def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, 
         length = options[0].termination_policy.t
 
         def get_beta(i, s_t, o_t, beta_key):
-            return jnp.where(i % length, 1, 0)
+            return jnp.where(i % length == 0, 1, 0)
     else:
         def get_beta(i, s_t, o_t, beta_key):
             return jax.lax.switch(o_t, [o.termination for o in options], s_t, beta_key)

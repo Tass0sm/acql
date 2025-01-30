@@ -177,7 +177,8 @@ def train(
 
   normalize_fn = lambda x, y: x
   if normalize_observations:
-    normalize_fn = running_statistics.normalize
+    # normalize_fn = running_statistics.normalize
+    normalize_fn = functools.partial(running_statistics.normalize, mask=env.normalization_mask)
 
   hdq_network = network_factory(
       observation_size=obs_size,

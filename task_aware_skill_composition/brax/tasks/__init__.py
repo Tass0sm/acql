@@ -81,10 +81,17 @@ from .panda import (
 )
 from .ur5e import (
     UR5eReachTask,
-    UR5eReachShelfTask,
-    UR5eReachShelfEEFTask,
-    UR5eScalabilityTestTask,
-    UR5eTranslateTask,
+    # UR5eReachShelfTask,
+    # UR5eReachShelfEEFTask,
+    # UR5eTranslateTask,
+    UR5eEEFOneGoalTask,
+    UR5eEEFObligationConstraint1Task,
+    UR5eEEFObligationConstraint2Task,
+    UR5eEEFEvenEasierScalabilityTestTask,
+    UR5eEEFEasierScalabilityTestTask,
+    UR5eEEFScalabilityTestTask,
+    UR5eEEFBranchingScalabilityTestTask,
+    # UR5eEEFComplexBranchingScalabilityTestTask,
 )
 
 
@@ -178,10 +185,18 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
         },
         "ur5e": {
             "reach": UR5eReachTask,
-            "reach_shelf": UR5eReachShelfTask,
-            "reach_shelf_eef": UR5eReachShelfEEFTask,
-            "translate": UR5eTranslateTask,
-            "scalability_test": UR5eScalabilityTestTask,
+            # "reach_shelf": UR5eReachShelfTask,
+            # "reach_shelf_eef": UR5eReachShelfEEFTask,
+            # "translate": UR5eTranslateTask,
+            # main
+            "one_goal": UR5eEEFOneGoalTask,
+            "obligation1": UR5eEEFObligationConstraint1Task,
+            "obligation2": UR5eEEFObligationConstraint2Task,
+            "easier_scalability": UR5eEEFEasierScalabilityTestTask,
+            "even_easier_scalability": UR5eEEFEvenEasierScalabilityTestTask,
+            "scalability": UR5eEEFScalabilityTestTask,
+            "branching": UR5eEEFBranchingScalabilityTestTask,
+            # "complex": UR5eEEFComplexBranchingScalabilityTestTask,
         },
         # "car": {
         #     "seq": CarSequence,

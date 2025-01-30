@@ -27,28 +27,6 @@ class DroneMazeTaskBase(TaskBase):
     def get_hard_coded_options(self):
         return load_hard_coded_drone_options()
 
-    @property
-    def hdqn_her_hps(self):
-        return {
-            "num_timesteps": 1_000_000,
-            "reward_scaling": 1,
-            "num_evals": 50,
-            "episode_length": 100,
-            "normalize_observations": True,
-            "action_repeat": 1,
-            "discounting": 0.99,
-            # "learning_rate": 3e-4,
-            "num_envs": 64,
-            "batch_size": 64,
-            "unroll_length": 62,
-            "multiplier_num_sgd_steps": 1,
-            "max_devices_per_host": 1,
-            "max_replay_size": 5000,
-            # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
-            "min_replay_size": 1000,
-            "use_her": True,
-        }
-
 
 class DroneMazeNav(DroneMazeTaskBase):
     def __init__(self, backend="mjx"):

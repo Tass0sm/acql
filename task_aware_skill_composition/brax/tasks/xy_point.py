@@ -119,26 +119,6 @@ class XYPointTaskBase(TaskBase):
             "batch_size": 256,
         }
 
-    @property
-    def hdqn_hps(self):
-        return {
-            "num_timesteps": 1_000_000,
-            "num_evals": 20,
-            "reward_scaling": 30,
-            "episode_length": 1000,
-            "normalize_observations": True,
-            "action_repeat": 1,
-            "discounting": 0.997,
-            "learning_rate": 6e-4,
-            "num_envs": 128,
-            "batch_size": 512,
-            "grad_updates_per_step": 64,
-            "max_devices_per_host": 1,
-            "max_replay_size": 1048576,
-            "min_replay_size": 8192,
-        }
-
-
 
 class XYPointStraight(XYPointTaskBase):
     def __init__(self, backend="mjx"):

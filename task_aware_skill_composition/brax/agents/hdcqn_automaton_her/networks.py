@@ -331,6 +331,7 @@ def make_hdcq_networks(
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     preprocess_cost_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     hidden_layer_sizes: Sequence[int] = (256, 256),
+    hidden_cost_layer_sizes=(64, 64, 64, 32),
     activation: networks.ActivationFn = linen.relu,
     options: Sequence[Option] = [],
     use_sum_cost_critic: bool = False,
@@ -357,7 +358,7 @@ def make_hdcq_networks(
       num_aut_states,
       len(options),
       preprocess_observations_fn=preprocess_cost_observations_fn,
-      hidden_layer_sizes=(64, 64, 64, 32),
+      hidden_layer_sizes=hidden_cost_layer_sizes,
       activation=activation,
       use_sum_cost_critic=use_sum_cost_critic
   )

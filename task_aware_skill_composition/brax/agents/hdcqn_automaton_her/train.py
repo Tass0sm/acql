@@ -149,6 +149,8 @@ def train(
     ] = None,
     eval_env: Optional[envs.Env] = None,
     replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
+    hidden_layer_sizes=(256, 256),
+    hidden_cost_layer_sizes=(64, 64, 64, 32),
     gamma_init_value = 0.80,
     gamma_update_period = None,
     gamma_decay = 0.15,
@@ -241,6 +243,8 @@ def train(
       options=options,
       preprocess_observations_fn=normalize_fn,
       preprocess_cost_observations_fn=cost_normalize_fn,
+      hidden_layer_sizes=hidden_layer_sizes,
+      hidden_cost_layer_sizes=hidden_cost_layer_sizes,
       use_sum_cost_critic=use_sum_cost_critic
   )
   make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, safety_threshold)
