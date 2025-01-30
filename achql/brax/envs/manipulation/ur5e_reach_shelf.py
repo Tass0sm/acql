@@ -17,7 +17,7 @@ See _get_obs() and ArmEnvs._convert_action() for details.
 """
 class UR5eReachShelf(UR5eReach):
     def _get_xml_path(self):
-        return "/home/tassos/phd/research/second-project/task-aware-skill-composition/achql/brax/envs/assets/ur5e_reach_shelf.xml"
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'assets', "ur5e_reach_shelf.xml")
     
     # See ArmEnvs._set_environment_attributes for descriptions of attributes
     def _set_environment_attributes(self):

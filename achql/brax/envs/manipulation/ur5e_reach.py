@@ -1,3 +1,4 @@
+import os
 from brax import base
 from brax.envs.base import State
 from brax.io import mjcf
@@ -17,7 +18,7 @@ See _get_obs() and ArmEnvs._convert_action() for details.
 """
 class UR5eReach(UR5eEnvs):
     def _get_xml_path(self):
-        return "/home/tassos/phd/research/second-project/task-aware-skill-composition/achql/brax/envs/assets/ur5e_reach.xml"
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'assets', "ur5e_reach.xml")
     
     @property
     def action_size(self) -> int:

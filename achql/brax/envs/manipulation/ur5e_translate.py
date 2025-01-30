@@ -198,7 +198,7 @@ class UR5eTranslate(PipelineEnv):
 
     # Methods to be overridden by specific environments
     def _get_xml_path(self):
-        return "/home/tassos/phd/research/second-project/task-aware-skill-composition/achql/brax/envs/assets/ur5e_translate.xml"
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'assets', "ur5e_translate.xml")
 
     def _set_environment_attributes(self):
         """

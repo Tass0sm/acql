@@ -17,7 +17,7 @@ See _get_obs() and ArmEnvs._convert_action() for details.
 """
 class UR5eReachShelfEEF(UR5eReach):
     def _get_xml_path(self):
-        return "/home/tassos/phd/research/second-project/task-aware-skill-composition/achql/brax/envs/assets/ur5e_reach_shelf_eef.xml"
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'assets', "ur5e_reach_shelf_eef.xml")
 
     @property
     def action_size(self) -> int:
