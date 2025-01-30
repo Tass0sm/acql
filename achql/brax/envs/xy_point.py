@@ -1,0 +1,185 @@
+"""TODO: Write Summary."""
+
+import numpy as np
+
+from gymnasium.spaces import Space
+from gymnasium import spaces
+
+from brax import base
+from brax import math
+from brax.envs.base import PipelineEnv, State
+from brax.io import mjcf
+from etils import epath
+import jax
+from jax import numpy as jp
+import mujoco
+
+from achql.brax.envs.base import GoalConditionedEnv, load_and_configure_xml
+
+
+class XYPoint(GoalConditionedEnv):
+
+    # pyformat: disable
+    """
+    ### TODO: Description
+
+    """
+    # pyformat: enable
+
+    def __init__(
+            self,
+            ctrl_cost_weight=0.5,
+            use_contact_forces=False,
+            contact_cost_weight=5e-4,
+            healthy_reward=1.0,
+            terminate_when_unhealthy=False,
+            healthy_z_range=(0.0, 20.0),
+            contact_force_range=(-1.0, 1.0),
+            reset_noise_scale=0.1,
+            exclude_current_positions_from_observation=False,
+            backend='generalized',
+            target_velocity_vec=jp.array([1.0, 0.0, 0.0]),
+            target_disp_vec=None,
+            wall_config=None,
+            **kwargs,
+    ):
+        path = epath.resource_path('achql') / 'brax/envs/assets/xy_point.xml'
+        xml = load_and_configure_xml(path, wall_config=wall_config)
+        sys = mjcf.loads(xml)
+
+        n_frames = 5
+
+        if backend in ['spring', 'positional']:
+            sys = sys.tree_replace({'opt.timestep': 0.005})
+            n_frames = 10
+
+        if backend == 'mjx':
+            sys = sys.tree_replace({
+                    'opt.solver': mujoco.mjtSolver.mjSOL_NEWTON,
+                    'opt.disableflags': mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
+                    'opt.iterations': 1,
+                    'opt.ls_iterations': 4,
+            })
+
+        if backend == 'positional':
+            # TODO: does the same actuator strength work as in spring
+            sys = sys.replace(
+                    actuator=sys.actuator.replace(
+                            gear=200 * jp.ones_like(sys.actuator.gear)
+                    )
+            )
+
+        kwargs['n_frames'] = kwargs.get('n_frames', n_frames)
+
+        super().__init__(sys=sys, backend=backend, **kwargs)
+
+        self._target_velocity_vec = target_velocity_vec
+        self._target_disp_vec = target_disp_vec
+
+        self._ctrl_cost_weight = ctrl_cost_weight
+        self._use_contact_forces = use_contact_forces
+        self._contact_cost_weight = contact_cost_weight
+        self._healthy_reward = healthy_reward
+        self._terminate_when_unhealthy = terminate_when_unhealthy
+        self._healthy_z_range = healthy_z_range
+        self._contact_force_range = contact_force_range
+        self._reset_noise_scale = reset_noise_scale
+        self._exclude_current_positions_from_observation = (
+                exclude_current_positions_from_observation
+        )
+
+        if self._use_contact_forces:
+            raise NotImplementedError('use_contact_forces not implemented.')
+
+    @property
+    def observation_space(self) -> Space:
+        return spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32)
+
+    @property
+    def action_space(self) -> Space:
+        return spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
+
+    def reset(self, rng: jax.Array) -> State:
+        """Resets the environment to an initial state."""
+        rng, rng1, rng2 = jax.random.split(rng, 3)
+
+        low, hi = -self._reset_noise_scale, self._reset_noise_scale
+        q = self.sys.init_q + jax.random.uniform(
+                rng1, (self.sys.q_size(),), minval=low, maxval=hi
+        )
+        qd = hi * jax.random.normal(rng2, (self.sys.qd_size(),))
+
+        pipeline_state = self.pipeline_init(q, qd)
+        obs = self._get_obs(pipeline_state)
+
+        reward, done, zero = jp.zeros(3)
+        metrics = {
+                'reward_forward': zero,
+                # 'reward_survive': zero,
+                'reward_ctrl': zero,
+                # 'reward_contact': zero,
+                'reward_displacement_direction': zero,
+                'x_position': zero,
+                'y_position': zero,
+                'distance_from_origin': zero,
+                'x_velocity': zero,
+                'y_velocity': zero,
+                'forward_reward': zero,
+        }
+        return State(pipeline_state, obs, reward, done, metrics)
+
+    def step(self, state: State, action: jax.Array) -> State:
+        """Run one timestep of the environment's dynamics."""
+        pipeline_state0 = state.pipeline_state
+        assert pipeline_state0 is not None
+        pipeline_state = self.pipeline_step(pipeline_state0, action)
+
+        if self._target_disp_vec is not None:
+            displacement_from_origin = pipeline_state.x.pos[0]
+            displacement_direction_reward = jp.dot(displacement_from_origin, self._target_disp_vec)
+        else:
+            displacement_direction_reward = 0.0
+
+        velocity = (pipeline_state.x.pos[0] - pipeline_state0.x.pos[0]) / self.dt
+        forward_reward = jp.dot(velocity, self._target_velocity_vec)
+
+        # min_z, max_z = self._healthy_z_range
+        # is_healthy = jp.where(pipeline_state.x.pos[0, 2] < min_z, 0.0, 1.0)
+        # is_healthy = jp.where(pipeline_state.x.pos[0, 2] > max_z, 0.0, is_healthy)
+        # if self._terminate_when_unhealthy:
+        #     healthy_reward = self._healthy_reward
+        # else:
+        #     healthy_reward = self._healthy_reward * is_healthy
+        ctrl_cost = self._ctrl_cost_weight * jp.sum(jp.square(action))
+        # contact_cost = 0.0
+
+        obs = self._get_obs(pipeline_state)
+        reward = displacement_direction_reward + forward_reward - ctrl_cost #  + healthy_reward - contact_cost
+        # done = 1.0 - is_healthy if self._terminate_when_unhealthy else 0.0
+        done = 0.0
+        state.metrics.update(
+                reward_forward=forward_reward,
+                # reward_survive=healthy_reward,
+                reward_ctrl=-ctrl_cost,
+                # reward_contact=-contact_cost,
+                reward_displacement_direction=displacement_direction_reward,
+                x_position=pipeline_state.x.pos[0, 0],
+                y_position=pipeline_state.x.pos[0, 1],
+                distance_from_origin=math.safe_norm(pipeline_state.x.pos[0]),
+                x_velocity=velocity[0],
+                y_velocity=velocity[1],
+                forward_reward=forward_reward,
+        )
+        return state.replace(
+                pipeline_state=pipeline_state, obs=obs, reward=reward, done=done
+        )
+
+    def _get_obs(self, pipeline_state: base.State) -> jax.Array:
+        """Observe ant body position and velocities."""
+        qpos = pipeline_state.q
+        qvel = pipeline_state.qd
+
+        if self._exclude_current_positions_from_observation:
+            qpos = pipeline_state.q[2:]
+
+        return jp.concatenate([qpos] + [qvel])

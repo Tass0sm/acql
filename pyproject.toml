@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Tassos Manganaris <tassos.manganaris@gmail.com>"]
 readme = "README.org"
-packages = [{include = "task_aware_skill_composition"}]
+packages = [{include = "achql"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
