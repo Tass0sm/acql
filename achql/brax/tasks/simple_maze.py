@@ -117,6 +117,14 @@ class SimpleMazeObligationConstraint1(ObligationConstraint1Mixin, SimpleMazeTask
 
         super().__init__(None, 1000, backend=backend)
 
+    @property
+    def hdcqn_her_hps(self):
+        return {
+            **self.hdqn_her_hps,
+            "cost_scaling": 1.0,
+            "safety_threshold": 0.0,
+            "gamma_end_value": 0.93,
+        }
 
 class SimpleMazeObligationConstraint2(ObligationConstraint2Mixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
@@ -169,6 +177,15 @@ class SimpleMazeObligationConstraint4(SimpleMazeTaskBase):
 
         phi = stl.STLAnd(phi_liveness, phi_safety)
         return phi
+
+class SimpleMazeObligationConstraint5(ObligationConstraint1Mixin, SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_corners = (jnp.array([2.0, 6.0]), jnp.array([10.0, 10.0]))
+
+        self.goal1_location = jnp.array([4.0, 12.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
 
 
 class SimpleMazeUntil1(SimpleMazeTaskBase):

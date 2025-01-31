@@ -21,6 +21,7 @@ from .simple_maze import (
     SimpleMazeObligationConstraint1,
     SimpleMazeObligationConstraint2,
     SimpleMazeObligationConstraint3,
+    SimpleMazeObligationConstraint5,
     SimpleMazeUntil1,
 )
 from .simple_maze_3d import (
@@ -76,6 +77,7 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "obligation1": SimpleMazeObligationConstraint1,
             "obligation2": SimpleMazeObligationConstraint2,
             "obligation3": SimpleMazeObligationConstraint3,
+            "obligation5": SimpleMazeObligationConstraint5,
         },
         "simple_maze_3d": {
             "true": SimpleMaze3DNav,

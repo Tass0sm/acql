@@ -31,6 +31,15 @@ class HDCQNetworks:
   # parametric_option_distribution: distribution.ParametricDistribution
 
 
+def argmax_with_random_tiebreak(array, key, axis=-1):
+    max_values = jnp.max(array, axis=axis, keepdims=True)
+    is_max = jnp.where(array == max_values, 1, 0)
+
+    # Generate random noise for tie-breaking
+    noise = jax.random.uniform(key, shape=array.shape)
+    perturbed_array = array + is_max * noise
+
+    return jnp.argmax(perturbed_array, axis=axis)
 
 def make_option_q_fn(
     hdcq_networks: HDCQNetworks,
@@ -84,7 +93,7 @@ def make_option_inference_fn(
       return option, {}
 
     def greedy_safe_option_policy(observation: types.Observation,
-                                  unused_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       aut_state = env.aut_state_from_obs(observation)
       double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation))
       qs = jnp.min(double_qs, axis=-1)
@@ -96,11 +105,13 @@ def make_option_inference_fn(
       cqs = jnp.max(double_cqs, axis=-1)
 
       if use_sum_cost_critic:
-        masked_q = jnp.where(cqs < safety_threshold, qs, -jnp.inf)
+        masked_q = jnp.where(cqs < safety_threshold, qs, -999.)
       else:
-        masked_q = jnp.where(cqs > safety_threshold, qs, -jnp.inf)
+        masked_q = jnp.where(cqs > safety_threshold, qs, -999.)
 
-      option = masked_q.argmax(axis=-1)
+
+      option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+      # option = masked_q.argmax(axis=-1)
       return option, {}
 
     epsilon = jnp.float32(0.1)
@@ -157,11 +168,12 @@ def make_inference_fn(
       cqs = jnp.max(double_cqs, axis=-1)
 
       if use_sum_cost_critic:
-        masked_q = jnp.where(cqs < safety_threshold, qs, -jnp.inf)
+        masked_q = jnp.where(cqs < safety_threshold, qs, -999.0)
       else:
-        masked_q = jnp.where(cqs > safety_threshold, qs, -jnp.inf)
+        masked_q = jnp.where(cqs > safety_threshold, qs, -999.0)
 
-      option = masked_q.argmax(axis=-1)
+      option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+      # option = masked_q.argmax(axis=-1)
       return option
 
     epsilon = jnp.float32(0.1)
