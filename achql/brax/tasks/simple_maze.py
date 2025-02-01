@@ -3,7 +3,7 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from jaxgcrl.envs.simple_maze import SimpleMaze
+from achql.brax.envs.simple_maze import SimpleMaze
 from achql.brax.envs.base import GoalConditionedEnv
 from achql.brax.tasks.base import TaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
