@@ -29,8 +29,7 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from jaxgcrl.src.evaluator import CrlEvaluator
-from jaxgcrl.src.replay_buffer import QueueBase, Sample
+from .jaxgcrl_replay_buffer import QueueBase, Sample
 
 from achql.hierarchy.training.types import HierarchicalTransition
 

@@ -5,7 +5,7 @@ import jax.numpy as jnp
 
 from gymnasium.spaces.utils import flatdim
 
-from jaxgcrl.envs.ant_maze import AntMaze
+from achql.brax.envs.ant_maze import AntMaze
 from achql.brax.envs.base import GoalConditionedEnv
 from achql.brax.tasks.base import TaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp

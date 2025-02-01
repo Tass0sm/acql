@@ -5,7 +5,7 @@ import mujoco
 import jax
 from jax import numpy as jnp
 
-from jaxgcrl.envs.manipulation.arm_envs import ArmEnvs
+from achql.brax.envs.manipulation.arm_envs import ArmEnvs
 
 
 class UR5eEnvs(ArmEnvs):
