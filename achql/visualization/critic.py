@@ -243,7 +243,8 @@ def make_plots_for_hdcqn(
         save_and_close = True,
         seed=0
 ):
-    reset_key = jax.random.PRNGKey(seed)
+    key = jax.random.PRNGKey(seed)
+    reset_key, policy_key = jax.random.split(key)
     tmp_state = env.reset(reset_key)
     tmp_state = tmp_state_fn(tmp_state)
 
@@ -262,28 +263,26 @@ def make_plots_for_hdcqn(
     #                              env.ith_goal(obs_batch, 0)), axis=-1)
     obs_batch = obs_batch.at[:, 0:2].set(positions)
 
-    make_q = hdcq_aut_networks.make_option_q_fn(network, env, 0.0)
+    make_q = hdcq_networks.make_option_q_fn(network, env, 0.0)
     q_fn = make_q(params)
 
     # policy
     policy = make_policy(params, deterministic=True)
-    options, _ = policy(obs_batch, None)
+    options, _ = policy(obs_batch, policy_key)
 
     # Compute the value function for the grid
-    value_q_function_output = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch).min(axis=-1)
-    value_q_function_output = q_fn((normalizer_params, option_q_params), obs_batch)
+    # value_q_function_output = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch).min(axis=-1)
+    value_q_function_output = q_fn(obs_batch)
     value_function_output = jax.vmap(lambda x, i: x.at[i].get())(value_q_function_output, options)
     value_function_grid = value_function_output.reshape(grid_size, grid_size)
 
     # Compute the cost value function for the grid
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    cost_obs_batch = env.cost_obs(obs_batch)
-    cost_q_function_output = network.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs_batch).min(axis=-1)
+    cost_q_function_output = network.cost_q_network.apply(normalizer_params, cost_q_params, obs_batch).min(axis=-1)
     cost_value_function_output = jax.vmap(lambda x, i: x.at[i].get())(cost_q_function_output, options)
     cost_value_function_grid = cost_value_function_output.reshape(grid_size, grid_size)
 
     start_position = tmp_state.obs[:2]
-    goal_position = env.ith_goal(tmp_state.obs, 0)
+    goal_position = jnp.zeros_like(start_position)
     fig1, ax1 = plot_function_grid(
         X, Y,
         x_min, x_max,
@@ -335,7 +334,8 @@ def make_plots_for_3d_hdcqn_aut(
         y_min: float = 0.0,
         y_max: float = 16.0,
 ):
-    reset_key = jax.random.PRNGKey(seed)
+    key = jax.random.PRNGKey(seed)
+    reset_key, policy_key = jax.random.split(key)
     tmp_state = env.reset(reset_key)
     tmp_state = tmp_state_fn(tmp_state)
 
@@ -357,7 +357,7 @@ def make_plots_for_3d_hdcqn_aut(
 
     # policy
     policy = make_policy(params, deterministic=True)
-    options, _ = policy(obs_batch, None)
+    options, _ = policy(obs_batch, policy_key)
 
     # Compute the value function for the grid
     # value_q_function_output = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch).min(axis=-1)
@@ -426,7 +426,8 @@ def make_plots_for_hdcqn_aut(
         y_max: float = 16.0,
         with_dressing=True,
 ):
-    reset_key = jax.random.PRNGKey(seed)
+    key = jax.random.PRNGKey(seed)
+    reset_key, policy_key = jax.random.split(key)
     tmp_state = env.reset(reset_key)
     tmp_state = tmp_state_fn(tmp_state)
 
@@ -448,7 +449,7 @@ def make_plots_for_hdcqn_aut(
 
     # policy
     policy = make_policy(params, deterministic=True)
-    options, _ = policy(obs_batch, None)
+    options, _ = policy(obs_batch, policy_key)
 
     # Compute the value function for the grid
     # value_q_function_output = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch).min(axis=-1)

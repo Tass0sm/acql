@@ -59,10 +59,6 @@ def load_hard_coded_xy_point_options(
         adapter: Optional[Callable] = None,
 ):
 
-    # In training environment, not in goal conditioned maze env
-    XY_POINT_OBS_SIZE = 4
-    XY_POINT_ACTION_SIZE = 2
-
     options_l = []
 
     ctrl_dict = {

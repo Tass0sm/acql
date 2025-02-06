@@ -51,6 +51,9 @@ from .ur5e import (
     UR5eEEFEvenEasierBranchingScalabilityTestTask,
     # UR5eEEFComplexBranchingScalabilityTestTask,
 )
+from .x_point import (
+    XPointFisacTask,
+)
 
 
 def get_task(robot_name: str, task_name: str) -> TaskBase:
@@ -106,6 +109,9 @@ def get_task(robot_name: str, task_name: str) -> TaskBase:
             "easier_branching": UR5eEEFEasierBranchingScalabilityTestTask,
             "even_easier_branching": UR5eEEFEvenEasierBranchingScalabilityTestTask,
             # "complex": UR5eEEFComplexBranchingScalabilityTestTask,
+        },
+        "x_point": {
+            "fisac": XPointFisacTask,
         },
     }
 

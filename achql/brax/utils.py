@@ -38,7 +38,7 @@ def make_shaped_reward_mdp2(task, multiplier):
     return mdp
 
 
-def make_cmdp(task):
+def make_cmdp(task, margin=1.0, relu_cost=False):
     automaton_wrapped_env = AutomatonWrapper(
         task.env,
         task.lo_spec,
@@ -47,7 +47,7 @@ def make_cmdp(task):
     )
 
     cmdp = AutomatonCostWrapper(
-        automaton_wrapped_env
+        automaton_wrapped_env, margin=margin, relu_cost=relu_cost
     )
 
     return cmdp

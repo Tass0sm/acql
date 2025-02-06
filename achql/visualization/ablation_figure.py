@@ -44,7 +44,7 @@ def fill_ax_with_function_grid(
         plt.colorbar(im, ax=ax, ticks=[function_values_grid.min(), function_values_grid.max()])
 
     # Add contour lines
-    contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 50)  # Adjust levels if needed
+    contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 20)  # Adjust levels if needed
     ax.contour(X, Y, function_values_grid, levels=contour_levels, colors='black', linewidths=0.5, zorder=2)
 
     # # Overlay the maze structure (with higher zorder)

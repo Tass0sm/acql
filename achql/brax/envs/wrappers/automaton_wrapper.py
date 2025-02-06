@@ -124,9 +124,14 @@ class AutomatonWrapper(Wrapper):
         self.original_obs_dim = env.observation_size
         self.strip_goal_obs = strip_goal_obs
 
+        # get accepting state
+        accepting_states = [self.automaton.automaton.state_is_accepting(i) for i in range(self.automaton.automaton.num_states())]
+        assert sum(accepting_states) == 1, "Can't handle more than one accepting state"
+        self.accepting_state = accepting_states.index(True)
+
         # Get Params
         no_goal_aps, goal_aps = partition(lambda _, v: "goal" in v.info, self.automaton.aps)
-        self.max_param_dim = max([ap.info["goal"].size for ap in goal_aps.values()])
+        self.max_param_dim = max([ap.info["goal"].size for ap in goal_aps.values()], default=0)
 
         automaton_ap_params = jnp.zeros((self.automaton.n_aps, self.max_param_dim))
         for k, ap in goal_aps.items():
@@ -287,10 +292,13 @@ class AutomatonWrapper(Wrapper):
             new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomaton_state)), axis=-1)
             nstate = nstate.replace(obs=new_obs)
 
-        automaton_success = jnp.array(nautomaton_state == 0, dtype=float)
+        reward = jnp.array(nautomaton_state == self.accepting_state, dtype=float)
+        automaton_success = reward
         nstate.metrics.update(
             automaton_success=automaton_success,
         )
+
+        nstate = nstate.replace(reward=reward)
 
         return nstate
 

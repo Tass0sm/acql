@@ -43,6 +43,7 @@ def make_option_q_network(
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     hidden_layer_sizes: Sequence[int] = (256, 256),
     activation: ActivationFn = linen.relu,
+    final_activation: ActivationFn = lambda x: x,
     n_critics: int = 2) -> FeedForwardNetwork:
   """Creates a value network."""
 
@@ -61,6 +62,7 @@ def make_option_q_network(
           activation=activation,
           kernel_init=jax.nn.initializers.lecun_uniform()
         )(hidden)
+        critic_option_qs = final_activation(critic_option_qs)
         res.append(critic_option_qs)
 
       return jnp.stack(res, axis=-1)

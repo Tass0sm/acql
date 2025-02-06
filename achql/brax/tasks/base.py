@@ -71,20 +71,29 @@ class TaskBase(ABC):
     def hdqn_hps(self):
         return {
             "num_timesteps": 10_000_000,
-            "num_evals": 20,
             "reward_scaling": 1,
+            "num_evals": 50,
             "episode_length": 1000,
             "normalize_observations": True,
             "action_repeat": 1,
             "discounting": 0.99,
-            "learning_rate": 6e-4,
+            "learning_rate": 1e-4,
             "num_envs": 256,
-            "batch_size": 512,
+            "batch_size": 256,
             "grad_updates_per_step": 64,
             "max_devices_per_host": 1,
-            "max_replay_size": 1048576,
-            "min_replay_size": 8192,
+            "max_replay_size": 10000,
+            "min_replay_size": 1000,
         }
+
+    @property
+    def hdcqn_hps(self):
+        return {
+            **self.hdqn_hps,
+            "cost_scaling": 1.0,
+            "safety_threshold": 0.0,
+        }
+
 
     @property
     def hdqn_her_hps(self):
@@ -96,7 +105,7 @@ class TaskBase(ABC):
             "normalize_observations": True,
             "action_repeat": 1,
             "discounting": 0.99,
-            # "learning_rate": 3e-4,
+            # "learning_rate": 1e-4,
             "num_envs": 256,
             "batch_size": 256,
             "unroll_length": 62,

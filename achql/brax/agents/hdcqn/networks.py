@@ -1,18 +1,25 @@
 from typing import Sequence, Tuple
 
+import spot
+
 import jax
 import jax.numpy as jnp
+from brax import envs
 from brax.training import distribution
 from brax.training import networks
+from brax.training.networks import ActivationFn, Initializer, FeedForwardNetwork, MLP
 
 from brax.training import types
 from brax.training.types import PRNGKey
 import flax
 from flax import linen
 
+from achql.brax.training.acme import running_statistics
 from achql.hierarchy.training import networks as h_networks
 from achql.hierarchy.state import OptionState
 from achql.hierarchy.option import Option
+
+from achql.stl.utils import fold_spot_formula
 
 
 @flax.struct.dataclass
@@ -23,7 +30,45 @@ class HDCQNetworks:
   # parametric_option_distribution: distribution.ParametricDistribution
 
 
-def make_option_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
+def argmax_with_random_tiebreak(array, key, axis=-1):
+    max_values = jnp.max(array, axis=axis, keepdims=True)
+    is_max = jnp.where(array == max_values, 1, 0)
+
+    # Generate random noise for tie-breaking
+    noise = jax.random.uniform(key, shape=array.shape)
+    perturbed_array = array + is_max * noise
+
+    return jnp.argmax(perturbed_array, axis=axis)
+
+def make_option_q_fn(
+    hdcq_networks: HDCQNetworks,
+    safety_threshold: float,
+    use_sum_cost_critic: bool = False,
+):
+
+  def make_q(
+      params: types.PolicyParams,
+  ) -> types.Policy:
+
+    normalizer_params, option_q_params, cost_q_params = params
+    options = hdcq_networks.options
+    n_options = len(options)
+
+    def q(observation: types.Observation) -> jnp.ndarray:
+      double_qs = hdcq_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
+      qs = jnp.min(double_qs, axis=-1)
+      return qs
+
+    return q
+
+  return make_q
+
+
+def make_option_inference_fn(
+    hdcq_networks: HDCQNetworks,
+    safety_threshold: float,
+    use_sum_cost_critic : bool = False,
+):
 
   def make_policy(
       params: types.PolicyParams,
@@ -40,16 +85,21 @@ def make_option_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
       return option, {}
 
     def greedy_safe_option_policy(observation: types.Observation,
-                                  unused_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       double_qs = hdcq_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
       qs = jnp.min(double_qs, axis=-1)
 
       double_cqs = hdcq_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
-      cqs = jnp.max(double_cqs, axis=-1)
 
-      masked_q = jnp.where(cqs < cost_budget, qs, -jnp.inf)
+      if use_sum_cost_critic:
+        cqs = jnp.max(double_cqs, axis=-1)
+        masked_q = jnp.where(cqs < safety_threshold, qs, -999.)
+      else:
+        cqs = jnp.min(double_cqs, axis=-1)
+        masked_q = jnp.where(cqs > safety_threshold, qs, -999.)
 
-      option = masked_q.argmax(axis=-1)
+      option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+      # option = masked_q.argmax(axis=-1)
       return option, {}
 
     epsilon = jnp.float32(0.1)
@@ -68,7 +118,11 @@ def make_option_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
   return make_policy
 
 
-def make_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
+def make_inference_fn(
+    hdcq_networks: HDCQNetworks,
+    safety_threshold: float,
+    use_sum_cost_critic : bool = False,
+):
 
   def make_policy(
       params: types.PolicyParams,
@@ -79,8 +133,7 @@ def make_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
     options = hdcq_networks.options
     n_options = len(options)
 
-    # TODO: Respect Cost Q
-
+    # TODO: Random option policy could still respect Cost Q
     def random_option_policy(observation: types.Observation,
                              option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
       option = jax.random.randint(option_key, (), 0, n_options)
@@ -92,11 +145,16 @@ def make_inference_fn(hdcq_networks: HDCQNetworks, cost_budget: float):
       qs = jnp.min(double_qs, axis=-1)
 
       double_cqs = hdcq_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
-      cqs = jnp.max(double_cqs, axis=-1)
 
-      masked_q = jnp.where(cqs < cost_budget, qs, -jnp.inf)
+      if use_sum_cost_critic:
+        cqs = jnp.max(double_cqs, axis=-1)
+        masked_q = jnp.where(cqs < safety_threshold, qs, -999.0)
+      else:
+        cqs = jnp.min(double_cqs, axis=-1)
+        masked_q = jnp.where(cqs > safety_threshold, qs, -999.0)
 
-      option = masked_q.argmax(axis=-1)
+      option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+      # option = masked_q.argmax(axis=-1)
       return option
 
     epsilon = jnp.float32(0.1)
@@ -151,20 +209,16 @@ def make_hdcq_networks(
     observation_size: int,
     action_size: int,
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+    preprocess_cost_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     hidden_layer_sizes: Sequence[int] = (256, 256),
+    hidden_cost_layer_sizes=(64, 64, 64, 32),
     activation: networks.ActivationFn = linen.relu,
     options: Sequence[Option] = [],
+    use_sum_cost_critic: bool = False,
 ) -> HDCQNetworks:
 
   assert len(options) > 0, "Must pass at least one option"
 
-  # parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
-  # policy_network = networks.make_policy_network(
-  #     parametric_action_distribution.param_size,
-  #     observation_size,
-  #     preprocess_observations_fn=preprocess_observations_fn,
-  #     hidden_layer_sizes=hidden_layer_sizes,
-  #     activation=activation)
   option_q_network = h_networks.make_option_q_network(
       observation_size,
       len(options),
@@ -176,14 +230,13 @@ def make_hdcq_networks(
       observation_size,
       len(options),
       preprocess_observations_fn=preprocess_observations_fn,
-      hidden_layer_sizes=hidden_layer_sizes,
-      activation=activation
+      hidden_layer_sizes=hidden_cost_layer_sizes,
+      activation=activation,
+      final_activation=linen.tanh if not use_sum_cost_critic else (lambda x: x),
   )
 
   return HDCQNetworks(
-      # policy_network=policy_network,
       option_q_network=option_q_network,
       cost_q_network=cost_q_network,
       options=options,
-      # parametric_action_distribution=parametric_action_distribution
   )

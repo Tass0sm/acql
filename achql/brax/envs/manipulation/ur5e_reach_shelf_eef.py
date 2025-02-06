@@ -1,3 +1,4 @@
+import os
 from brax import base
 from brax.envs.base import State
 from brax.io import mjcf

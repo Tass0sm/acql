@@ -66,7 +66,7 @@
   <worldbody>
     <!-- <light name="spotlight" mode="targetbodycom" target="wrist_2_link" pos="0 -1 2"/> -->
     <geom conaffinity="1" condim="3" material="MatPlane" name="floor" pos="0 0 -0.6" size="100 100 40" type="plane"/>
-    <camera name="overview" pos="0.4 0.25 0.5" xyaxes="1 0.5 0 0 0 1" fovy="120"/>
+    <camera name="overview" pos="0.5 0.15 0.5" xyaxes="1 0.5 0 0 0 1" fovy="120"/>
 
     <!-- based on the tessco 36 inch wide, 24 inch deep, 72 inch tall storage cabinet -->
     <!-- that's 0.9144 x 0.6096 x 1.8288 meters -->
@@ -79,7 +79,9 @@
       <geom name="bottom" pos="0.0000  0.0000 0.0300" size="0.4572 0.3048 0.0300" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
       <geom name="top"    pos="0.0000  0.0000 1.8288" size="0.4572 0.3048 0.0300" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
       <geom name="bar1"   pos="-0.4572 0.0000 0.9144" size="0.0150 0.3048 0.9144" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
-      <geom name="bar2"   pos="0.0000  0.0000 0.9144" size="0.0150 0.3048 0.9144" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+      <geom name="first_third_wall"   pos="-0.1524 0.0000 0.9144" size="0.0150 0.3048 0.9144" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+      <!-- <geom name="center_wall"        pos="0.0000  0.0000 0.9144" size="0.0150 0.3048 0.9144" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/> -->
+      <geom name="first_second_wall"  pos="0.1524  0.0000 0.9144" size="0.0150 0.3048 0.9144" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
       <geom name="bar3"   pos="0.4572  0.0000 0.9144" size="0.0150 0.3048 0.9144" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
       <geom name="back"   pos="0.0000  0.3048 0.9144" size="0.4572 0.0300 0.9144" type="box" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
     </body>

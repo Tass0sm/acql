@@ -102,13 +102,13 @@ def make_option_inference_fn(
       # goalless_obs = env.goalless_obs(observation)
       trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
       double_cqs = hdcq_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
-      cqs = jnp.max(double_cqs, axis=-1)
 
       if use_sum_cost_critic:
+        cqs = jnp.max(double_cqs, axis=-1)
         masked_q = jnp.where(cqs < safety_threshold, qs, -999.)
       else:
+        cqs = jnp.min(double_cqs, axis=-1)
         masked_q = jnp.where(cqs > safety_threshold, qs, -999.)
-
 
       option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
       # option = masked_q.argmax(axis=-1)
