@@ -24,7 +24,7 @@ ipython = ">=8.28.0, <9"
 ipykernel = ">=6.29.5, <7"
 xmltodict = ">=0.14.1, <0.15"
 tensorboard = ">=2.18.0, <3"
-jax = { version = ">=0.4.34, <0.5", extras = ["cuda12"] }
+jax = { version = ">=0.4.34, <0.4.38", extras = ["cuda12"] }
 wandb = ">=0.18.5, <0.19"
 pyinstrument = ">=5.0.0, <6"
 mujoco = ">=3.2.4, <4"
