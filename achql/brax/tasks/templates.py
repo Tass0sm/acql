@@ -4,7 +4,6 @@ from typing import List, Tuple
 import jax
 import jax.numpy as jnp
 from jax.numpy.linalg import norm
-import einops
 
 from achql.stl.var import Var
 import achql.stl.expression_jax2 as stl
