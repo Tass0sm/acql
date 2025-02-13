@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 
 import mlflow
 
-# from brax.io import model
+from brax.io import model
 
+from achql.navix.agents.tabular_hql import train as tabular_hql
 from achql.navix.agents.tabular_achql import train as tabular_achql
 
 from achql.tasks.utils import get_task
@@ -24,7 +25,7 @@ mlflow.set_experiment("proj2-random-argmax-testing")
 def progress_fn(num_steps, metrics, **kwargs):
     print(f"Logging for {num_steps}")
     print(metrics)
-    # mlflow.log_metrics(metrics, step=num_steps)
+    mlflow.log_metrics(metrics, step=num_steps)
 
 
 def training_run(run_id, env, seed, train_fn=tabular_achql.train, progress_fn=progress_fn, hyperparameters={}, extras={}):
@@ -33,7 +34,7 @@ def training_run(run_id, env, seed, train_fn=tabular_achql.train, progress_fn=pr
         "seed": seed,
     }
 
-    # mlflow.log_params(hyperparameters)
+    mlflow.log_params(hyperparameters)
 
     train_fn = functools.partial(train_fn, **hyperparameters)
 
@@ -44,8 +45,8 @@ def training_run(run_id, env, seed, train_fn=tabular_achql.train, progress_fn=pr
         **extras
     )
 
-    # with mlflow.MlflowClient()._log_artifact_helper(run_id, f'policy_params') as tmp_path:
-    #     model.save_params(tmp_path, params)
+    with mlflow.MlflowClient()._log_artifact_helper(run_id, f'policy_params') as tmp_path:
+        model.save_params(tmp_path, params)
 
     return make_inference_fn, params
 
@@ -64,18 +65,36 @@ def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3)):
                     func(run, task, seed, spec)
 
 
+def tabular_hql_train(run, task, seed, spec, margin=1.0):
+    options = task.get_options()
+
+    make_inference_fn, params = training_run(
+        run.info.run_id,
+        task.env,
+        seed,
+        train_fn=tabular_hql.train,
+        progress_fn=progress_fn,
+        hyperparameters=task.tabular_hql_hps,
+        extras={
+            "options": options,
+            "specification": spec,
+            "state_var": task.obs_var,
+        }
+    )
+
+
 def tabular_achql_train(run, task, seed, spec, margin=1.0):
     options = task.get_options()
 
     make_inference_fn, params = training_run(
         run.info.run_id,
-        make_cmdp(task, margin=margin),
+        task.env, # make_cmdp(task, margin=margin),
         seed,
         train_fn=tabular_achql.train,
         progress_fn=progress_fn,
         hyperparameters=task.tabular_achql_hps,
         extras={
-            "eval_env": make_cmdp(task, margin=margin),
+            # "eval_env": make_cmdp(task, margin=margin),
             "options": options,
             "specification": spec,
             "state_var": task.obs_var,
@@ -91,5 +110,8 @@ if __name__ == "__main__":
     env_tag = type(task.env).__name__
 
     for seed in range(0, 1):
-        with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACHQL"}) as run:
-            tabular_achql_train(run, task, seed, spec)
+        # with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACHQL"}) as run:
+        #     tabular_achql_train(run, task, seed, spec)
+
+        with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_HQL"}) as run:
+            tabular_hql_train(run, task, seed, spec)

@@ -5,6 +5,7 @@ import numpy as np
 import jax.numpy as jnp
 import navix as nx
 from navix import observations
+from navix.actions import rotate_ccw, rotate_cw, forward
 
 from achql.navix.tasks.base import NavixTaskBase, FlattenObsWrapper
 # from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
@@ -18,12 +19,23 @@ import achql.stl.expression_jax2 as stl
 
 class GridTaskBase(NavixTaskBase):
     def __init__(self, *args, **kwargs):
+        self.obs_type = kwargs.get("obs_type", "unique_id")
+        if "obs_type" in kwargs:
+            del kwargs["obs_type"]
         super().__init__(*args, **kwargs)
 
     def _build_env(self, backend: str):
+        if self.obs_type == "unique_id":
+            obs_fn = observations.unique_id
+        elif self.obs_type == "rgb":
+            obs_fn = observations.rgb
+        else:
+            raise NotImplementedError()
+
         env = nx.make(
-            "Navix-Empty-Random-5x5-v0",
-            observation_fn=observations.unique_id, # observations.symbolic_first_person,
+            "Navix-Empty-5x5-v0",
+            observation_fn=obs_fn, # observations.symbolic_first_person,
+            action_set=(rotate_ccw, rotate_cw, forward),
             gamma=0.99,
         )
         # env = FlattenObsWrapper(env)
@@ -58,8 +70,8 @@ class GridTaskBase(NavixTaskBase):
 
 
 class GridSingleSubgoal(SingleSubgoalMixin, GridTaskBase):
-    def __init__(self, backend="mjx"):
+    def __init__(self, backend="mjx", **kwargs):
         self.goal1_location = jnp.array([12.0, 4.0])
         self.goal1_radius = 2.0
 
-        super().__init__(None, 1000, backend=backend)
+        super().__init__(None, 1000, backend=backend, **kwargs)

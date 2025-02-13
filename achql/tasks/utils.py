@@ -3,7 +3,7 @@ from achql.navix import tasks as navix_tasks
 from achql.tasks.base import TaskBase
 
 
-def get_task(env_name: str, task_name: str) -> TaskBase:
+def get_task(env_name: str, task_name: str, **kwargs) -> TaskBase:
     full_task_name = env_name + task_name
 
     if hasattr(brax_tasks, full_task_name):
@@ -13,4 +13,4 @@ def get_task(env_name: str, task_name: str) -> TaskBase:
     else:
         raise Exception(f"{full_task_name} not found")
 
-    return TaskClass()
+    return TaskClass(**kwargs)

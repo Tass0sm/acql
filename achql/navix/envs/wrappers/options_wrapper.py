@@ -49,8 +49,8 @@ class OptionsWrapper(Wrapper):
     def reset(self, rng: jax.Array) -> State:
         state = self.env.reset(rng)
         state.info['low_steps'] = jnp.zeros(rng.shape[:-1], dtype=jnp.int32)
-        if 'cost' not in state.info:
-            state.info['cost'] = 0.0
+        # if 'cost' not in state.info:
+        #     state.info['cost'] = 0.0
         return state
 
     # def step(self, state: State, option: jax.Array, key: PRNGKey) -> State:
@@ -128,7 +128,9 @@ class OptionsWrapper(Wrapper):
             fstate, k, freward, fcost, _ = jax.lax.while_loop(while_cond, while_body, (nstate, steps, reward, cost, nkey))
     
         # update cost/reward of final state with the option history reward
-        fstate.info.update(cost=fcost)
+        if "cost" in state.info:
+            fstate.info.update(cost=fcost)
+
         fstate = fstate.replace(reward=freward)
 
         return fstate

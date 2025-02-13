@@ -21,16 +21,15 @@ class NavixTaskBase(TaskBase):
     @property
     def tabular_hql_hps(self):
         return {
-            "num_timesteps": 10_000_000,
+            "num_timesteps": 500_000,
             "reward_scaling": 1,
-            "num_evals": 50,
-            "episode_length": 1000,
+            "num_evals": 25,
+            "episode_length": 100,
             "normalize_observations": True,
             "discounting": 0.99,
-            "learning_rate": 1e-4,
+            "learning_rate": 1e-1,
             "num_envs": 256,
             "batch_size": 256,
-            "grad_updates_per_step": 64,
             "max_devices_per_host": 1,
             "max_replay_size": 10000,
             "min_replay_size": 1000,
@@ -41,5 +40,5 @@ class NavixTaskBase(TaskBase):
         return {
             **self.tabular_hql_hps,
             "cost_scaling": 1.0,
-            "safety_threshold": 0.0,
+            "safety_threshold": -0.1,
         }

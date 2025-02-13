@@ -10,6 +10,7 @@ from brax.training import acting
 from brax.training import gradients
 from brax.training import pmap
 from brax.training.replay_buffers_test import jit_wrap
+from brax.training import replay_buffers
 from brax.training import types
 from brax.training.acme import specs
 from brax.training.types import Params
@@ -24,11 +25,11 @@ from navix import Timestep
 
 
 from achql.brax.training.acme import running_statistics
-from achql.brax.her import replay_buffers
+# from achql.brax.her import replay_buffers
 from achql.navix.envs.wrappers.training import wrap_for_training
 
 from achql.navix.training.evaluator import NavixEvaluator
-from achql.navix.agents.tabular_achql import tables
+from achql.navix.agents.tabular_hql import tables
 from achql.navix.training import hierarchical_acting
 from achql.hierarchy.training import types as h_types
 
@@ -48,7 +49,6 @@ _PMAP_AXIS_NAME = 'i'
 class TrainingState:
     """Contains training state for the learner."""
     option_q_params: Params
-    cost_q_params: Params
     update_steps: jnp.ndarray
     env_steps: jnp.ndarray
 
@@ -61,16 +61,14 @@ def _init_training_state(
     key: PRNGKey,
     obs_size: int,
     local_devices_to_use: int,
-    achql_tables: tables.ACHQLTables,
+    hql_tables: tables.HQLTables,
 ) -> TrainingState:
     """Inits the training state and replicates it over devices."""
-    key_policy, key_q, key_cost_q = jax.random.split(key, 3)
-    option_q_params = achql_tables.option_q_table.init(key_q)
-    cost_q_params = achql_tables.cost_q_table.init(key_cost_q)
+    key_policy, key_q = jax.random.split(key, 2)
+    option_q_params = hql_tables.option_q_table.init(key_q)
   
     training_state = TrainingState(
         option_q_params=option_q_params,
-        cost_q_params=cost_q_params,
         update_steps=jnp.zeros((), dtype=jnp.int32),
         env_steps=jnp.zeros(()))
     return jax.device_put_replicated(training_state, jax.local_devices()[:local_devices_to_use])
@@ -101,11 +99,10 @@ def train(
         episode_length: int = 1000,
         wrap_env: bool = True,
         # action_repeat: int = 1,
-        unroll_length: int = 50,
         num_envs: int = 128,
         # num_sampling_per_update: int = 50,
         num_eval_envs: int = 16,
-        learning_rate: float = 1e-2,
+        learning_rate: float = 1e-1,
         discounting: float = 0.9,
         seed: int = 0,
         batch_size: int = 256,
@@ -113,30 +110,18 @@ def train(
         normalize_observations: bool = True,
         max_devices_per_host: Optional[int] = None,
         reward_scaling: float = 1.,
-        cost_scaling: float = 1.0,
-        safety_threshold: float = -0.1,
         tau: float = 0.005,
         min_replay_size: int = 0,
         max_replay_size: Optional[int] = 10_0000,
-        use_her: bool = False,
-        multiplier_num_update_steps: int = 1,
+        updates_per_step: int = 1,
         deterministic_eval: bool = True,
         tensorboard_flag = True,
         logdir = './logs',
-        table_factory = tables.make_achql_tables,
+        table_factory = tables.make_hql_tables,
         options=[],
         progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
         checkpoint_logdir: Optional[str] = None,
         eval_env = None,
-        replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
-        hidden_layer_sizes=(256, 256),
-        hidden_cost_layer_sizes=(64, 64, 64, 32),
-        gamma_init_value = 0.80,
-        gamma_update_period = None,
-        gamma_decay = 0.15,
-        gamma_end_value = 0.98,
-        gamma_goal_value = 1.0,
-        use_sum_cost_critic = False,
 ):
     process_id = jax.process_index()
     local_devices_to_use = jax.local_device_count()
@@ -153,11 +138,11 @@ def train(
         max_replay_size = num_timesteps
   
     # The number of environment steps executed for every `actor_step()` call.
-    env_steps_per_actor_step = num_envs * unroll_length
-    num_prefill_actor_steps = min_replay_size // unroll_length + 1
-    print("Num_prefill_actor_steps: ", num_prefill_actor_steps)
+    env_steps_per_actor_step = num_envs
+    # equals to ceil(min_replay_size / env_steps_per_actor_step)
+    num_prefill_actor_steps = -(-min_replay_size // num_envs)
     num_prefill_env_steps = num_prefill_actor_steps * env_steps_per_actor_step
-    assert num_timesteps - min_replay_size >= 0
+    assert num_timesteps - num_prefill_env_steps >= 0
     num_evals_after_init = max(num_evals - 1, 1)
     # The number of epoch calls per training
     # equals to
@@ -172,7 +157,6 @@ def train(
         environment,
         options,
         discounting=discounting,
-        use_sum_cost_critic=use_sum_cost_critic,
     )
     if wrap_env:
         rng = jax.random.PRNGKey(seed)
@@ -195,14 +179,13 @@ def train(
     # TODO: Fix
     action_size = 1 # env.action_space.shape[0]
     
-    achql_tables = table_factory(
+    hql_tables = table_factory(
         observation_space=env.observation_space,
         action_space=env.action_space,
         options=options,
-        use_sum_cost_critic=use_sum_cost_critic,
     )
-    make_policy = tables.make_option_inference_fn(achql_tables, safety_threshold)
-    make_flat_policy = tables.make_inference_fn(achql_tables, safety_threshold)
+    make_policy = tables.make_option_inference_fn(hql_tables)
+    make_flat_policy = tables.make_inference_fn(hql_tables)
   
     dummy_transition = Transition(
         observation=0, # observation is a single integer with an environment compatible with tabular algorithms.
@@ -213,62 +196,21 @@ def train(
         extras={
             'state_extras': {
                 'truncation': 0.0,
-                'automata_state': 0,
-                'made_transition': 0,
-                'cost': 0.0,
             },
             'policy_extras': {},
         }
     )
   
-    ReplayBufferClass = getattr(replay_buffers, replay_buffer_class_name)
+    replay_buffer = replay_buffers.UniformSamplingQueue(
+        max_replay_size=max_replay_size // device_count,
+        dummy_data_sample=dummy_transition,
+        sample_batch_size=batch_size * updates_per_step // device_count)
   
-    replay_buffer = jit_wrap(
-        ReplayBufferClass(
-            max_replay_size=max_replay_size // device_count,
-            dummy_data_sample=dummy_transition,
-            sample_batch_size=batch_size // device_count,
-            num_envs=num_envs,
-            episode_length=episode_length,
-            automaton=getattr(env, "automaton", None)
-        )
-    )
-  
-    # SAFETY GAMMA SCHEDULER
-  
-    if gamma_update_period is None:
-        gamma_update_period = num_timesteps / 40
-  
-    safety_gamma_scheduler = make_gamma_scheduler(
-        gamma_init_value,
-        gamma_update_period,
-        gamma_decay,
-        gamma_end_value,
-        gamma_goal_value,
-    )
-  
-    option_q_table = achql_tables.option_q_table
-    cost_q_table = achql_tables.cost_q_table
-
-    def safe_greedy_policy(reward_qs, cost_qs):
-        "Finds option with maximal value under cost constraint"
-      
-        if use_sum_cost_critic:
-            masked_q = jnp.where(cost_qs < safety_threshold, reward_qs, -jnp.inf)
-        else:
-            masked_q = jnp.where(cost_qs > safety_threshold, reward_qs, -jnp.inf)
-        
-        option = masked_q.argmax(axis=-1)
-
-        q = reward_qs[option]
-        cq = cost_qs[option]
-        return q, cq
-
+    option_q_table = hql_tables.option_q_table
 
     def option_q_table_update(
             option_q_params,
             transition,
-            cost_q_params
     ):
         o_idx = transition.observation
         a_idx = transition.action
@@ -277,76 +219,42 @@ def train(
         q_old = qs_old[a_idx]
   
         next_qs = option_q_table.apply(option_q_params, transition.next_observation)
-        next_cqs = cost_q_table.apply(cost_q_params, transition.next_observation)
-  
-        next_v, _ = safe_greedy_policy(next_qs, next_cqs)
+        next_v = next_qs.max(axis=-1)
   
         target_q = transition.reward * reward_scaling + transition.discount * discounting * next_v
+
+        # jax.lax.cond(next_v > 0, lambda x: jax.debug.breakpoint(), lambda x: None, (
+        #     o_idx,
+        #     a_idx,
+        #     option_q_params,
+        #     transition.next_observation,
+        #     transition.reward,
+        #     reward_scaling,
+        #     transition.discount,
+        #     discounting,
+        #     next_v,
+        # ))
 
         new_option_q_params = option_q_params.at[o_idx, a_idx].set(q_old + learning_rate * (target_q - q_old))
         return new_option_q_params, None
   
 
-    def cost_q_table_update(
-            cost_q_params,
-            transition,
-            option_q_params,
-            cost_gamma,
-    ):
-        o_idx = transition.observation
-        a_idx = transition.action
-
-        # Double Q(s_t, o_t) for all options
-        cqs_old = cost_q_table.apply(cost_q_params, transition.observation)
-        cq_old = cqs_old[a_idx]
-
-        # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
-        next_qs = option_q_table.apply(option_q_params, transition.next_observation)
-        next_cqs = cost_q_table.apply(cost_q_params, transition.next_observation)
-
-        # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
-        _, next_cv = safe_greedy_policy(next_qs, next_cqs)
-
-        if use_sum_cost_critic:
-            target_cq = transition.extras["state_extras"]["cost"] * cost_scaling + transition.discount * discounting * next_cv
-        else:
-            target_cq = cost_gamma * jnp.min(
-                    jnp.stack((transition.extras["state_extras"]["cost"] * cost_scaling,
-                               transition.discount * next_cv), axis=-1),
-                    axis=-1
-            ) + (1 - cost_gamma) * transition.extras["state_extras"]["cost"]
-  
-        new_cost_q_params = cost_q_params.at[o_idx, a_idx].set(cq_old + learning_rate * (target_cq - cq_old))
-        return new_cost_q_params, None
-
-  
     def update_step(
             carry: Tuple[TrainingState, PRNGKey],
             transitions: Transition) -> Tuple[Tuple[TrainingState, PRNGKey], Metrics]:
         training_state, key = carry
   
-        key, key_critic, key_cost_critic = jax.random.split(key, 3)
-
         new_option_q_params, _ = jax.lax.scan(
-            functools.partial(option_q_table_update, cost_q_params=training_state.cost_q_params),
+            option_q_table_update,
             training_state.option_q_params,
-            transitions)
-        
-        cost_gamma = safety_gamma_scheduler(training_state.update_steps)
-        
-        new_cost_q_params, _ = jax.lax.scan(
-            functools.partial(cost_q_table_update, option_q_params=training_state.option_q_params, cost_gamma=cost_gamma),
-            training_state.cost_q_params,
             transitions)
 
         metrics = {
             'update_steps': training_state.update_steps,
-            'cost_gamma': cost_gamma,
         }
         
         new_training_state = TrainingState(
             option_q_params=new_option_q_params,
-            cost_q_params=new_cost_q_params,
             update_steps=training_state.update_steps + 1,
             env_steps=training_state.env_steps,
         )
@@ -355,7 +263,6 @@ def train(
   
     def get_experience(
             option_q_params: Params,
-            cost_q_params: Params,
             env_state: Timestep,
             buffer_state: ReplayBufferState,
             key: PRNGKey,
@@ -363,29 +270,16 @@ def train(
         Timestep,
         ReplayBufferState,
     ]:
-        policy = make_policy((option_q_params, cost_q_params))
+        policy = make_policy(option_q_params)
+        env_state, transitions = hierarchical_acting.semimdp_actor_step(
+            env,
+            env_state,
+            policy,
+            key,
+            extra_fields=()
+        )
         
-        @jax.jit
-        def f(carry, unused_t):
-            env_state, current_key = carry
-            current_key, next_key = jax.random.split(current_key)
-            env_state, transition = hierarchical_acting.semimdp_actor_step(
-                env,
-                env_state,
-                policy,
-                current_key,
-                extra_fields=(
-                    # 'seed',
-                    # 'automata_state',
-                    # 'made_transition',
-                    # 'cost',
-                ),
-            )
-            return (env_state, next_key), transition
-        
-        (env_state, _), data = jax.lax.scan(f, (env_state, key), (), length=unroll_length)
-        
-        buffer_state = replay_buffer.insert(buffer_state, data)
+        buffer_state = replay_buffer.insert(buffer_state, transitions)
         return env_state, buffer_state
   
     def training_step(
@@ -397,7 +291,6 @@ def train(
         experience_key, training_key = jax.random.split(key)
         env_state, buffer_state = get_experience(
             training_state.option_q_params,
-            training_state.cost_q_params,
             env_state,
             buffer_state,
             experience_key
@@ -407,7 +300,14 @@ def train(
             env_steps=training_state.env_steps + env_steps_per_actor_step
         )
         
-        training_state, buffer_state, metrics = additional_updates(training_state, buffer_state, training_key)
+        buffer_state, transitions = replay_buffer.sample(buffer_state)
+
+        # Change the front dimension of transitions so 'update_step' is called
+        # grad_updates_per_step times by the scan.
+        transitions = jax.tree_map(lambda x: jnp.reshape(x, (updates_per_step, -1) + x.shape[1:]), transitions)
+        (training_state, _), metrics = jax.lax.scan(update_step, (training_state, training_key), transitions)
+
+        metrics['buffer_current_size'] = replay_buffer.size(buffer_state)
         return training_state, env_state, buffer_state, metrics
   
     def prefill_replay_buffer(
@@ -422,7 +322,6 @@ def train(
             key, new_key = jax.random.split(key)
             env_state, buffer_state = get_experience(
                 training_state.option_q_params,
-                training_state.cost_q_params,
                 env_state,
                 buffer_state,
                 key,
@@ -480,29 +379,27 @@ def train(
         return jax.lax.scan(body, (ts, bs, a_update_key), (), length=n)
   
     def training_epoch(
-        training_state: TrainingState,
-        env_state: Timestep,
-        buffer_state: ReplayBufferState,
-        key: PRNGKey
+            training_state: TrainingState,
+            env_state: Timestep,
+            buffer_state: ReplayBufferState,
+            key: PRNGKey
     ) -> Tuple[TrainingState, Timestep, ReplayBufferState, Metrics]:
-  
+
         def f(carry, unused_t):
             ts, es, bs, k = carry
-            k, new_key, a_update_key = jax.random.split(k, 3)
+            k, new_key = jax.random.split(k)
             ts, es, bs, metrics = training_step(ts, es, bs, k)
-            (ts, bs, a_update_key), _ = scan_additional_updates(multiplier_num_update_steps - 1, ts, bs, a_update_key)
             return (ts, es, bs, new_key), metrics
-        
+
         (training_state, env_state, buffer_state, key), metrics = jax.lax.scan(
             f,
             (training_state, env_state, buffer_state, key),
             (),
             length=num_training_steps_per_epoch
         )
-        
         metrics = jax.tree_map(jnp.mean, metrics)
         return training_state, env_state, buffer_state, metrics
-  
+
     training_epoch = jax.pmap(training_epoch, axis_name=_PMAP_AXIS_NAME)
   
     # Note that this is NOT a pure jittable method.
@@ -540,7 +437,7 @@ def train(
         key=global_key,
         obs_size=obs_size,
         local_devices_to_use=local_devices_to_use,
-        achql_tables=achql_tables,
+        hql_tables=hql_tables,
     )
     del global_key
   
@@ -562,7 +459,6 @@ def train(
                 eval_env,
                 options,
                 discounting=discounting,
-                use_sum_cost_critic=use_sum_cost_critic
             )
   
         eval_env = wrap_for_training(
@@ -587,7 +483,7 @@ def train(
     # Run initial eval
     if process_id == 0 and num_evals > 1:
         metrics = evaluator.run_evaluation(
-            _unpmap((training_state.option_q_params, training_state.cost_q_params)),
+            _unpmap((training_state.option_q_params)),
             training_metrics={})
         logging.info(metrics)
         progress_fn(
@@ -595,9 +491,8 @@ def train(
             metrics,
             env=environment,
             make_policy=make_policy,
-            network=achql_tables,
-            params=_unpmap((training_state.option_q_params,
-                            training_state.cost_q_params))
+            network=hql_tables,
+            params=_unpmap((training_state.option_q_params))
       )
   
     # Create and initialize the replay buffer.
@@ -629,27 +524,26 @@ def train(
         if process_id == 0:
             if checkpoint_logdir:
                 # Save current policy.
-                params = _unpmap((training_state.option_q_params, training_state.cost_q_params))
+                params = _unpmap((training_state.option_q_params))
                 path = f'{checkpoint_logdir}_dq_{current_step}.pkl'
                 model.save_params(path, params)
   
             # Run evals.
-            metrics = evaluator.run_evaluation(_unpmap((training_state.option_q_params, training_state.cost_q_params)), training_metrics)
+            metrics = evaluator.run_evaluation(_unpmap((training_state.option_q_params)), training_metrics)
             logging.info(metrics)
             progress_fn(
                 current_step,
                 metrics,
                 env=environment,
                 make_policy=make_policy,
-                tables=achql_tables,
-                params=_unpmap((training_state.option_q_params,
-                                training_state.cost_q_params)),
+                tables=hql_tables,
+                params=_unpmap((training_state.option_q_params)),
             )
   
     total_steps = current_step
     assert total_steps >= num_timesteps
   
-    params = _unpmap((training_state.option_q_params, training_state.cost_q_params))
+    params = _unpmap((training_state.option_q_params))
   
     # If there was no mistakes the training_state should still be identical on all
     # devices.

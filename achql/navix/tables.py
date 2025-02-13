@@ -10,9 +10,9 @@ import jax.numpy as jnp
 
 @dataclasses.dataclass
 class Table:
-  init: Callable[..., Any]
-  apply: Callable[..., Any]
-
+    init: Callable[..., Any]
+    apply: Callable[..., Any]
+  
 
 def make_q_table(
         observation_space_size: int,
@@ -25,18 +25,7 @@ def make_q_table(
         """Q Table."""
         
         def __call__(self, params, obs: jnp.ndarray):
-            # hidden = jnp.concatenate([obs], axis=-1)
-            # res = []
-            # for _ in range(self.n_critics):
-            #     critic_option_qs = MLP(
-            #         layer_sizes=list(hidden_layer_sizes) + [num_options],
-            #         activation=activation,
-            #         kernel_init=jax.nn.initializers.lecun_uniform()
-            #     )(hidden)
-            #     critic_option_qs = final_activation(critic_option_qs)
-            #     res.append(critic_option_qs)
-            # jnp.stack(res, axis=-1)
-            return jnp.zeros((*obs.shape[:-1], action_space_size))
+            return jnp.squeeze(params[obs])
   
     q_table = QTable()
   
