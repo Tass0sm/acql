@@ -40,5 +40,5 @@ class NavixTaskBase(TaskBase):
         return {
             **self.tabular_hql_hps,
             "cost_scaling": 1.0,
-            "safety_threshold": -0.1,
+            "safety_threshold": -0.05,
         }

@@ -2,66 +2,38 @@ import numpy as np
 import jax.numpy as jnp
 
 # , outside_circle, inside_box, true_exp
-from achql.navix.tasks.templates import inside_circle
+from achql.navix.tasks.templates import inside_circle, inside_box
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-# class CenterConstraintMixin:
+class BoxObstacleMixin:
 
-#     def _build_hi_spec(self, wp_var: Var) -> Expression:
-#         pass
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
 
-#     def _build_lo_spec(self, obs_var: Var) -> Expression:
-#         at_obs1 = inside_circle(obs_var.position, self.obs1_location, self.obs_radius)
-#         phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
-#         return phi
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        at_obs1 = inside_box(obs_var, *self.obs_corners)
+        phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+        return phi
 
-#     @property
-#     def rm_config(self) -> dict:
-#         return {
-#             "final_state": 0,
-#             "terminal_states": [1],
-#             "reward_functions": {
-#                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
-#                 (0, 1): lambda s_t, a_t, s_t1: 0.0,
-#                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
-#             },
-#             "pruned_edges": [(0, 0)]
-#         }
+    @property
+    def rm_config(self) -> dict:
+        return {
+            "final_state": 0,
+            "terminal_states": [1],
+            "reward_functions": {
+                (1, 1): lambda s_t, a_t, s_t1: 0.0,
+                (0, 1): lambda s_t, a_t, s_t1: 0.0,
+                (0, 0): lambda s_t, a_t, s_t1: 1.0,
+            },
+            "pruned_edges": [(0, 0)]
+        }
 
-#     @property
-#     def lof_task_state_costs(self) -> jnp.ndarray:
-#         raise NotImplementedError()
-
-
-# class UMazeConstraintMixin:
-
-#     def _build_hi_spec(self, wp_var: Var) -> Expression:
-#         pass
-
-#     def _build_lo_spec(self, obs_var: Var) -> Expression:
-#         at_obs1 = inside_box(obs_var.position, *self.obs_corners)
-#         phi = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
-#         return phi
-
-#     @property
-#     def rm_config(self) -> dict:
-#         return {
-#             "final_state": 0,
-#             "terminal_states": [1],
-#             "reward_functions": {
-#                 (1, 1): lambda s_t, a_t, s_t1: 0.0,
-#                 (0, 1): lambda s_t, a_t, s_t1: 0.0,
-#                 (0, 0): lambda s_t, a_t, s_t1: 1.0,
-#             },
-#             "pruned_edges": [(0, 0)]
-#         }
-
-#     @property
-#     def lof_task_state_costs(self) -> jnp.ndarray:
-#         raise NotImplementedError()
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
 
 
 class SingleSubgoalMixin:

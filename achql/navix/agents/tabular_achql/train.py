@@ -10,6 +10,7 @@ from brax.training import acting
 from brax.training import gradients
 from brax.training import pmap
 from brax.training.replay_buffers_test import jit_wrap
+from brax.training import replay_buffers
 from brax.training import types
 from brax.training.acme import specs
 from brax.training.types import Params
@@ -24,7 +25,7 @@ from navix import Timestep
 
 
 from achql.brax.training.acme import running_statistics
-from achql.brax.her import replay_buffers
+# from achql.brax.her import replay_buffers
 from achql.navix.envs.wrappers.training import wrap_for_training
 
 from achql.navix.training.evaluator import NavixEvaluator
@@ -101,11 +102,10 @@ def train(
         episode_length: int = 1000,
         wrap_env: bool = True,
         # action_repeat: int = 1,
-        unroll_length: int = 50,
         num_envs: int = 128,
         # num_sampling_per_update: int = 50,
         num_eval_envs: int = 16,
-        learning_rate: float = 1e-2,
+        learning_rate: float = 1e-1,
         discounting: float = 0.9,
         seed: int = 0,
         batch_size: int = 256,
@@ -118,8 +118,7 @@ def train(
         tau: float = 0.005,
         min_replay_size: int = 0,
         max_replay_size: Optional[int] = 10_0000,
-        use_her: bool = False,
-        multiplier_num_update_steps: int = 1,
+        updates_per_step: int = 1,
         deterministic_eval: bool = True,
         tensorboard_flag = True,
         logdir = './logs',
@@ -128,9 +127,6 @@ def train(
         progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
         checkpoint_logdir: Optional[str] = None,
         eval_env = None,
-        replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
-        hidden_layer_sizes=(256, 256),
-        hidden_cost_layer_sizes=(64, 64, 64, 32),
         gamma_init_value = 0.80,
         gamma_update_period = None,
         gamma_decay = 0.15,
@@ -153,11 +149,11 @@ def train(
         max_replay_size = num_timesteps
   
     # The number of environment steps executed for every `actor_step()` call.
-    env_steps_per_actor_step = num_envs * unroll_length
-    num_prefill_actor_steps = min_replay_size // unroll_length + 1
-    print("Num_prefill_actor_steps: ", num_prefill_actor_steps)
+    env_steps_per_actor_step = num_envs
+    # equals to ceil(min_replay_size / env_steps_per_actor_step)
+    num_prefill_actor_steps = -(-min_replay_size // num_envs)
     num_prefill_env_steps = num_prefill_actor_steps * env_steps_per_actor_step
-    assert num_timesteps - min_replay_size >= 0
+    assert num_timesteps - num_prefill_env_steps >= 0
     num_evals_after_init = max(num_evals - 1, 1)
     # The number of epoch calls per training
     # equals to
@@ -192,8 +188,6 @@ def train(
         )
   
     obs_size = env.observation_space.shape[0]
-    # TODO: Fix
-    action_size = 1 # env.action_space.shape[0]
     
     achql_tables = table_factory(
         observation_space=env.observation_space,
@@ -212,7 +206,6 @@ def train(
         next_observation=0,
         extras={
             'state_extras': {
-                'truncation': 0.0,
                 'automata_state': 0,
                 'made_transition': 0,
                 'cost': 0.0,
@@ -221,18 +214,10 @@ def train(
         }
     )
   
-    ReplayBufferClass = getattr(replay_buffers, replay_buffer_class_name)
-  
-    replay_buffer = jit_wrap(
-        ReplayBufferClass(
-            max_replay_size=max_replay_size // device_count,
-            dummy_data_sample=dummy_transition,
-            sample_batch_size=batch_size // device_count,
-            num_envs=num_envs,
-            episode_length=episode_length,
-            automaton=getattr(env, "automaton", None)
-        )
-    )
+    replay_buffer = replay_buffers.UniformSamplingQueue(
+        max_replay_size=max_replay_size // device_count,
+        dummy_data_sample=dummy_transition,
+        sample_batch_size=batch_size * updates_per_step // device_count)
   
     # SAFETY GAMMA SCHEDULER
   
@@ -364,28 +349,19 @@ def train(
         ReplayBufferState,
     ]:
         policy = make_policy((option_q_params, cost_q_params))
-        
-        @jax.jit
-        def f(carry, unused_t):
-            env_state, current_key = carry
-            current_key, next_key = jax.random.split(current_key)
-            env_state, transition = hierarchical_acting.semimdp_actor_step(
-                env,
-                env_state,
-                policy,
-                current_key,
-                extra_fields=(
-                    # 'seed',
-                    # 'automata_state',
-                    # 'made_transition',
-                    # 'cost',
-                ),
+        env_state, transitions = hierarchical_acting.semimdp_actor_step(
+            env,
+            env_state,
+            policy,
+            key,
+            extra_fields=(
+                'automata_state',
+                'made_transition',
+                'cost',
             )
-            return (env_state, next_key), transition
-        
-        (env_state, _), data = jax.lax.scan(f, (env_state, key), (), length=unroll_length)
-        
-        buffer_state = replay_buffer.insert(buffer_state, data)
+        )
+
+        buffer_state = replay_buffer.insert(buffer_state, transitions)
         return env_state, buffer_state
   
     def training_step(
@@ -407,7 +383,14 @@ def train(
             env_steps=training_state.env_steps + env_steps_per_actor_step
         )
         
-        training_state, buffer_state, metrics = additional_updates(training_state, buffer_state, training_key)
+        buffer_state, transitions = replay_buffer.sample(buffer_state)
+
+        # Change the front dimension of transitions so 'update_step' is called
+        # grad_updates_per_step times by the scan.
+        transitions = jax.tree_map(lambda x: jnp.reshape(x, (updates_per_step, -1) + x.shape[1:]), transitions)
+        (training_state, _), metrics = jax.lax.scan(update_step, (training_state, training_key), transitions)
+
+        metrics['buffer_current_size'] = replay_buffer.size(buffer_state)
         return training_state, env_state, buffer_state, metrics
   
     def prefill_replay_buffer(
@@ -488,23 +471,22 @@ def train(
   
         def f(carry, unused_t):
             ts, es, bs, k = carry
-            k, new_key, a_update_key = jax.random.split(k, 3)
+            k, new_key = jax.random.split(k)
             ts, es, bs, metrics = training_step(ts, es, bs, k)
-            (ts, bs, a_update_key), _ = scan_additional_updates(multiplier_num_update_steps - 1, ts, bs, a_update_key)
             return (ts, es, bs, new_key), metrics
-        
+
         (training_state, env_state, buffer_state, key), metrics = jax.lax.scan(
             f,
             (training_state, env_state, buffer_state, key),
             (),
             length=num_training_steps_per_epoch
         )
-        
+
         metrics = jax.tree_map(jnp.mean, metrics)
         return training_state, env_state, buffer_state, metrics
-  
+
     training_epoch = jax.pmap(training_epoch, axis_name=_PMAP_AXIS_NAME)
-  
+
     # Note that this is NOT a pure jittable method.
     def training_epoch_with_timing(
             training_state: TrainingState,

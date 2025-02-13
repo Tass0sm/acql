@@ -48,6 +48,8 @@ def training_run(run_id, env, seed, train_fn=tabular_achql.train, progress_fn=pr
     with mlflow.MlflowClient()._log_artifact_helper(run_id, f'policy_params') as tmp_path:
         model.save_params(tmp_path, params)
 
+    print("Q:\n", params)
+
     return make_inference_fn, params
 
 
@@ -65,7 +67,7 @@ def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3)):
                     func(run, task, seed, spec)
 
 
-def tabular_hql_train(run, task, seed, spec, margin=1.0):
+def tabular_hql_train(run, task, seed, spec):
     options = task.get_options()
 
     make_inference_fn, params = training_run(
@@ -83,12 +85,12 @@ def tabular_hql_train(run, task, seed, spec, margin=1.0):
     )
 
 
-def tabular_achql_train(run, task, seed, spec, margin=1.0):
+def tabular_achql_train(run, task, seed, spec, margin=0.0):
     options = task.get_options()
 
     make_inference_fn, params = training_run(
         run.info.run_id,
-        task.env, # make_cmdp(task, margin=margin),
+        make_cmdp(task, margin=margin),
         seed,
         train_fn=tabular_achql.train,
         progress_fn=progress_fn,
@@ -103,15 +105,15 @@ def tabular_achql_train(run, task, seed, spec, margin=1.0):
 
 
 if __name__ == "__main__":
-    task = get_task("Grid", "SingleSubgoal")
+    task = get_task("Grid", "WithObstacle")
 
     spec = task.lo_spec
     spec_tag = type(task).__name__
     env_tag = type(task.env).__name__
 
     for seed in range(0, 1):
-        # with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACHQL"}) as run:
-        #     tabular_achql_train(run, task, seed, spec)
+        with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACHQL"}) as run:
+            tabular_achql_train(run, task, seed, spec)
 
-        with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_HQL"}) as run:
-            tabular_hql_train(run, task, seed, spec)
+        # with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_HQL"}) as run:
+        #     tabular_hql_train(run, task, seed, spec)

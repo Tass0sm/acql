@@ -176,8 +176,6 @@ def train(
         )
   
     obs_size = env.observation_space.shape[0]
-    # TODO: Fix
-    action_size = 1 # env.action_space.shape[0]
     
     hql_tables = table_factory(
         observation_space=env.observation_space,

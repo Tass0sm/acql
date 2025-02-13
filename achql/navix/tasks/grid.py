@@ -69,6 +69,13 @@ class GridTaskBase(NavixTaskBase):
         return options_l
 
 
+class GridWithObstacle(BoxObstacleMixin, GridTaskBase):
+    def __init__(self, backend="mjx", **kwargs):
+        self.obs_corners = (jnp.array([0.9, 1.9]), jnp.array([2.1, 3.1]))
+
+        super().__init__(None, 1000, backend=backend, **kwargs)
+
+
 class GridSingleSubgoal(SingleSubgoalMixin, GridTaskBase):
     def __init__(self, backend="mjx", **kwargs):
         self.goal1_location = jnp.array([12.0, 4.0])

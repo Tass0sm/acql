@@ -37,12 +37,14 @@ class AutomatonWrapper(Wrapper):
             specification: Expression,
             state_var,
             augment_obs: bool = True,
+            overwrite_reward: bool = False,
     ):
         super().__init__(env)
 
         self.automaton = JaxAutomaton(specification, state_var)
         self.augment_obs = augment_obs
         self.original_obs_dim = env.observation_space.shape[0]
+        self.overwrite_reward = overwrite_reward
 
         # get accepting state
         accepting_states = [self.automaton.automaton.state_is_accepting(i) for i in range(self.automaton.automaton.num_states())]
@@ -192,13 +194,13 @@ class AutomatonWrapper(Wrapper):
             new_obs = jnp.concatenate((ntimestep.observation, self.automaton.one_hot_encode(nautomaton_state)), axis=-1)
             ntimestep = ntimestep.replace(observation=new_obs)
 
-        reward = jnp.array(nautomaton_state == self.accepting_state, dtype=float)
-        # automaton_success = reward
-        # ntimestep.metrics.update(
-        #     automaton_success=automaton_success,
-        # )
-
-        ntimestep = ntimestep.replace(reward=reward)
+        if self.overwrite_reward:
+            reward = jnp.array(nautomaton_state == self.accepting_state, dtype=float)
+            # automaton_success = reward
+            # ntimestep.metrics.update(
+            #     automaton_success=automaton_success,
+            # )
+            ntimestep = ntimestep.replace(reward=reward)
 
         return ntimestep
 

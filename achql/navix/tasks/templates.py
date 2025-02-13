@@ -30,3 +30,27 @@ def inside_circle(
     if has_goal:
         info["goal"] = center
     return stl.STLPredicate(var, f, 0.0, default_params=center, info=info)
+
+
+def inside_box(
+        var: Var,
+        corner1: jax.Array,
+        corner2: jax.Array,
+        has_goal: bool = False
+) -> stl.STLFormula:
+
+    neg_eye = -jnp.eye(2)
+    pos_eye = jnp.eye(2)
+    A = jnp.vstack((neg_eye, pos_eye))
+    b = jnp.concatenate((-corner1, corner2))
+    # using formula for testing point is inside polytope.
+
+    def f(timestep, unused):
+        pos = timestep.state.entities["player"].position.squeeze()
+        jax.debug.breakpoint()
+        return (b - A @ pos).min(axis=-1)
+
+    info = {"name": f"inside_box ({corner1}, {corner2})"}
+    if has_goal:
+        info["goal"] = corner1+(corner2-corner1)/2
+    return stl.STLPredicate(var, f, 0.0, info=info)

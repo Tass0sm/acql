@@ -118,14 +118,15 @@ class AutomatonCostWrapper(Wrapper):
         Note: state and action are unused.
         """
 
-        nobs = jnp.expand_dims(self.original_obs(ntimestep.observation), 0)
+        # nobs = jnp.expand_dims(self.original_obs(ntimestep.observation), 0)
+        ntimestep_expanded = jax.tree.map(lambda x: jnp.expand_dims(x, 0), ntimestep)
 
         # Unless using the ablation "relu_cost", this should be negative when
         # unsafe, positive when safe.  That way taking the min over the whole
         # trajectory returns the least safe point.
         safety_rho = jax.lax.switch(ntimestep.info["automata_state"],
                                     self.safety_exps,
-                                    { self.state_var.idx: nobs }).squeeze()
+                                    { self.state_var.idx: ntimestep_expanded }).squeeze()
 
         if self.relu_cost:
             # in the ablation, its only positive non-zero when unsafe.
@@ -143,7 +144,6 @@ class AutomatonCostWrapper(Wrapper):
         timestep.info.update(
             cost=cost
         )
-
         return timestep
 
     def step(self, timestep: Timestep, action: jax.Array) -> Timestep:
