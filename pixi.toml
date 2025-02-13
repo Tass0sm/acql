@@ -45,3 +45,4 @@ einops = ">=0.8.0, <0.9"
 ur-rtde = ">=1.6.0, <2"
 hyperopt = ">=0.2.7, <0.3"
 brax = ">=0.12.1, <0.13"
+navix = { path = "/home/tassos/phd/research/second-project/navix", editable = true }

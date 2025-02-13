@@ -6,14 +6,14 @@ import jax.numpy as jnp
 from gymnasium.spaces.utils import flatdim
 
 from achql.brax.safety_gymnasium_envs.safety_hopper_velocity_v1 import SafetyHopperVelocityEnv as Hopper
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import inside_circle, outside_circle
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class HopperTaskBase(TaskBase):
+class HopperTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

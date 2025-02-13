@@ -7,13 +7,13 @@ from gymnasium.spaces.utils import flatdim
 
 from jaxgcrl.envs.ant_push import AntPush
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class AntPushTaskBase(TaskBase):
+class AntPushTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

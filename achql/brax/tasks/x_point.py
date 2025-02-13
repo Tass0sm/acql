@@ -5,7 +5,7 @@ import jax.numpy as jnp
 
 from achql.brax.envs.x_point import XPoint
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 from achql.brax.tasks.mixins import *
 from achql.hierarchy.x_point.load import load_hard_coded_x_point_options
@@ -14,7 +14,7 @@ from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class XPointTaskBase(TaskBase):
+class XPointTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -27,7 +27,7 @@ class XPointTaskBase(TaskBase):
         self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
 
     def get_options(self):
-        return load_hard_coded_x_point_options()
+        return load_hard_coded_x_point_options(k=5)
 
     @property
     def hdcqn_hps(self):

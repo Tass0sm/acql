@@ -26,7 +26,7 @@ from achql.hierarchy.xy_point import options
 from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
 
 
-def load_hard_coded_x_point_options():
+def load_hard_coded_x_point_options(k: int = 1):
 
     options_l = []
 
@@ -50,7 +50,7 @@ def load_hard_coded_x_point_options():
         options_l.append(
             Option(
                 name, None, None, functools.partial(hard_policy, ctrl),
-                termination_policy=FixedLengthTerminationPolicy(1)
+                termination_policy=FixedLengthTerminationPolicy(k)
             )
         )
 

@@ -5,7 +5,7 @@ import jax.numpy as jnp
 
 from achql.brax.envs.simple_maze import SimpleMaze
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 from achql.brax.tasks.mixins import *
 from achql.hierarchy.xy_point.load import load_hard_coded_xy_point_options
@@ -14,7 +14,7 @@ from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class SimpleMazeTaskBase(TaskBase):
+class SimpleMazeTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

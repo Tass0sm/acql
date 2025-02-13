@@ -3,12 +3,12 @@ import random
 import numpy as np
 
 from schrl.envs.wrapper import GoalEnv, Doggo
-from schrl.tasks.base import TaskBase
+from schrl.tasks.base import BraxTaskBase
 from schrl.tltl.spec import DiffTLTLSpec
 from schrl.tltl.template import sequence, ith_state, loop, signal, coverage
 
 
-class DoggoSequence(TaskBase):
+class DoggoSequence(BraxTaskBase):
     def __init__(self, enable_gui: bool = True):
         self.goals = np.array([
             [2, 2],
@@ -59,7 +59,7 @@ class DoggoSequence(TaskBase):
         return np.array(dataset)
 
 
-class DoggoCover(TaskBase):
+class DoggoCover(BraxTaskBase):
     def __init__(self, enable_gui: bool = True):
         self.goals = np.array([
             [2, 2],
@@ -104,7 +104,7 @@ class DoggoCover(TaskBase):
         return np.array(dataset)
 
 
-class DoggoBranch(TaskBase):
+class DoggoBranch(BraxTaskBase):
     def __init__(self, enable_gui: bool = True):
         self.branches = np.array([
             [[0, 2], [0, -2]],
@@ -178,7 +178,7 @@ class DoggoBranch(TaskBase):
         return np.array(dataset)
 
 
-class DoggoLoop(TaskBase):
+class DoggoLoop(BraxTaskBase):
     def __init__(self, enable_gui: bool = False):
         self.waypoints = ([-2, -2],
                           [-2, 2],
@@ -228,7 +228,7 @@ class DoggoLoop(TaskBase):
         return np.array(dataset)
 
 
-class DoggoSignal(TaskBase):
+class DoggoSignal(BraxTaskBase):
     def __init__(self, enable_gui: bool):
         self.loop_waypoints = ([-2, -2],
                                [-2, 2],

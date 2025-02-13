@@ -8,7 +8,7 @@ from achql.brax.envs.manipulation.ur5e_reach_shelf import UR5eReachShelf
 from achql.brax.envs.manipulation.ur5e_reach_shelf_eef import UR5eReachShelfEEF
 from achql.brax.envs.manipulation.ur5e_translate import UR5eTranslate
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 from achql.brax.tasks.mixins import *
 from achql.hierarchy.ur5e.load import load_ur5e_options, load_ur5e_eef_options
@@ -18,7 +18,7 @@ from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class UR5eTaskBase(TaskBase):
+class UR5eTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

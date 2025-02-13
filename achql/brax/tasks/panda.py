@@ -5,14 +5,14 @@ import jax.numpy as jnp
 
 from jaxgcrl.envs.manipulation.arm_reach import ArmReach
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class PandaTaskBase(TaskBase):
+class PandaTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

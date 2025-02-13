@@ -1,4 +1,4 @@
-from .base import TaskBase
+from .base import BraxTaskBase
 from .ant_maze import (
     AntMazeNav,
     AntMazeUMazeConstraint,
@@ -56,7 +56,7 @@ from .x_point import (
 )
 
 
-def get_task(robot_name: str, task_name: str) -> TaskBase:
+def get_task(robot_name: str, task_name: str) -> BraxTaskBase:
     _table = {
         "ant_maze": {
             "true": AntMazeNav,

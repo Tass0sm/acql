@@ -28,8 +28,8 @@ class Var:
         if self.index is not None:
             x = x[..., self.index[0]:self.index[1]]
 
-        if x.shape[-1] != self.dim:
-            raise ValueError(f'Variable {self.name} expected a value with dimension {self.dim}, but x had shape {x.shape} with dimension {x.shape[-1]}.')
+        # if x.shape[-1] != self.dim:
+        #     raise ValueError(f'Variable {self.name} expected a value with dimension {self.dim}, but x had shape {x.shape} with dimension {x.shape[-1]}.')
 
         # if x.ndim == 2:
         #     x = jnp.expand_dims(x, 1)

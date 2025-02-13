@@ -7,14 +7,14 @@ from gymnasium.spaces.utils import flatdim
 
 from achql.brax.envs.ant import Ant
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import inside_circle
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class AntTaskBase(TaskBase):
+class AntTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

@@ -7,13 +7,13 @@ from gymnasium.spaces.utils import flatdim
 
 from achql.brax.envs.xy_point_maze import XYPointMaze
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class XYPointMazeTaskBase(TaskBase):
+class XYPointMazeTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

@@ -7,7 +7,7 @@ from gymnasium.spaces.utils import flatdim
 
 from achql.brax.envs.point import Point
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 # from schrl.tltl.spec import DiffTLTLSpec
 # from schrl.tltl.template import sequence, ith_state, loop, signal, coverage
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle
@@ -16,7 +16,7 @@ from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
 
 
-class PointTaskBase(TaskBase):
+class PointTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -124,7 +124,7 @@ class PointOneGoal(PointTaskBase):
         return phi
 
 
-class PointTwoGoals(TaskBase):
+class PointTwoGoals(BraxTaskBase):
     """Based on the office grid world example reward machines paper
 
     F(coffee ^ X(F(office))) ^ G(not obs)
@@ -174,7 +174,7 @@ class PointTwoGoals(TaskBase):
         return phi
 
 
-class PointSequence(TaskBase):
+class PointSequence(BraxTaskBase):
     def __init__(self, backend="mjx"):
         self.goals = jnp.array([[2.0, 2.0],
                                 [-1.0, 2.0],
@@ -212,7 +212,7 @@ class PointSequence(TaskBase):
         pass
 
 
-# class PointCover(TaskBase):
+# class PointCover(BraxTaskBase):
 #     def __init__(self, enable_gui: bool = True):
 #         self.goals = np.array([
 #             [2, 2],
@@ -263,7 +263,7 @@ class PointSequence(TaskBase):
 #         return np.array(dataset)
 
 
-# class PointBranch(TaskBase):
+# class PointBranch(BraxTaskBase):
 #     def __init__(self, enable_gui: bool = True):
 #         self.branches = np.array([
 #             [[0, 2], [0, -2]],
@@ -337,7 +337,7 @@ class PointSequence(TaskBase):
 #         return np.array(dataset)
 
 
-# class PointLoop(TaskBase):
+# class PointLoop(BraxTaskBase):
 #     def __init__(self, enable_gui: bool = False):
 #         self.waypoints = ([-2, -2],
 #                           [-2, 2],
@@ -387,7 +387,7 @@ class PointSequence(TaskBase):
 #         return np.array(dataset)
 
 
-# class PointSignal(TaskBase):
+# class PointSignal(BraxTaskBase):
 #     def __init__(self, enable_gui: bool):
 #         self.loop_waypoints = ([-2, -2],
 #                                [-2, 2],

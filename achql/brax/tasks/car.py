@@ -3,12 +3,12 @@ import random
 import numpy as np
 
 from schrl.envs.wrapper import GoalEnv, Car
-from schrl.tasks.base import TaskBase
+from schrl.tasks.base import BraxTaskBase
 from schrl.tltl.spec import DiffTLTLSpec
 from schrl.tltl.template import sequence, coverage, ith_state, loop, signal
 
 
-class CarSequence(TaskBase):
+class CarSequence(BraxTaskBase):
     def __init__(self, enable_gui: bool = True):
         self.goals = np.array([
             [2, 2],
@@ -59,7 +59,7 @@ class CarSequence(TaskBase):
         return np.array(dataset)
 
 
-class CarCover(TaskBase):
+class CarCover(BraxTaskBase):
     def __init__(self, enable_gui: bool = True):
         self.goals = np.array([
             [2, 2],
@@ -104,7 +104,7 @@ class CarCover(TaskBase):
         return np.array(dataset)
 
 
-class CarBranch(TaskBase):
+class CarBranch(BraxTaskBase):
     def __init__(self, enable_gui: bool = True):
         self.branches = np.array([
             [[0, 2], [0, -2]],
@@ -178,7 +178,7 @@ class CarBranch(TaskBase):
         return np.array(dataset)
 
 
-class CarLoop(TaskBase):
+class CarLoop(BraxTaskBase):
     def __init__(self, enable_gui: bool = False):
         self.waypoints = ([-2, -2],
                           [-2, 2],
@@ -228,7 +228,7 @@ class CarLoop(TaskBase):
         return np.array(dataset)
 
 
-class CarSignal(TaskBase):
+class CarSignal(BraxTaskBase):
     def __init__(self, enable_gui: bool):
         self.loop_waypoints = ([-2, -2],
                                [-2, 2],

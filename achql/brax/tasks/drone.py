@@ -5,7 +5,7 @@ import jax.numpy as jnp
 
 from jaxgcrl.envs.simple_maze import SimpleMaze
 from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import TaskBase
+from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box
 
 from achql.stl import Expression, Var
@@ -16,12 +16,12 @@ import random
 import numpy as np
 
 # from schrl.envs.wrapper import DronePIDEnv, GoalEnv
-# from schrl.tasks.base import TaskBase
+# from schrl.tasks.base import BraxTaskBase
 # from schrl.tltl.spec import DiffTLTLSpec
 # from schrl.tltl.template import sequence, coverage, signal, dim_lb, end_state, loop
 
 
-class DroneTaskBase(TaskBase):
+class DroneTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -114,7 +114,7 @@ class DroneNav(SimpleMazeTaskBase):
         return true
 
 
-# class DroneSequence(TaskBase):
+# class DroneSequence(BraxTaskBase):
 #     def __init__(self, enable_gui: bool = True):
 #         self.goals = np.array([
 #             [2, 2, 1],
@@ -161,7 +161,7 @@ class DroneNav(SimpleMazeTaskBase):
 #         return np.array(dataset)
 
 
-# class DroneBranch(TaskBase):
+# class DroneBranch(BraxTaskBase):
 #     def __init__(self, enable_gui: bool = True):
 #         self.branch_1 = np.array([
 #             [1, 0, 1],
@@ -228,7 +228,7 @@ class DroneNav(SimpleMazeTaskBase):
 #         return np.array(dataset)
 
 
-# class DroneCover(TaskBase):
+# class DroneCover(BraxTaskBase):
 
 #     def __init__(self, enable_gui: bool = True):
 #         self.goals = np.array([
@@ -271,7 +271,7 @@ class DroneNav(SimpleMazeTaskBase):
 #         return np.array(dataset)
 
 
-# class DroneLoop(TaskBase):
+# class DroneLoop(BraxTaskBase):
 
 #     def __init__(self, enable_gui: bool = False):
 #         self.waypoints = ([-1, -1, 1],
@@ -311,7 +311,7 @@ class DroneNav(SimpleMazeTaskBase):
 #         return np.array(dataset)
 
 
-# class DroneSignal(TaskBase):
+# class DroneSignal(BraxTaskBase):
 #     def __init__(self, enable_gui: bool):
 #         self.loop_waypoints = ([-1, -1, 1.5], [1, 1, 2], [1, 1, 1])
 #         self.final_goal = [-2, -2, 2]
