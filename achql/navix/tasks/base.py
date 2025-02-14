@@ -7,15 +7,6 @@ from navix.environments.environment import Environment
 from achql.tasks.base import TaskBase
 
 
-def FlattenObsWrapper(env: Environment):
-    flatten_obs_fn = lambda x: jnp.ravel(env.observation_fn(x))
-    flatten_obs_shape = (int(np.prod(env.observation_space.shape)),)
-    return env.replace(
-        observation_fn=flatten_obs_fn,
-        observation_space=env.observation_space.replace(shape=flatten_obs_shape),
-    )
-
-
 class NavixTaskBase(TaskBase):
 
     @property

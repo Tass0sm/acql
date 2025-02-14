@@ -46,7 +46,6 @@ def inside_box(
 
     def f(timestep, unused):
         pos = timestep.state.entities["player"].position.squeeze()
-        jax.debug.breakpoint()
         return (b - A @ pos).min(axis=-1)
 
     info = {"name": f"inside_box ({corner1}, {corner2})"}

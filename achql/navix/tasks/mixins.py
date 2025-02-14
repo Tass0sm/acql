@@ -2,10 +2,27 @@ import numpy as np
 import jax.numpy as jnp
 
 # , outside_circle, inside_box, true_exp
-from achql.navix.tasks.templates import inside_circle, inside_box
+from achql.navix.tasks.templates import true_exp, inside_circle, inside_box
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
+
+
+class NoConstraintMixin:
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        return true_exp(obs_var)
+
+    @property
+    def rm_config(self) -> dict:
+        raise NotImplementedError()
+
+    @property
+    def lof_task_state_costs(self) -> jnp.ndarray:
+        raise NotImplementedError()
 
 
 class BoxObstacleMixin:

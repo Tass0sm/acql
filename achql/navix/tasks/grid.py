@@ -4,17 +4,28 @@ import functools
 import numpy as np
 import jax.numpy as jnp
 import navix as nx
-from navix import observations
+from navix import Environment, observations
+from navix.spaces import Discrete
 from navix.actions import rotate_ccw, rotate_cw, forward
 
-from achql.navix.tasks.base import NavixTaskBase, FlattenObsWrapper
-# from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from achql.navix.tasks.base import NavixTaskBase
 from achql.navix.tasks.mixins import *
 from achql.navix import observations as custom_observations
 from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
 
 from achql.stl import Expression, Var
 import achql.stl.expression_jax2 as stl
+
+
+def make_tabular(env: Environment):
+    unique_id_obs_fn = env.get_unique_id_obs_fn()
+    n_unique_states = env.get_n_unique_states()
+    unique_id_obs_space = Discrete.create(n_elements=n_unique_states, shape=(1,))
+
+    return env.replace(
+        observation_fn=unique_id_obs_fn,
+        observation_space=unique_id_obs_space,
+    )
 
 
 class GridTaskBase(NavixTaskBase):
@@ -25,20 +36,13 @@ class GridTaskBase(NavixTaskBase):
         super().__init__(*args, **kwargs)
 
     def _build_env(self, backend: str):
-        if self.obs_type == "unique_id":
-            obs_fn = observations.unique_id
-        elif self.obs_type == "rgb":
-            obs_fn = observations.rgb
-        else:
-            raise NotImplementedError()
-
         env = nx.make(
-            "Navix-Empty-5x5-v0",
-            observation_fn=obs_fn, # observations.symbolic_first_person,
+            self.env_name,
+            observation_fn=observations.none,
             action_set=(rotate_ccw, rotate_cw, forward),
             gamma=0.99,
         )
-        # env = FlattenObsWrapper(env)
+        env = make_tabular(env)
         return env
 
     def _create_vars(self):
@@ -72,8 +76,56 @@ class GridTaskBase(NavixTaskBase):
 class GridWithObstacle(BoxObstacleMixin, GridTaskBase):
     def __init__(self, backend="mjx", **kwargs):
         self.obs_corners = (jnp.array([0.9, 1.9]), jnp.array([2.1, 3.1]))
+        self.env_name = "Navix-Empty-5x5-v0"
+        super().__init__(None, 1000, backend=backend, **kwargs)
+
+
+class Grid8x8(NoConstraintMixin, GridTaskBase):
+    def __init__(self, backend="mjx", **kwargs):
+        self.env_name = "Navix-Empty-8x8-v0"
+        super().__init__(None, 1000, backend=backend, **kwargs)
+
+
+class Grid16x16(NoConstraintMixin, GridTaskBase):
+    def __init__(self, backend="mjx", **kwargs):
+        self.env_name = "Navix-Empty-16x16-v0"
+        super().__init__(None, 1000, backend=backend, **kwargs)
+
+
+class GridRandom5x5(NoConstraintMixin, GridTaskBase):
+    def __init__(self, backend="mjx", **kwargs):
+        self.env_name = "Navix-Empty-Random-5x5-v0"
+        super().__init__(None, 1000, backend=backend, **kwargs)
+
+
+class GridRandom8x8(NoConstraintMixin, GridTaskBase):
+    def __init__(self, backend="mjx", **kwargs):
+        self.env_name = "Navix-Empty-Random-8x8-v0"
+        super().__init__(None, 1000, backend=backend, **kwargs)
+
+
+class GridLargeWithObstacle(BoxObstacleMixin, GridTaskBase):
+    def __init__(self, backend="mjx", **kwargs):
+        self.obs_corners = (jnp.array([0.9, 1.9]), jnp.array([2.1, 3.1]))
 
         super().__init__(None, 1000, backend=backend, **kwargs)
+
+    def _build_env(self, backend: str):
+        if self.obs_type == "unique_id":
+            obs_fn = observations.unique_id
+        elif self.obs_type == "rgb":
+            obs_fn = observations.rgb
+        else:
+            raise NotImplementedError()
+
+        env = nx.make(
+            "Navix-Empty-16x16-v0",
+            observation_fn=obs_fn, # observations.symbolic_first_person,
+            action_set=(rotate_ccw, rotate_cw, forward),
+            gamma=0.99,
+        )
+        # env = FlattenObsWrapper(env)
+        return env
 
 
 class GridSingleSubgoal(SingleSubgoalMixin, GridTaskBase):

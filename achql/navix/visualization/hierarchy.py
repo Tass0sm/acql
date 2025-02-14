@@ -81,4 +81,7 @@ def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, 
         actions.append(ctrl)
         rollout.append(state)
 
-    return rollout, jnp.concatenate(rollout_options), jnp.stack(actions)
+    if len(rollout_options) == 0:
+        return rollout, jnp.array([], dtype=jnp.int32), jnp.array([], dtype=jnp.int32)
+    else:
+        return rollout, jnp.stack(rollout_options), jnp.stack(actions)

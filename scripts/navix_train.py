@@ -105,15 +105,15 @@ def tabular_achql_train(run, task, seed, spec, margin=0.0):
 
 
 if __name__ == "__main__":
-    task = get_task("Grid", "WithObstacle")
+    task = get_task("Grid", "Random8x8")
 
     spec = task.lo_spec
     spec_tag = type(task).__name__
     env_tag = type(task.env).__name__
 
     for seed in range(0, 1):
-        with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACHQL"}) as run:
-            tabular_achql_train(run, task, seed, spec)
+        # with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACHQL"}) as run:
+        #     tabular_achql_train(run, task, seed, spec)
 
-        # with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_HQL"}) as run:
-        #     tabular_hql_train(run, task, seed, spec)
+        with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_HQL"}) as run:
+            tabular_hql_train(run, task, seed, spec)
