@@ -110,7 +110,6 @@ def train(
         seed: int = 0,
         batch_size: int = 256,
         num_evals: int = 1,
-        normalize_observations: bool = True,
         max_devices_per_host: Optional[int] = None,
         reward_scaling: float = 1.,
         cost_scaling: float = 1.0,

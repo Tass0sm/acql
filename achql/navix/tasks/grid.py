@@ -91,6 +91,21 @@ class Grid16x16(NoConstraintMixin, GridTaskBase):
         self.env_name = "Navix-Empty-16x16-v0"
         super().__init__(None, 1000, backend=backend, **kwargs)
 
+    @property
+    def tabular_hql_hps(self):
+        return {
+            "num_timesteps": 2_000_000,
+            "reward_scaling": 1,
+            "num_evals": 25,
+            "episode_length": 100,
+            "discounting": 0.99,
+            "learning_rate": 1e-1,
+            "num_envs": 256,
+            "batch_size": 256,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            "min_replay_size": 1000,
+        }
 
 class GridRandom5x5(NoConstraintMixin, GridTaskBase):
     def __init__(self, backend="mjx", **kwargs):

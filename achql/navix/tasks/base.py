@@ -16,7 +16,6 @@ class NavixTaskBase(TaskBase):
             "reward_scaling": 1,
             "num_evals": 25,
             "episode_length": 100,
-            "normalize_observations": True,
             "discounting": 0.99,
             "learning_rate": 1e-1,
             "num_envs": 256,
