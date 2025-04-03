@@ -24,6 +24,15 @@ OPEN_MAZE = [[1, 1, 1, 1, 1],
              [1, G, G, G, 1],
              [1, 1, 1, 1, 1]]
 
+LONG_OPEN_MAZE = [[1, 1, 1, 1, 1],
+                  [1, R, G, G, 1],
+                  [1, 0, 0, G, 1],
+                  [1, G, G, G, 1],
+                  [1, G, G, G, 1],
+                  [1, G, 0, 0, 1],
+                  [1, G, G, G, 1],
+                  [1, 1, 1, 1, 1]]
+
 U_MAZE = [[1, 1, 1, 1, 1],
           [1, R, G, G, 1],
           [1, 1, 1, G, 1],
@@ -103,6 +112,8 @@ def make_maze(maze_layout_name, maze_size_scaling):
         maze_layout = HARDEST_MAZE
     elif maze_layout_name == "open_maze":
         maze_layout = OPEN_MAZE
+    elif maze_layout_name == "long_open_maze":
+        maze_layout = LONG_OPEN_MAZE
     else:
         raise ValueError(f"Unknown maze layout: {maze_layout_name}")
     

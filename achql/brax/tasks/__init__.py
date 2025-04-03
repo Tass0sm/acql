@@ -9,6 +9,8 @@ from .ant_maze import (
     AntMazeObligationConstraint1,
     AntMazeObligationConstraint2,
     AntMazeObligationConstraint3,
+    AntMazeDiagonal,
+    AntMazeObligationConstraint6,
 )
 from .simple_maze import (
     SimpleMazeNav,
@@ -22,6 +24,7 @@ from .simple_maze import (
     SimpleMazeObligationConstraint2,
     SimpleMazeObligationConstraint3,
     SimpleMazeObligationConstraint5,
+    SimpleMazeObligationConstraint6,
     SimpleMazeUntil1,
 )
 from .simple_maze_3d import (

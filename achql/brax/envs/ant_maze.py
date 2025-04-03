@@ -24,6 +24,15 @@ OPEN_MAZE = [[1, 1, 1, 1, 1],
              [1, G, G, G, 1],
              [1, 1, 1, 1, 1]]
 
+LONG_OPEN_MAZE = [[1, 1, 1, 1, 1],
+                  [1, R, G, G, 1],
+                  [1, 0, 0, G, 1],
+                  [1, G, G, G, 1],
+                  [1, G, G, G, 1],
+                  [1, G, 0, 0, 1],
+                  [1, G, G, G, 1],
+                  [1, 1, 1, 1, 1]]
+
 U_MAZE = [[1, 1, 1, 1, 1],
           [1, R, G, G, 1],
           [1, 1, 1, G, 1],
@@ -97,9 +106,7 @@ def find_goals(structure, size_scaling):
 
 # Create a xml with maze and a list of possible goal positions
 def make_maze(maze_layout_name, maze_size_scaling):
-    if maze_layout_name == "open_maze":
-        maze_layout = OPEN_MAZE
-    elif maze_layout_name == "u_maze":
+    if maze_layout_name == "u_maze":
         maze_layout = U_MAZE
     elif maze_layout_name == "u_maze_eval":
         maze_layout = U_MAZE_EVAL
@@ -111,6 +118,10 @@ def make_maze(maze_layout_name, maze_size_scaling):
         maze_layout = BIG_MAZE_EVAL
     elif maze_layout_name == "hardest_maze":
         maze_layout = HARDEST_MAZE
+    if maze_layout_name == "open_maze":
+        maze_layout = OPEN_MAZE
+    elif maze_layout_name == "long_open_maze":
+        maze_layout = LONG_OPEN_MAZE
     else:
         raise ValueError(f"Unknown maze layout: {maze_layout_name}")
     

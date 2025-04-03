@@ -188,6 +188,56 @@ class SimpleMazeObligationConstraint5(ObligationConstraint1Mixin, SimpleMazeTask
         super().__init__(None, 1000, backend=backend)
 
 
+class SimpleMazeObligationConstraint6(ObligationConstraint1Mixin, SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_corners = (jnp.array([7.0, 2.0]), jnp.array([9.0, 8.0]))
+        # self.obs2_corners = (jnp.array([18.0, 8.0]), jnp.array([22.0, 14.0]))
+
+        self.goal1_location = jnp.array([24.0, 12.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze(
+            terminate_when_unhealthy=False,
+            maze_layout_name="long_open_maze",
+            backend=backend
+        )
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        at_obs1 = inside_box(obs_var.position, *self.obs1_corners)
+        phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius, has_goal=True)
+        phi_liveness = stl.STLUntimedEventually(in_goal1)
+
+        phi = stl.STLAnd(phi_liveness, phi_safety)
+        return phi
+
+    @property
+    def hdqn_hps(self):
+        return {
+            "num_timesteps": 10_000_000,
+            "reward_scaling": 1,
+            "num_evals": 50,
+            "episode_length": 1000,
+            "normalize_observations": True,
+            "action_repeat": 1,
+            "discounting": 0.99,
+            "learning_rate": 1e-4,
+            "num_envs": 256,
+            "batch_size": 256,
+            "grad_updates_per_step": 64,
+            "max_devices_per_host": 1,
+            "max_replay_size": 10000,
+            "min_replay_size": 1000,
+        }
+
 class SimpleMazeUntil1(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.obs1_location = jnp.array([8.0, 8.0])
