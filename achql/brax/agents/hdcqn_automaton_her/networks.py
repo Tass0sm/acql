@@ -21,6 +21,7 @@ from achql.hierarchy.option import Option
 from achql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
 
 from achql.stl.utils import fold_spot_formula
+from .argmaxes import *
 
 
 @flax.struct.dataclass
@@ -30,16 +31,6 @@ class HDCQNetworks:
   options: Sequence[Option]
   # parametric_option_distribution: distribution.ParametricDistribution
 
-
-def argmax_with_random_tiebreak(array, key, axis=-1):
-    max_values = jnp.max(array, axis=axis, keepdims=True)
-    is_max = jnp.where(array == max_values, 1, 0)
-
-    # Generate random noise for tie-breaking
-    noise = jax.random.uniform(key, shape=array.shape)
-    perturbed_array = array + is_max * noise
-
-    return jnp.argmax(perturbed_array, axis=axis)
 
 def make_option_q_fn(
     hdcq_networks: HDCQNetworks,
@@ -74,6 +65,7 @@ def make_option_inference_fn(
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
+    argmax_type : str = "plain"
 ):
 
   q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
@@ -110,8 +102,15 @@ def make_option_inference_fn(
         cqs = jnp.min(double_cqs, axis=-1)
         masked_q = jnp.where(cqs > safety_threshold, qs, -999.)
 
-      option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
-      # option = masked_q.argmax(axis=-1)
+      if argmax_type == "random":
+        option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+      elif argmax_type == "safest":
+        option = argmax_with_safest_tiebreak(masked_q, cqs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
+      elif argmax_type == "plain":
+        option = masked_q.argmax(axis=-1)
+      else:
+        raise NotImplementedError()
+      
       return option, {}
 
     epsilon = jnp.float32(0.1)
@@ -135,6 +134,7 @@ def make_inference_fn(
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
+    argmax_type : str = "plain"
 ):
 
   q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
@@ -172,8 +172,15 @@ def make_inference_fn(
       else:
         masked_q = jnp.where(cqs > safety_threshold, qs, -999.0)
 
-      option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
-      # option = masked_q.argmax(axis=-1)
+      if argmax_type == "random":
+        option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+      elif argmax_type == "safest":
+        option = argmax_with_safest_tiebreak(masked_q, cqs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
+      elif argmax_type == "plain":
+        option = masked_q.argmax(axis=-1)
+      else:
+        raise NotImplementedError()
+      
       return option
 
     epsilon = jnp.float32(0.1)

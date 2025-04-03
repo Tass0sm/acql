@@ -11,6 +11,8 @@ import jax.numpy as jnp
 
 from achql.brax.agents.hdcqn_automaton_her import networks as hdcq_networks
 
+from .argmaxes import *
+
 
 Transition = types.Transition
 
@@ -23,6 +25,7 @@ def make_losses(
         safety_threshold: float,
         discounting: float,
         use_sum_cost_critic: bool = False,
+        argmax_type: str = "plain",
 ):
   """Creates the HDCQN losses."""
 
@@ -30,15 +33,23 @@ def make_losses(
   cost_q_network = hdcq_network.cost_q_network
   q_func_branches = hdcq_networks.get_compiled_q_function_branches(hdcq_network, env)
 
-  def safe_greedy_policy(reward_qs, cost_qs):
+  def safe_greedy_policy(reward_qs, cost_qs, option_key):
     "Finds option with maximal value under cost constraint"
 
     if use_sum_cost_critic:
-      masked_q = jnp.where(cost_qs < safety_threshold, reward_qs, -jnp.inf)
+      masked_q = jnp.where(cost_qs < safety_threshold, reward_qs, -999.)
     else:
-      masked_q = jnp.where(cost_qs > safety_threshold, reward_qs, -jnp.inf)
+      masked_q = jnp.where(cost_qs > safety_threshold, reward_qs, -999.)
 
-    option = masked_q.argmax(axis=-1)
+    if argmax_type == "random":
+      option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+    elif argmax_type == "safest":
+      option = argmax_with_safest_tiebreak(masked_q, cost_qs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
+    elif argmax_type == "plain":
+      option = masked_q.argmax(axis=-1)
+    else:
+      raise NotImplementedError()
+
     q = jax.vmap(lambda x, i: x.at[i].get())(reward_qs, option)
     cq = jax.vmap(lambda x, i: x.at[i].get())(cost_qs, option)
     return q, cq
@@ -76,7 +87,7 @@ def make_losses(
       next_cqs = jnp.min(next_double_cqs, axis=-1)
 
     # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
-    next_v, _ = safe_greedy_policy(next_qs, next_cqs)
+    next_v, _ = safe_greedy_policy(next_qs, next_cqs, key)
 
     # E (s_t, a_t, s_t+1) ~ D [r(s_t, a_t) + gamma * V(s_t+1)]
     target_q = jax.lax.stop_gradient(transitions.reward * reward_scaling +
@@ -132,7 +143,7 @@ def make_losses(
       next_cqs = jnp.min(next_double_cqs, axis=-1)
 
     # V(s_t+1) = max_o Q(s_t+1, o) (because pi is argmax Q)
-    _, next_cv = safe_greedy_policy(next_qs, next_cqs)
+    _, next_cv = safe_greedy_policy(next_qs, next_cqs, key)
 
     # E (s_t, a_t, s_t+1) ~ D [ gamma * min(c(s_t, a_t), V(s_t+1)) + (1-gamma) * c(s_t, a_t) ]
 

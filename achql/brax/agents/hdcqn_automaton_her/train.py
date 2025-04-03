@@ -32,6 +32,8 @@ from achql.hierarchy.training import types as h_types
 
 from achql.hierarchy.envs.options_wrapper import OptionsWrapper
 
+from .argmaxes import *
+
 
 Metrics = types.Metrics
 Transition = types.Transition
@@ -147,7 +149,7 @@ def train(
     randomization_fn: Optional[
       Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
     ] = None,
-    eval_env: Optional[envs.Env] = None,
+    eval_environment: Optional[envs.Env] = None,
     replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
     hidden_layer_sizes=(256, 256),
     hidden_cost_layer_sizes=(64, 64, 64, 32),
@@ -157,6 +159,7 @@ def train(
     gamma_end_value = 0.98,
     gamma_goal_value = 1.0,
     use_sum_cost_critic = False,
+    argmax_type = "plain",
 ):
   process_id = jax.process_index()
   local_devices_to_use = jax.local_device_count()
@@ -188,14 +191,14 @@ def train(
   )
 
   assert num_envs % device_count == 0
-  env = OptionsWrapper(
+  environment = OptionsWrapper(
     environment,
     options,
     discounting=discounting,
     use_sum_cost_critic=use_sum_cost_critic,
   )
   if wrap_env:
-    if isinstance(env, envs.Env):
+    if isinstance(environment, envs.Env):
       wrap_for_training = envs.training.wrap
     else:
       wrap_for_training = envs_v1.wrappers.wrap_for_training
@@ -210,7 +213,7 @@ def train(
               key, num_envs // jax.process_count() // local_devices_to_use),
       )
     env = wrap_for_training(
-        env,
+        environment,
         episode_length=episode_length,
         action_repeat=action_repeat,
         randomization_fn=v_randomization_fn,
@@ -245,10 +248,10 @@ def train(
       preprocess_cost_observations_fn=cost_normalize_fn,
       hidden_layer_sizes=hidden_layer_sizes,
       hidden_cost_layer_sizes=hidden_cost_layer_sizes,
-      use_sum_cost_critic=use_sum_cost_critic
+      use_sum_cost_critic=use_sum_cost_critic,
   )
-  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, safety_threshold)
-  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, safety_threshold)
+  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, safety_threshold, argmax_type=argmax_type)
+  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, safety_threshold, argmax_type=argmax_type)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
@@ -307,6 +310,7 @@ def train(
       safety_threshold=safety_threshold,
       discounting=discounting,
       use_sum_cost_critic=use_sum_cost_critic,
+      argmax_type=argmax_type,
   )
   critic_update = gradients.gradient_update_fn(
       critic_loss, option_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
@@ -593,24 +597,25 @@ def train(
   # Replay buffer init
   buffer_state = jax.pmap(replay_buffer.init)(jax.random.split(rb_key, local_devices_to_use))
 
-  if not eval_env:
+  if not eval_environment:
+    eval_environment = environment
     eval_env = env
   else:
     if wrap_env:
-      if isinstance(eval_env, envs.Env):
-        wrap_for_training = envs.training.wrap
-      else:
-        wrap_for_training = envs_v1.wrappers.wrap_for_training
-      
-      eval_env = OptionsWrapper(
-        eval_env,
+      eval_environment = OptionsWrapper(
+        eval_environment,
         options,
         discounting=discounting,
         use_sum_cost_critic=use_sum_cost_critic
       )
 
+      if isinstance(eval_environment, envs.Env):
+        wrap_for_training = envs.training.wrap
+      else:
+        wrap_for_training = envs_v1.wrappers.wrap_for_training
+
       eval_env = wrap_for_training(
-          eval_env,
+          eval_environment,
           episode_length=episode_length,
           action_repeat=action_repeat,
           randomization_fn=v_randomization_fn,
@@ -637,7 +642,7 @@ def train(
     progress_fn(
       0,
       metrics,
-      env=environment,
+      env=eval_environment,
       make_policy=make_policy,
       network=hdcq_network,
       params=_unpmap((training_state.normalizer_params,
@@ -684,7 +689,7 @@ def train(
       progress_fn(
         current_step,
         metrics,
-        env=environment,
+        env=eval_environment,
         make_policy=make_policy,
         network=hdcq_network,
         params=_unpmap((training_state.normalizer_params,
