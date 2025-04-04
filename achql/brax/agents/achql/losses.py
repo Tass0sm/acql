@@ -9,7 +9,7 @@ from brax.training.types import PRNGKey
 import jax
 import jax.numpy as jnp
 
-from achql.brax.agents.hdcqn_automaton_her import networks as hdcq_networks
+from achql.brax.agents.achql import networks as achql_networks
 
 from .argmaxes import *
 
@@ -18,7 +18,7 @@ Transition = types.Transition
 
 
 def make_losses(
-        hdcq_network: hdcq_networks.HDCQNetworks,
+        achql_network: achql_networks.ACHQLNetworks,
         env: envs.Env,
         reward_scaling: float,
         cost_scaling: float,
@@ -27,11 +27,11 @@ def make_losses(
         use_sum_cost_critic: bool = False,
         argmax_type: str = "plain",
 ):
-  """Creates the HDCQN losses."""
+  """Creates the ACHQL losses."""
 
-  option_q_network = hdcq_network.option_q_network
-  cost_q_network = hdcq_network.cost_q_network
-  q_func_branches = hdcq_networks.get_compiled_q_function_branches(hdcq_network, env)
+  option_q_network = achql_network.option_q_network
+  cost_q_network = achql_network.cost_q_network
+  q_func_branches = achql_networks.get_compiled_q_function_branches(achql_network, env)
 
   def safe_greedy_policy(reward_qs, cost_qs, option_key):
     "Finds option with maximal value under cost constraint"

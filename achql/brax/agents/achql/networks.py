@@ -25,7 +25,7 @@ from .argmaxes import *
 
 
 @flax.struct.dataclass
-class HDCQNetworks:
+class ACHQLNetworks:
   option_q_network: networks.FeedForwardNetwork
   cost_q_network: networks.FeedForwardNetwork
   options: Sequence[Option]
@@ -33,20 +33,20 @@ class HDCQNetworks:
 
 
 def make_option_q_fn(
-    hdcq_networks: HDCQNetworks,
+    achql_networks: ACHQLNetworks,
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic: bool = False,
 ):
 
-  q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
+  q_func_branches = get_compiled_q_function_branches(achql_networks, env)
 
   def make_q(
       params: types.PolicyParams,
   ) -> types.Policy:
 
     normalizer_params, option_q_params, cost_q_params = params
-    options = hdcq_networks.options
+    options = achql_networks.options
     n_options = len(options)
 
     def q(observation: types.Observation) -> jnp.ndarray:
@@ -61,14 +61,14 @@ def make_option_q_fn(
 
 
 def make_option_inference_fn(
-    hdcq_networks: HDCQNetworks,
+    achql_networks: ACHQLNetworks,
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
     argmax_type : str = "plain"
 ):
 
-  q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
+  q_func_branches = get_compiled_q_function_branches(achql_networks, env)
 
   def make_policy(
       params: types.PolicyParams,
@@ -76,7 +76,7 @@ def make_option_inference_fn(
   ) -> types.Policy:
 
     normalizer_params, option_q_params, cost_q_params = params
-    options = hdcq_networks.options
+    options = achql_networks.options
     n_options = len(options)
 
     def random_option_policy(observation: types.Observation,
@@ -93,7 +93,7 @@ def make_option_inference_fn(
       cost_obs = env.cost_obs(observation)
       # goalless_obs = env.goalless_obs(observation)
       trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-      double_cqs = hdcq_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
+      double_cqs = achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
 
       if use_sum_cost_critic:
         cqs = jnp.max(double_cqs, axis=-1)
@@ -130,14 +130,14 @@ def make_option_inference_fn(
 
 
 def make_inference_fn(
-    hdcq_networks: HDCQNetworks,
+    achql_networks: ACHQLNetworks,
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
     argmax_type : str = "plain"
 ):
 
-  q_func_branches = get_compiled_q_function_branches(hdcq_networks, env)
+  q_func_branches = get_compiled_q_function_branches(achql_networks, env)
 
   def make_policy(
       params: types.PolicyParams,
@@ -145,7 +145,7 @@ def make_inference_fn(
   ) -> types.Policy:
 
     normalizer_params, option_q_params, cost_q_params = params
-    options = hdcq_networks.options
+    options = achql_networks.options
     n_options = len(options)
 
     # TODO: Random option policy could still respect Cost Q
@@ -164,7 +164,7 @@ def make_inference_fn(
       cost_obs = env.cost_obs(observation)
       # goalless_obs = env.goalless_obs(observation)
       trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-      double_cqs = hdcq_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
+      double_cqs = achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
       cqs = jnp.max(double_cqs, axis=-1)
 
       if use_sum_cost_critic:
@@ -342,7 +342,7 @@ def make_option_cost_q_network(
       init=lambda key: q_module.init(key, dummy_obs, dummy_aut_obs), apply=apply)
 
 
-def make_hdcq_networks(
+def make_achql_networks(
     observation_size: int,
     cost_observation_size: int,
     num_aut_states: int,
@@ -354,7 +354,7 @@ def make_hdcq_networks(
     activation: networks.ActivationFn = linen.relu,
     options: Sequence[Option] = [],
     use_sum_cost_critic: bool = False,
-) -> HDCQNetworks:
+) -> ACHQLNetworks:
 
   assert len(options) > 0, "Must pass at least one option"
 
@@ -382,7 +382,7 @@ def make_hdcq_networks(
       use_sum_cost_critic=use_sum_cost_critic
   )
 
-  return HDCQNetworks(
+  return ACHQLNetworks(
       # policy_network=policy_network,
       option_q_network=option_q_network,
       cost_q_network=cost_q_network,

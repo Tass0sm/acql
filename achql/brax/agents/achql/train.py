@@ -25,8 +25,8 @@ from achql.brax.training.acme import running_statistics
 from achql.brax.her import replay_buffers
 
 from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.brax.agents.hdcqn_automaton_her import losses as hdcqn_losses
-from achql.brax.agents.hdcqn_automaton_her import networks as hdcq_networks
+from achql.brax.agents.achql import losses as achql_losses
+from achql.brax.agents.achql import networks as achql_networks
 from achql.hierarchy.training import acting as hierarchical_acting
 from achql.hierarchy.training import types as h_types
 
@@ -66,17 +66,17 @@ def _init_training_state(
     key: PRNGKey,
     obs_size: int,
     local_devices_to_use: int,
-    hdcq_network: hdcq_networks.HDCQNetworks,
+    achql_network: achql_networks.ACHQLNetworks,
     # policy_optimizer: optax.GradientTransformation,
     option_q_optimizer: optax.GradientTransformation,
     cost_q_optimizer: optax.GradientTransformation,
 ) -> TrainingState:
   """Inits the training state and replicates it over devices."""
   key_policy, key_q, key_cost_q = jax.random.split(key, 3)
-  option_q_params = hdcq_network.option_q_network.init(key_q)
+  option_q_params = achql_network.option_q_network.init(key_q)
   option_q_optimizer_state = option_q_optimizer.init(option_q_params)
 
-  cost_q_params = hdcq_network.cost_q_network.init(key_cost_q)
+  cost_q_params = achql_network.cost_q_network.init(key_cost_q)
   cost_q_optimizer_state = cost_q_optimizer.init(cost_q_params)
 
   normalizer_params = running_statistics.init_state(
@@ -142,7 +142,7 @@ def train(
     deterministic_eval: bool = True,
     tensorboard_flag = True,
     logdir = './logs',
-    network_factory: types.NetworkFactory[hdcq_networks.HDCQNetworks] = hdcq_networks.make_hdcq_networks,
+    network_factory: types.NetworkFactory[achql_networks.ACHQLNetworks] = achql_networks.make_achql_networks,
     options=[],
     progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
     checkpoint_logdir: Optional[str] = None,
@@ -238,7 +238,7 @@ def train(
     cost_normalize_fn = functools.partial(running_statistics.normalize,
                                           mask=cost_normalization_mask)
 
-  hdcq_network = network_factory(
+  achql_network = network_factory(
       observation_size=input_obs_size,
       cost_observation_size=cost_input_obs_size,
       num_aut_states=env.automaton.n_states,
@@ -250,8 +250,8 @@ def train(
       hidden_cost_layer_sizes=hidden_cost_layer_sizes,
       use_sum_cost_critic=use_sum_cost_critic,
   )
-  make_policy = hdcq_networks.make_option_inference_fn(hdcq_network, env, safety_threshold, argmax_type=argmax_type)
-  make_flat_policy = hdcq_networks.make_inference_fn(hdcq_network, env, safety_threshold, argmax_type=argmax_type)
+  make_policy = achql_networks.make_option_inference_fn(achql_network, env, safety_threshold, argmax_type=argmax_type)
+  make_flat_policy = achql_networks.make_inference_fn(achql_network, env, safety_threshold, argmax_type=argmax_type)
 
   # policy_optimizer = optax.adam(learning_rate=learning_rate)
   option_q_optimizer = optax.adam(learning_rate=learning_rate)
@@ -302,8 +302,8 @@ def train(
     gamma_goal_value,
   )
 
-  critic_loss, cost_critic_loss = hdcqn_losses.make_losses(
-      hdcq_network=hdcq_network,
+  critic_loss, cost_critic_loss = achql_losses.make_losses(
+      achql_network=achql_network,
       env=env,
       reward_scaling=reward_scaling,
       cost_scaling=cost_scaling,
@@ -580,7 +580,7 @@ def train(
       key=global_key,
       obs_size=input_obs_size,
       local_devices_to_use=local_devices_to_use,
-      hdcq_network=hdcq_network,
+      achql_network=achql_network,
       # policy_optimizer=policy_optimizer,
       option_q_optimizer=option_q_optimizer,
       cost_q_optimizer=cost_q_optimizer,
@@ -644,7 +644,7 @@ def train(
       metrics,
       env=eval_environment,
       make_policy=make_policy,
-      network=hdcq_network,
+      network=achql_network,
       params=_unpmap((training_state.normalizer_params,
                       training_state.option_q_params,
                       training_state.cost_q_params))
@@ -691,7 +691,7 @@ def train(
         metrics,
         env=eval_environment,
         make_policy=make_policy,
-        network=hdcq_network,
+        network=achql_network,
         params=_unpmap((training_state.normalizer_params,
                         training_state.option_q_params,
                         training_state.cost_q_params)),
