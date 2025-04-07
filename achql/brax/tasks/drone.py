@@ -9,7 +9,7 @@ from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 import random
 

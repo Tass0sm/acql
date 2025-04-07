@@ -14,7 +14,7 @@ from achql.hierarchy.ant.load import load_ant_options
 from achql.hierarchy.option import FixedLengthTerminationPolicy
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 
 class AntMazeTaskBase(BraxTaskBase):

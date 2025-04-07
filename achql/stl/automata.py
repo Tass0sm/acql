@@ -4,8 +4,7 @@ import spot
 from spot import formula as sf
 import buddy
 
-from achql.stl.utils import fold_tree, fold_spot_formula
-from achql.stl.expression_jax2 import *
+from achql.stl import fold_tree, fold_spot_formula, STLPredicate # TODO
 
 
 def get_spot_formula_and_aps(exp):

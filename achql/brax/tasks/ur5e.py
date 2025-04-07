@@ -15,7 +15,7 @@ from achql.hierarchy.ur5e.load import load_ur5e_options, load_ur5e_eef_options
 from achql.hierarchy.option import FixedLengthTerminationPolicy
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 
 class UR5eTaskBase(BraxTaskBase):

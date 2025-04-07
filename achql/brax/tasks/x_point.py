@@ -11,7 +11,7 @@ from achql.brax.tasks.mixins import *
 from achql.hierarchy.x_point.load import load_hard_coded_x_point_options
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 
 class XPointTaskBase(BraxTaskBase):

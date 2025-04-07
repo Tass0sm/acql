@@ -14,14 +14,13 @@ from brax.training.types import PRNGKey
 import flax
 from flax import linen
 
+from achql.stl import fold_spot_formula
 from achql.brax.training.acme import running_statistics
 from achql.hierarchy.training import networks as h_networks
 from achql.hierarchy.state import OptionState
 from achql.hierarchy.option import Option
 from achql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
-
-from achql.stl.utils import fold_spot_formula
-from .argmaxes import *
+from achql.brax.agents.achql.argmaxes import argmax_with_safest_tiebreak, argmax_with_random_tiebreak
 
 
 @flax.struct.dataclass
@@ -289,7 +288,6 @@ class FiLMedMLP(linen.Module):
     hidden = self.final_activation(hidden)
 
     return hidden
-
 
 
 def make_option_cost_q_network(

@@ -10,7 +10,7 @@ from achql.brax.envs.base import GoalConditionedEnv
 from achql.brax.tasks.base import BraxTaskBase
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 
 class AntPushTaskBase(BraxTaskBase):

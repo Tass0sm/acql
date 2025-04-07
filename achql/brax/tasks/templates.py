@@ -5,8 +5,8 @@ import jax
 import jax.numpy as jnp
 from jax.numpy.linalg import norm
 
-from achql.stl.var import Var
-import achql.stl.expression_jax2 as stl
+from achql.stl import Var
+import achql.stl as stl
 
 
 def true_exp(var: Var):

@@ -11,10 +11,10 @@ from flax import struct
 import jax
 from jax import numpy as jnp
 
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 from achql.stl import Expression
-from achql.stl.automata import get_safety_conditions
-from achql.stl.utils import fold_tree, fold_spot_formula
+from achql.stl import get_safety_conditions
+from achql.stl import fold_tree, fold_spot_formula
 
 
 def get_compiled_conditions(

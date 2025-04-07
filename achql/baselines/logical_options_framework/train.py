@@ -34,7 +34,7 @@ from achql.brax.agents.hdqn import networks as hdq_networks
 from achql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
 from achql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
 
-from achql.stl.automata import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
+from achql.stl import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
 from achql.stl import expression_jax2 as stl
 
 Metrics = types.Metrics

@@ -14,7 +14,7 @@ from achql.navix import observations as custom_observations
 from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 
 def make_tabular(env: Environment):

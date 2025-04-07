@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from achql.navix.tasks.templates import true_exp, inside_circle, inside_box
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 
 class NoConstraintMixin:

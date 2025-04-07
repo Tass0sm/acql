@@ -19,7 +19,7 @@ from achql.hierarchy.training import networks as h_networks
 from achql.hierarchy.state import OptionState
 from achql.hierarchy.option import Option
 
-from achql.stl.utils import fold_spot_formula
+from achql.stl import fold_spot_formula
 
 
 @flax.struct.dataclass

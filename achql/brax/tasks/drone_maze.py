@@ -10,7 +10,7 @@ from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, 
 from achql.hierarchy.drone.load import load_hard_coded_drone_options
 
 from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+import achql.stl as stl
 
 
 class DroneMazeTaskBase(BraxTaskBase):

@@ -14,7 +14,7 @@ import buddy
 
 from achql.stl import Expression
 from achql.automaton import JaxAutomaton
-from achql.stl.automata import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions
+from achql.stl import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions
 
 
 def partition(pred, d):
