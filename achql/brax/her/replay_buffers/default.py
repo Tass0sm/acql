@@ -111,8 +111,8 @@ class TrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]):
 
             # remove automaton state
             if hasattr(env, "automaton") and env.augment_obs:
-                obs, automaton_obs = env.split_obs(transition.observation)
-                next_obs, next_automaton_obs = env.split_obs(transition.next_observation)
+                obs, automaton_obs = env.split_aut_obs(transition.observation)
+                next_obs, next_automaton_obs = env.split_aut_obs(transition.next_observation)
             else:
                 obs = transition.observation
                 next_obs = transition.next_observation

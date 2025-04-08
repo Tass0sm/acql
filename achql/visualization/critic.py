@@ -11,7 +11,7 @@ from brax.training.types import PRNGKey
 
 from achql.brax.agents.hdqn import networks as hdq_networks
 from achql.brax.agents.hdcqn import networks as hdcq_networks
-from achql.brax.agents.hdcqn_automaton_her import networks as hdcq_aut_networks
+from achql.brax.agents.achql import networks as achql_networks
 
 
 def plot_simple_maze_option_arrows(axs, X, Y, options, grid_size):
@@ -410,7 +410,7 @@ def make_plots_for_3d_hdcqn_aut(
     return (fig2, ax2)
 
 
-def make_plots_for_hdcqn_aut(
+def make_plots_for_achql(
         env: envs.Env,
         make_policy: Callable,
         network: hdq_networks.HDQNetworks,
@@ -444,8 +444,13 @@ def make_plots_for_hdcqn_aut(
     #                              env.ith_goal(obs_batch, 0)), axis=-1)
     obs_batch = obs_batch.at[:, 0:2].set(positions)
 
-    make_q = hdcq_aut_networks.make_option_q_fn(network, env, 0.0)
-    q_fn = make_q(params)
+    # qr
+    make_qr = achql_networks.make_option_qr_fn(network, env, 0.0)
+    qr_fn = make_qr(params)
+
+    # qc
+    make_qc = achql_networks.make_option_qc_fn(network, env, 0.0)
+    qc_fn = make_qc(params)
 
     # policy
     policy = make_policy(params, deterministic=True)
@@ -453,14 +458,12 @@ def make_plots_for_hdcqn_aut(
 
     # Compute the value function for the grid
     # value_q_function_output = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch).min(axis=-1)
-    value_q_function_output = q_fn(obs_batch)
+    value_q_function_output = qr_fn(obs_batch)
     value_function_output = jax.vmap(lambda x, i: x.at[i].get())(value_q_function_output, options)
     value_function_grid = value_function_output.reshape(grid_size, grid_size)
 
     # Compute the cost value function for the grid
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    cost_obs_batch = env.cost_obs(obs_batch)
-    cost_q_function_output = network.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs_batch).min(axis=-1)
+    cost_q_function_output = qc_fn(obs_batch)
     cost_value_function_output = jax.vmap(lambda x, i: x.at[i].get())(cost_q_function_output, options)
     cost_value_function_grid = cost_value_function_output.reshape(grid_size, grid_size)
 
@@ -502,8 +505,8 @@ def make_plots_for_hdcqn_aut(
         fig2.savefig(f"figures/cost_value_function_{label}.svg", format="svg", bbox_inches='tight', pad_inches=0)
         plt.close(fig2)
 
-    # return (fig1, ax1), (fig2, ax2)
-    return (fig2, ax2)
+    return (fig1, ax1), (fig2, ax2)
+    # return (fig2, ax2)
 
 
 def make_plots_for_forbidden_actions(

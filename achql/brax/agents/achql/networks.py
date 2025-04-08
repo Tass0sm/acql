@@ -25,38 +25,73 @@ from achql.brax.agents.achql.argmaxes import argmax_with_safest_tiebreak, argmax
 
 @flax.struct.dataclass
 class ACHQLNetworks:
-  option_q_network: networks.FeedForwardNetwork
-  cost_q_network: networks.FeedForwardNetwork
-  options: Sequence[Option]
-  # parametric_option_distribution: distribution.ParametricDistribution
+    option_q_network: networks.FeedForwardNetwork
+    cost_q_network: networks.FeedForwardNetwork
+    options: Sequence[Option]
+    # parametric_option_distribution: distribution.ParametricDistribution
 
 
-def make_option_q_fn(
+def make_option_qr_fn(
     achql_networks: ACHQLNetworks,
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic: bool = False,
 ):
 
-  q_func_branches = get_compiled_q_function_branches(achql_networks, env)
+    q_func_branches = get_compiled_q_function_branches(achql_networks, env)
 
-  def make_q(
-      params: types.PolicyParams,
-  ) -> types.Policy:
+    def make_qr(
+            params: types.PolicyParams,
+    ) -> types.Policy:
 
-    normalizer_params, option_q_params, cost_q_params = params
-    options = achql_networks.options
-    n_options = len(options)
+        normalizer_params, option_q_params, cost_q_params = params
+        options = achql_networks.options
+        n_options = len(options)
 
-    def q(observation: types.Observation) -> jnp.ndarray:
-      aut_state = env.aut_state_from_obs(observation)
-      double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation))
-      qs = jnp.min(double_qs, axis=-1)
-      return qs
+        def qr(observation: types.Observation) -> jnp.ndarray:
+            state_obs, goals, aut_state = env.split_obs(observation)
+            batched_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o, gs))
+            double_qs = batched_qr(aut_state, state_obs, goals)
+            qs = jnp.min(double_qs, axis=-1)
+            return qs
 
-    return q
+        return qr
 
-  return make_q
+    return make_qr
+
+
+def make_option_qc_fn(
+    achql_networks: ACHQLNetworks,
+    env: envs.Env,
+    use_sum_cost_critic: bool = False,
+):
+
+    def make_qc(
+            params: types.PolicyParams,
+    ) -> types.Policy:
+
+        normalizer_params, option_q_params, cost_q_params = params
+        options = achql_networks.options
+        n_options = len(options)
+
+        def qc(observation: types.Observation) -> jnp.ndarray:
+            state_obs, goals, aut_state = env.split_obs(observation)
+
+            cost_observation_size = state_obs.shape[-1]
+            trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
+            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o, a_s))
+            double_cqs = batched_qc(aut_state, state_obs)
+
+            if use_sum_cost_critic:
+                cqs = jnp.max(double_cqs, axis=-1)
+            else:
+                cqs = jnp.min(double_cqs, axis=-1)
+
+            return cqs
+
+        return qc
+
+    return make_qc
 
 
 def make_option_inference_fn(
@@ -67,65 +102,67 @@ def make_option_inference_fn(
     argmax_type : str = "plain"
 ):
 
-  q_func_branches = get_compiled_q_function_branches(achql_networks, env)
+    q_func_branches = get_compiled_q_function_branches(achql_networks, env)
 
-  def make_policy(
-      params: types.PolicyParams,
-      deterministic: bool = False,
-  ) -> types.Policy:
+    def make_policy(
+            params: types.PolicyParams,
+            deterministic: bool = False,
+    ) -> types.Policy:
 
-    normalizer_params, option_q_params, cost_q_params = params
-    options = achql_networks.options
-    n_options = len(options)
+        normalizer_params, option_q_params, cost_q_params = params
+        options = achql_networks.options
+        n_options = len(options)
 
-    def random_option_policy(observation: types.Observation,
-                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      option = jax.random.randint(option_key, (observation.shape[0],), 0, n_options)
-      return option, {}
+        def random_option_policy(observation: types.Observation,
+                                                          option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            option = jax.random.randint(option_key, (observation.shape[0],), 0, n_options)
+            return option, {}
 
-    def greedy_safe_option_policy(observation: types.Observation,
-                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      aut_state = env.aut_state_from_obs(observation)
-      double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation))
-      qs = jnp.min(double_qs, axis=-1)
+        def greedy_safe_option_policy(observation: types.Observation,
+                                      option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            state_obs, goals, aut_state = env.split_obs(observation)
 
-      cost_obs = env.cost_obs(observation)
-      # goalless_obs = env.goalless_obs(observation)
-      trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-      double_cqs = achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
+            batched_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o, gs))
+            double_qs = batched_qr(aut_state, state_obs, goals)
+            qs = jnp.min(double_qs, axis=-1)
 
-      if use_sum_cost_critic:
-        cqs = jnp.max(double_cqs, axis=-1)
-        masked_q = jnp.where(cqs < safety_threshold, qs, -999.)
-      else:
-        cqs = jnp.min(double_cqs, axis=-1)
-        masked_q = jnp.where(cqs > safety_threshold, qs, -999.)
+            cost_observation_size = state_obs.shape[-1]
+            trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
+            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o, a_s))
+            double_cqs = batched_qc(aut_state, state_obs)
 
-      if argmax_type == "random":
-        option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
-      elif argmax_type == "safest":
-        option = argmax_with_safest_tiebreak(masked_q, cqs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
-      elif argmax_type == "plain":
-        option = masked_q.argmax(axis=-1)
-      else:
-        raise NotImplementedError()
-      
-      return option, {}
+            if use_sum_cost_critic:
+                cqs = jnp.max(double_cqs, axis=-1)
+                masked_q = jnp.where(cqs < safety_threshold, qs, -999.)
+            else:
+                cqs = jnp.min(double_cqs, axis=-1)
+                masked_q = jnp.where(cqs > safety_threshold, qs, -999.)
 
-    epsilon = jnp.float32(0.1)
+            if argmax_type == "random":
+                option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+            elif argmax_type == "safest":
+                option = argmax_with_safest_tiebreak(masked_q, cqs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
+            elif argmax_type == "plain":
+                option = masked_q.argmax(axis=-1)
+            else:
+                raise NotImplementedError()
+            
+            return option, {}
 
-    def eps_greedy_safe_option_policy(observation: types.Observation,
-                                      key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      key_sample, key_coin = jax.random.split(key_sample)
-      coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
-      return jax.lax.cond(coin_flip, greedy_safe_option_policy, random_option_policy, observation, key_sample)
+        epsilon = jnp.float32(0.1)
 
-    if deterministic:
-      return greedy_safe_option_policy
-    else:
-      return eps_greedy_safe_option_policy
+        def eps_greedy_safe_option_policy(observation: types.Observation,
+                                                                            key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            key_sample, key_coin = jax.random.split(key_sample)
+            coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
+            return jax.lax.cond(coin_flip, greedy_safe_option_policy, random_option_policy, observation, key_sample)
 
-  return make_policy
+        if deterministic:
+            return greedy_safe_option_policy
+        else:
+            return eps_greedy_safe_option_policy
+
+    return make_policy
 
 
 def make_inference_fn(
@@ -136,158 +173,160 @@ def make_inference_fn(
     argmax_type : str = "plain"
 ):
 
-  q_func_branches = get_compiled_q_function_branches(achql_networks, env)
+    q_func_branches = get_compiled_q_function_branches(achql_networks, env)
 
-  def make_policy(
-      params: types.PolicyParams,
-      deterministic: bool = False
-  ) -> types.Policy:
+    def make_policy(
+            params: types.PolicyParams,
+            deterministic: bool = False
+    ) -> types.Policy:
 
-    normalizer_params, option_q_params, cost_q_params = params
-    options = achql_networks.options
-    n_options = len(options)
+        normalizer_params, option_q_params, cost_q_params = params
+        options = achql_networks.options
+        n_options = len(options)
 
-    # TODO: Random option policy could still respect Cost Q
-    def random_option_policy(observation: types.Observation,
-                             option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      option = jax.random.randint(option_key, (), 0, n_options)
-      return option
+        # TODO: Random option policy could still respect Cost Q
+        def random_option_policy(observation: types.Observation,
+                                                          option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            option = jax.random.randint(option_key, (), 0, n_options)
+            return option
 
-    def greedy_safe_option_policy(observation: types.Observation,
-                                  option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      aut_state = env.aut_state_from_obs(observation)
-      double_qs = jax.vmap(lambda a_s, obs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), obs))(jnp.atleast_1d(aut_state), jnp.atleast_2d(observation)).squeeze()
-      # double_qs = jax.lax.switch(aut_state, q_func_branches, (normalizer_params, option_q_params), observation)
-      qs = jnp.min(double_qs, axis=-1)
+        def greedy_safe_option_policy(observation: types.Observation,
+                                      option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            state_obs, goals, aut_state = env.split_obs(observation)
 
-      cost_obs = env.cost_obs(observation)
-      # goalless_obs = env.goalless_obs(observation)
-      trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-      double_cqs = achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs)
-      cqs = jnp.max(double_cqs, axis=-1)
+            batched_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o, gs))
+            double_qs = batched_qr(aut_state, state_obs, goals)
+            qs = jnp.min(double_qs, axis=-1)
 
-      if use_sum_cost_critic:
-        masked_q = jnp.where(cqs < safety_threshold, qs, -999.0)
-      else:
-        masked_q = jnp.where(cqs > safety_threshold, qs, -999.0)
+            cost_observation_size = state_obs.shape[-1]
+            trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
+            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o, a_s))
+            double_cqs = batched_qc(aut_state, state_obs)
 
-      if argmax_type == "random":
-        option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
-      elif argmax_type == "safest":
-        option = argmax_with_safest_tiebreak(masked_q, cqs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
-      elif argmax_type == "plain":
-        option = masked_q.argmax(axis=-1)
-      else:
-        raise NotImplementedError()
-      
-      return option
+            if use_sum_cost_critic:
+                cqs = jnp.max(double_cqs, axis=-1)
+                masked_q = jnp.where(cqs < safety_threshold, qs, -999.0)
+            else:
+                cqs = jnp.min(double_cqs, axis=-1)
+                masked_q = jnp.where(cqs > safety_threshold, qs, -999.0)
 
-    epsilon = jnp.float32(0.1)
+            if argmax_type == "random":
+                option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
+            elif argmax_type == "safest":
+                option = argmax_with_safest_tiebreak(masked_q, cqs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
+            elif argmax_type == "plain":
+                option = masked_q.argmax(axis=-1)
+            else:
+                raise NotImplementedError()
+            
+            return option
 
-    def eps_greedy_safe_option_policy(observation: types.Observation,
-                                 key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      key_sample, key_coin = jax.random.split(key_sample)
-      coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
-      return jax.lax.cond(coin_flip, greedy_safe_option_policy, random_option_policy, observation, key_sample)
+        epsilon = jnp.float32(0.1)
 
-    def policy(
-        observations: types.Observation,
-        option_state: OptionState,
-        key_sample: PRNGKey
-    ) -> Tuple[types.Action, types.Extra]:
+        def eps_greedy_safe_option_policy(observation: types.Observation,
+                                                                  key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
+            key_sample, key_coin = jax.random.split(key_sample)
+            coin_flip = jax.random.bernoulli(key_coin, 1 - epsilon)
+            return jax.lax.cond(coin_flip, greedy_safe_option_policy, random_option_policy, observation, key_sample)
 
-      option_key, inference_key = jax.random.split(key_sample, 2)
+        def policy(
+                observations: types.Observation,
+                option_state: OptionState,
+                key_sample: PRNGKey
+        ) -> Tuple[types.Action, types.Extra]:
 
-      def get_new_option(s_t, new_option_key):
-        if deterministic:
-          option_idx = greedy_safe_option_policy(s_t, new_option_key)
-        else:
-          option_idx = eps_greedy_safe_option_policy(s_t, new_option_key)
-        return option_idx
+            option_key, inference_key = jax.random.split(key_sample, 2)
 
-      # calculate o_t from s_t, b_t, o_t-1
-      def get_option(s_t, b_t, o_t_minus_1, option_key):
-        return jax.lax.cond((b_t == 1),
-                            lambda: get_new_option(s_t, option_key),
-                            lambda: o_t_minus_1)
+            def get_new_option(s_t, new_option_key):
+                if deterministic:
+                    option_idx = greedy_safe_option_policy(s_t, new_option_key)
+                else:
+                    option_idx = eps_greedy_safe_option_policy(s_t, new_option_key)
+                return option_idx
 
-      option_keys = jax.random.split(option_key, observations.shape[0])
-      option = jax.vmap(get_option)(observations, option_state.option_beta, option_state.option, option_keys)
+            # calculate o_t from s_t, b_t, o_t-1
+            def get_option(s_t, b_t, o_t_minus_1, option_key):
+                return jax.lax.cond((b_t == 1),
+                                    lambda: get_new_option(s_t, option_key).squeeze(),
+                                    lambda: o_t_minus_1)
 
-      def low_level_inference(s_t, o_t, inf_key):
-        # ignore info for now
-        actions, _ = jax.lax.switch(o_t, [o.inference for o in options], s_t, inf_key)
-        return actions, {}
+            option_keys = jax.random.split(option_key, observations.shape[0])
+            option = jax.vmap(get_option)(observations, option_state.option_beta, option_state.option, option_keys)
 
-      inf_keys = jax.random.split(inference_key, observations.shape[0])
-      actions, info = jax.vmap(low_level_inference)(observations, option, inf_keys)
-      info.update(option=option)
+            def low_level_inference(s_t, o_t, inf_key):
+                # ignore info for now
+                actions, _ = jax.lax.switch(o_t, [o.inference for o in options], s_t, inf_key)
+                return actions, {}
 
-      return actions, info
+            inf_keys = jax.random.split(inference_key, observations.shape[0])
+            actions, info = jax.vmap(low_level_inference)(observations, option, inf_keys)
+            info.update(option=option)
 
-    return policy
+            return actions, info
 
-  return make_policy
+        return policy
+
+    return make_policy
 
 
 class FiLM(linen.Module):
-  feature_dim: int
-  condition_dim: int
+    feature_dim: int
+    condition_dim: int
 
-  @linen.compact
-  def __call__(self, features: jnp.ndarray, condition: jnp.ndarray) -> jnp.ndarray:
-    """
-    Args:
-        features: A tensor of shape (batch_size, feature_dim).
-        condition: A tensor of shape (batch_size, condition_dim).
-    
-    Returns:
-        A tensor of shape (batch_size, feature_dim) with modulated features.
-    """
-    # Modulation network: outputs gamma and beta from the condition
-    gamma_beta = linen.Dense(2 * self.feature_dim)(condition)  # (batch_size, 2 * feature_dim)
-    gamma, beta = jnp.split(gamma_beta, 2, axis=-1)  # Split into gamma and beta
+    @linen.compact
+    def __call__(self, features: jnp.ndarray, condition: jnp.ndarray) -> jnp.ndarray:
+        """
+        Args:
+                features: A tensor of shape (batch_size, feature_dim).
+                condition: A tensor of shape (batch_size, condition_dim).
+        
+        Returns:
+                A tensor of shape (batch_size, feature_dim) with modulated features.
+        """
+        # Modulation network: outputs gamma and beta from the condition
+        gamma_beta = linen.Dense(2 * self.feature_dim)(condition)  # (batch_size, 2 * feature_dim)
+        gamma, beta = jnp.split(gamma_beta, 2, axis=-1)  # Split into gamma and beta
 
-    # Apply feature-wise linear modulation
-    return gamma * features + beta
+        # Apply feature-wise linear modulation
+        return gamma * features + beta
 
 
 class FiLMedMLP(linen.Module):
-  """FiLMed MLP module."""
-  condition_dim: int
-  layer_sizes: Sequence[int]
-  activation: ActivationFn = linen.relu
-  kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
-  bias: bool = True
-  layer_norm: bool = False
-  final_activation: ActivationFn = linen.tanh
+    """FiLMed MLP module."""
+    condition_dim: int
+    layer_sizes: Sequence[int]
+    activation: ActivationFn = linen.relu
+    kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
+    bias: bool = True
+    layer_norm: bool = False
+    final_activation: ActivationFn = linen.tanh
 
-  @linen.compact
-  def __call__(self, data: jnp.ndarray, conditioning_data: jnp.ndarray):
-    hidden = data
-    for i, hidden_size in enumerate(self.layer_sizes):
-      hidden = linen.Dense(
-          hidden_size,
-          name=f'hidden_{i}',
-          kernel_init=self.kernel_init,
-          use_bias=self.bias)(
-              hidden)
+    @linen.compact
+    def __call__(self, data: jnp.ndarray, conditioning_data: jnp.ndarray):
+        hidden = data
+        for i, hidden_size in enumerate(self.layer_sizes):
+            hidden = linen.Dense(
+                    hidden_size,
+                    name=f'hidden_{i}',
+                    kernel_init=self.kernel_init,
+                    use_bias=self.bias)(
+                            hidden)
 
-      if i != len(self.layer_sizes) - 1:
-        hidden = self.activation(hidden)
-        if self.layer_norm:
-          hidden = linen.LayerNorm()(hidden)
+            if i != len(self.layer_sizes) - 1:
+                hidden = self.activation(hidden)
+                if self.layer_norm:
+                    hidden = linen.LayerNorm()(hidden)
 
-        # hidden = FiLM(
-        #   feature_dim=hidden_size,
-        #   condition_dim=self.condition_dim
-        # )(hidden, conditioning_data)
+                # hidden = FiLM(
+                #   feature_dim=hidden_size,
+                #   condition_dim=self.condition_dim
+                # )(hidden, conditioning_data)
 
-        # hidden = self.activation(hidden)
+                # hidden = self.activation(hidden)
 
-    hidden = self.final_activation(hidden)
+        hidden = self.final_activation(hidden)
 
-    return hidden
+        return hidden
 
 
 def make_option_cost_q_network(
@@ -300,90 +339,94 @@ def make_option_cost_q_network(
     n_critics: int = 2,
     use_sum_cost_critic: bool = False,
 ) -> FeedForwardNetwork:
-  """Creates a value network."""
+    """Creates a value network."""
 
-  plain_obs_size = obs_size - aut_states
+    plain_obs_size = obs_size - aut_states
 
-  # Q function for discrete space of options.
-  class DiscreteCostQModule(linen.Module):
-    """Q Module."""
-    n_critics: int
+    # Q function for discrete space of options.
+    class DiscreteCostQModule(linen.Module):
+        """Q Module."""
+        n_critics: int
 
-    @linen.compact
-    def __call__(self, obs: jnp.ndarray, aut_obs: jnp.ndarray):
-      hidden = jnp.concatenate([obs], axis=-1)
-      res = []
-      for _ in range(self.n_critics):
-        critic_option_qs = FiLMedMLP(
-          condition_dim=aut_states,
-          layer_sizes=list(hidden_layer_sizes) + [num_options],
-          activation=activation,
-          final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
-          # layer_norm=True,
-          kernel_init=jax.nn.initializers.lecun_uniform()
-        )(hidden, aut_obs)
-        res.append(critic_option_qs)
+        @linen.compact
+        def __call__(self, obs: jnp.ndarray, aut_obs: jnp.ndarray):
+            hidden = jnp.concatenate([obs], axis=-1)
+            res = []
+            for _ in range(self.n_critics):
+                critic_option_qs = FiLMedMLP(
+                    condition_dim=aut_states,
+                    layer_sizes=list(hidden_layer_sizes) + [num_options],
+                    activation=activation,
+                    final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
+                    # layer_norm=True,
+                    kernel_init=jax.nn.initializers.lecun_uniform()
+                )(hidden, aut_obs)
+                res.append(critic_option_qs)
 
-      return jnp.stack(res, axis=-1)
+            return jnp.stack(res, axis=-1)
 
-  q_module = DiscreteCostQModule(n_critics=n_critics)
+    q_module = DiscreteCostQModule(n_critics=n_critics)
 
-  def apply(processor_params, q_params, obs):
-    trimmed_proc_params = jax.tree.map(lambda x: x[..., :plain_obs_size] if x.ndim >= 1 else x, processor_params)
-    state_obs, aut_state_obs = obs[..., :plain_obs_size], obs[..., plain_obs_size:]
-    norm_state_obs = preprocess_observations_fn(state_obs, trimmed_proc_params)
-    return q_module.apply(q_params, norm_state_obs, aut_state_obs)
+    def apply(processor_params, q_params, obs):
+        trimmed_proc_params = jax.tree.map(lambda x: x[..., :plain_obs_size] if x.ndim >= 1 else x, processor_params)
+        state_obs, aut_state_obs = obs[..., :plain_obs_size], obs[..., plain_obs_size:]
+        norm_state_obs = preprocess_observations_fn(state_obs, trimmed_proc_params)
+        return q_module.apply(q_params, norm_state_obs, aut_state_obs)
 
-  dummy_obs = jnp.zeros((1, plain_obs_size))
-  dummy_aut_obs = jnp.zeros((1, aut_states))
-  return FeedForwardNetwork(
-      init=lambda key: q_module.init(key, dummy_obs, dummy_aut_obs), apply=apply)
+    dummy_obs = jnp.zeros((1, plain_obs_size))
+    dummy_aut_obs = jnp.zeros((1, aut_states))
+    return FeedForwardNetwork(
+            init=lambda key: q_module.init(key, dummy_obs, dummy_aut_obs), apply=apply)
 
 
 def make_achql_networks(
-    observation_size: int,
-    cost_observation_size: int,
-    num_aut_states: int,
-    action_size: int,
-    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-    preprocess_cost_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-    hidden_layer_sizes: Sequence[int] = (256, 256),
-    hidden_cost_layer_sizes=(64, 64, 64, 32),
-    activation: networks.ActivationFn = linen.relu,
-    options: Sequence[Option] = [],
-    use_sum_cost_critic: bool = False,
+        observation_size: int,
+        cost_observation_size: int,
+        num_aut_states: int,
+        num_unique_safety_conditions: int,
+        action_size: int,
+        env,
+        preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+        preprocess_cost_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+        hidden_layer_sizes: Sequence[int] = (256, 256),
+        hidden_cost_layer_sizes=(64, 64, 64, 32),
+        activation: networks.ActivationFn = linen.relu,
+        options: Sequence[Option] = [],
+        use_sum_cost_critic: bool = False,
 ) -> ACHQLNetworks:
 
-  assert len(options) > 0, "Must pass at least one option"
+    assert len(options) > 0, "Must pass at least one option"
+    # assert num_unique_safety_conditions == 1, "Only supporting 1 safety condition"
 
-  # parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
-  # policy_network = networks.make_policy_network(
-  #     parametric_action_distribution.param_size,
-  #     observation_size,
-  #     preprocess_observations_fn=preprocess_observations_fn,
-  #     hidden_layer_sizes=hidden_layer_sizes,
-  #     activation=activation)
-  option_q_network = h_networks.make_option_q_network(
-      observation_size,
-      len(options),
-      preprocess_observations_fn=preprocess_observations_fn,
-      hidden_layer_sizes=hidden_layer_sizes,
-      activation=activation
-  )
-  cost_q_network = make_option_cost_q_network(
-      cost_observation_size,
-      num_aut_states,
-      len(options),
-      preprocess_observations_fn=preprocess_cost_observations_fn,
-      hidden_layer_sizes=hidden_cost_layer_sizes,
-      activation=activation,
-      use_sum_cost_critic=use_sum_cost_critic
-  )
+    def preprocess_cond_fn(aut_state: int) -> int:
+        return env.state_to_unique_safety_cond_idx_arr[aut_state]
 
-  return ACHQLNetworks(
-      # policy_network=policy_network,
-      option_q_network=option_q_network,
-      cost_q_network=cost_q_network,
-      options=options,
-      # parametric_action_distribution=parametric_action_distribution
-  )
+    option_q_network = h_networks.make_multi_headed_option_q_network(
+            observation_size,
+            num_unique_safety_conditions,
+            len(options),
+            preprocess_observations_fn=preprocess_observations_fn,
+            preprocess_cond_fn=preprocess_cond_fn,
+            shared_hidden_layer_sizes=hidden_layer_sizes[:1],
+            head_hidden_layer_sizes=hidden_layer_sizes[1:],
+            activation=activation
+    )
+    cost_q_network = h_networks.make_multi_headed_option_q_network(
+            cost_observation_size,
+            num_unique_safety_conditions,
+            len(options),
+            preprocess_observations_fn=preprocess_cost_observations_fn,
+            preprocess_cond_fn=preprocess_cond_fn,
+            shared_hidden_layer_sizes=hidden_cost_layer_sizes[:2],
+            head_hidden_layer_sizes=hidden_cost_layer_sizes[2:],
+            activation=activation,
+            final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
+    )
+
+    return ACHQLNetworks(
+            # policy_network=policy_network,
+            option_q_network=option_q_network,
+            cost_q_network=cost_q_network,
+            options=options,
+            # parametric_action_distribution=parametric_action_distribution
+    )

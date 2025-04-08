@@ -420,7 +420,15 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         return obs[..., :self.original_obs_dim]
 
     def split_obs(self, obs):
-        return obs[..., :self.original_obs_dim], obs[..., self.original_obs_dim:]
+        state_obs = obs[..., :self.no_goal_obs_dim]
+        goals = obs[..., self.no_goal_obs_dim:self.no_goal_obs_dim+self.all_goals_dim]
+        aut_state = self.automaton.one_hot_decode(obs[..., self.no_goal_obs_dim+self.all_goals_dim:])
+        return jnp.atleast_2d(state_obs), jnp.atleast_2d(goals), jnp.atleast_1d(aut_state)
+
+    def split_aut_obs(self, obs):
+        state_and_goals_obs = obs[..., :self.no_goal_obs_dim+self.all_goals_dim]
+        aut_state = obs[..., self.no_goal_obs_dim+self.all_goals_dim:]
+        return state_and_goals_obs, aut_state
 
     def automaton_obs(self, obs):
         return obs[..., -self.automaton.n_states:]

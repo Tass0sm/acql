@@ -3,10 +3,10 @@ import functools
 import jax
 
 from achql.brax.agents.achql import train as achql
-from achql.brax.tasks import get_task
 from achql.brax.utils import make_aut_goal_cmdp
+from achql.tasks import get_task
 
-task = get_task("ant_maze", "two_subgoals")
+task = get_task("SimpleMaze", "Until1")
 spec = task.lo_spec
 
 def progress_fn(num_steps, metrics, **kwargs):

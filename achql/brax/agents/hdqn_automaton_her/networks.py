@@ -53,10 +53,14 @@ def get_compiled_q_function_branches(
             ap_id = int(root.ap_name()[3:])
             goal_idx = state_and_ap_to_goal_idx_dict[(aut_state, ap_id)]
 
-            def get_ap_q(params, obs):
-                nn_input = jnp.concatenate((env.goalless_obs(obs),
-                                            env.ith_goal(obs, goal_idx)), axis=-1)
-                qs = hdq_networks.option_q_network.apply(*params, nn_input)
+            def get_ap_q(params, o, gs):
+                # nn_input = jnp.concatenate((env.goalless_obs(obs),
+                #                             env.ith_goal(obs, goal_idx)), axis=-1)
+
+                # TODO, consider selecting individual goal if passing all goals
+                # is impossible.
+                nn_input = jnp.concatenate((o, gs), axis=-1)
+                qs = hdq_networks.option_q_network.apply(*params, nn_input, aut_state)
                 return qs
 
             return get_ap_q
