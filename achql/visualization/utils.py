@@ -41,7 +41,7 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
     make_option_policy = achql_networks.make_option_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], argmax_type=run.data.params.get("argmax_type", "safest"))
     make_policy = achql_networks.make_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], argmax_type=run.data.params.get("argmax_type", "safest"))    
 
-    return aut_goal_cmdp, achql_network, make_option_policy, make_policy, params
+    return aut_goal_cmdp, options, achql_network, make_option_policy, make_policy, params
 
 
 def get_mdp_network_policy_and_params(training_run_id):
