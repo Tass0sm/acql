@@ -6,7 +6,7 @@ import mediapy
 from brax.io import model
 
 from achql.visualization.utils import get_mdp_network_policy_and_params
-from achql.visualization.hierarchy import get_rollout
+from achql.visualization import hierarchy
 
 # tasks
 
@@ -14,7 +14,7 @@ mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
 mlflow.set_experiment("proj2-notebook")
 
 def main():
-    training_run_id = "f363ef1146d14f6c92f486f6f0861f96"
+    training_run_id = "d3c23de2ef7b4f41885e691caa49e824"
     logged_model_path = f'runs:/{training_run_id}/policy_params'
     real_path = mlflow.artifacts.download_artifacts(logged_model_path)
     params = model.load_params(real_path)
@@ -24,7 +24,8 @@ def main():
     inference_fn = make_policy(params, deterministic=True)
     jit_inference_fn = jax.jit(inference_fn)
 
-    rollout, opt_traj, action = get_rollout(mdp, jit_inference_fn, options, n_steps=300, seed=2, render_every=1)
+    rollout, opt_traj, action = hierarchy.get_rollout(mdp, jit_inference_fn, options, n_steps=300, seed=2, render_every=1)
+    # rollout, action = flat.get_rollout(mdp, jit_inference_fn, n_steps=100, seed=2, render_every=1)
 
     mediapy.write_video('./rollout.mp4',
         mdp.render(
