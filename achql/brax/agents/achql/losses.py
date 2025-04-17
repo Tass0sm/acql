@@ -67,21 +67,27 @@ def make_losses(
   ) -> jnp.ndarray:
 
     state_obs, goals, aut_state = env.split_obs(transitions.observation)
+    _, aut_state_obs = env.split_aut_obs(transitions.observation)
+
     next_state_obs, next_goals, next_aut_state = env.split_obs(transitions.next_observation)
+    _, next_aut_state_obs = env.split_aut_obs(transitions.next_observation)
 
     # Double Q(s_t, o_t) for all options
-    batched_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o, gs))
-    qs_old = batched_qr(aut_state, state_obs, goals)
+    qr_input = transitions.observation
+    batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
+    qs_old = batched_qr(aut_state, qr_input)
     q_old_action = jax.vmap(lambda x, i: x.at[i].get())(qs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
-    batched_target_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), o, gs))
-    next_double_qs = batched_target_qr(next_aut_state, next_state_obs, next_goals)
+    next_qr_input = transitions.next_observation
+    batched_target_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), o))
+    next_double_qs = batched_target_qr(next_aut_state, next_qr_input)
 
+    next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
     cost_observation_size = state_obs.shape[-1]
     trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    batched_target_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, o, a_s))
-    next_double_cqs = batched_target_qc(next_aut_state, next_state_obs)
+    batched_target_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, o))
+    next_double_cqs = batched_target_qc(next_aut_state, next_qc_input)
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
@@ -130,22 +136,28 @@ def make_losses(
   ) -> jnp.ndarray:
 
     state_obs, goals, aut_state = env.split_obs(transitions.observation)
+    _, aut_state_obs = env.split_aut_obs(transitions.observation)
+
     next_state_obs, next_goals, next_aut_state = env.split_obs(transitions.next_observation)
+    _, next_aut_state_obs = env.split_aut_obs(transitions.next_observation)
 
     # Double Q(s_t, o_t) for all options
 
+    qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
     cost_observation_size = state_obs.shape[-1]
     trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    batched_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o, a_s))
-    cqs_old = batched_qc(aut_state, state_obs)
+    batched_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o))
+    cqs_old = batched_qc(aut_state, qc_input)
     cq_old_action = jax.vmap(lambda x, i: x.at[i].get())(cqs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
-    batched_target_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), o, gs))
-    next_double_qs = batched_target_qr(next_aut_state, next_state_obs, next_goals)
+    next_qr_input = transitions.next_observation
+    batched_target_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), o))
+    next_double_qs = batched_target_qr(next_aut_state, next_qr_input)
 
-    batched_target_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, o, a_s))
-    next_double_cqs = batched_target_qc(next_aut_state, next_state_obs)
+    next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
+    batched_target_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, o))
+    next_double_cqs = batched_target_qc(next_aut_state, next_qc_input)
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)

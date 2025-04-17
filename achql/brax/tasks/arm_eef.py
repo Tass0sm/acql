@@ -3,35 +3,45 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from achql.brax.envs.panda import PandaPushEasy
+from achql.brax.envs.manipulation.arm_eef_binpick_easy import ArmEEFBinpickEasy
 from achql.brax.envs.base import GoalConditionedEnv
 from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from achql.brax.tasks.mixins import *
+from achql.hierarchy.ur5e.load import load_ur5e_options, load_ur5e_eef_options
+from achql.hierarchy.option import FixedLengthTerminationPolicy
 
 from achql.stl import Expression, Var
 import achql.stl as stl
 
 
-class PandaTaskBase(BraxTaskBase):
+class ArmEEFTaskBase(BraxTaskBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def _create_vars(self):
-        self.wp_var = Var("wp", idx=0, dim=2)
-        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
+        self.wp_var = Var("wp", idx=0, dim=3)
+        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 3))
 
     def get_options(self):
-        raise NotImplementedError
+        return self.get_learned_options()
+
+    def get_learned_options(self):
+        # Tentative: option env size may change
+        adapter = lambda x: x[..., :12]
+        return load_ur5e_options(termination_policy=FixedLengthTerminationPolicy(1),
+                                 adapter=adapter)
+
+    def get_hard_coded_options(self):
+        raise NotImplementedError()
 
 
-class PandaPushEasyTask(PandaTaskBase):
+class ArmEEFBinpickEasyTask(ArmEEFTaskBase):
     def __init__(self, backend="mjx"):
         super().__init__(None, 1000, backend=backend)
 
     def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = PandaPushEasy(
-            backend=backend
-        )
+        env = ArmEEFBinpickEasy(backend=backend)
         return env
 
     def _build_hi_spec(self, wp_var: Var) -> Expression:
@@ -93,17 +103,37 @@ class PandaPushEasyTask(PandaTaskBase):
     @property
     def crl_hps(self):
         return {
-            "num_evals": 50,
-            "num_timesteps": 10000000,
+            "policy_lr": 3e-4,
+            "critic_lr": 3e-4,
+            "alpha_lr": 3e-4,
             "batch_size": 256,
-            "num_envs": 512,
+            # gamma
             "discounting": 0.99,
-            "action_repeat": 1,
-            "episode_length": 1000,
-            "unroll_length": 62,
-            "min_replay_size": 1000,
+            # forward CRL logsumexp penalty
+            "logsumexp_penalty_coeff": 0.1,
+            "train_step_multiplier": 1,
+            "disable_entropy_actor": False,
             "max_replay_size": 10000,
-            "contrastive_loss_fn": "infonce_backward",
-            "energy_fn": "l2",
-            "multiplier_num_sgd_steps": 1,
+            "min_replay_size": 1000,
+            "unroll_length": 62,
+            "h_dim": 256,
+            "n_hidden": 2,
+            "skip_connections": 4,
+            "use_relu": False,
+            # phi(s,a) and psi(g) repr dimension
+            "repr_dim": 64,
+            # layer norm
+            "use_ln": False,
+            "contrastive_loss_fn": "fwd_infonce",
+            "energy_fn": "norm",
+            # --------------------
+            # run params
+            "total_env_steps": 10_000_000,
+            "episode_length": 256,
+            "num_envs": 256,
+            "num_eval_envs": 256,
+            "num_evals": 50,
+            "action_repeat": 1,
+            "max_devices_per_host": 1,
+            # --------------------
         }

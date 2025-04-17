@@ -20,9 +20,11 @@ def make_inference_fn(ddpg_networks: DDPGNetworks):
 
   def make_policy(params: types.PolicyParams, deterministic: bool = False) -> types.Policy:
 
+    normalizer_params, policy_params = params
+
     def policy(observations: types.Observation,
                key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      logits = ddpg_networks.policy_network.apply(*params, observations)
+      logits = ddpg_networks.policy_network.apply(normalizer_params, policy_params, observations)
       if deterministic:
         return ddpg_networks.parametric_action_distribution.mode(logits), {}
       origin_action = ddpg_networks.parametric_action_distribution.sample_no_postprocessing(logits, key_sample)

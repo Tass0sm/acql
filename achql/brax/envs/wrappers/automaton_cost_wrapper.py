@@ -107,16 +107,17 @@ class AutomatonCostWrapper(Wrapper):
 
         self.relu_cost = relu_cost
 
-    def cost_obs(self, obs):
-        return jnp.concatenate((self.goalless_obs(obs),
-                                self.automaton_obs(obs)), axis=-1)
+    # def cost_obs(self, obs):
+    #     return jnp.concatenate((self.goalless_obs(obs),
+    #                             self.automaton_obs(obs)), axis=-1)
 
     def _compute_cost(self, state: State, action: jax.Array, nstate: State):
         """
         Note: state and action are unused.
         """
 
-        nobs = jnp.expand_dims(self.original_obs(nstate.obs), 0)
+        plain_obs = nstate.obs[..., :self.original_obs_dim]
+        nobs = jnp.expand_dims(plain_obs, 0)
 
         # Unless using the ablation "relu_cost", this should be negative when
         # unsafe, positive when safe.  That way taking the min over the whole
@@ -155,6 +156,6 @@ class AutomatonCostWrapper(Wrapper):
 
         return nstate
 
-    @property
-    def cost_observation_size(self):
-        return self.env.goalless_observation_size
+    # @property
+    # def cost_observation_size(self):
+    #     return self.env.goalless_observation_size

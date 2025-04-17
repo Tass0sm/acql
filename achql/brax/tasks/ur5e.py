@@ -3,6 +3,7 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
+from achql.brax.envs.manipulation.ur5e_grasp import UR5eGrasp
 from achql.brax.envs.manipulation.ur5e_reach import UR5eReach
 from achql.brax.envs.manipulation.ur5e_reach_shelf import UR5eReachShelf
 from achql.brax.envs.manipulation.ur5e_reach_shelf_eef import UR5eReachShelfEEF
@@ -379,6 +380,7 @@ class UR5eEEFScalabilityTestTask(UR5eEEFTaskBase):
         # phi = phi_liveness
         return phi
 
+
 class UR5eEEFEasierBranchingScalabilityTestTask(UR5eEEFTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([-0.225, 0.5, 0.1])
@@ -616,6 +618,37 @@ class UR5eEEFBranchingScalabilityTestTask(UR5eEEFTaskBase):
             "gamma_decay": 0.10, # the higher, the slower it reaches 1.0
             "gamma_end_value": 0.99,
         }
+
+
+class UR5eEEFGraspTask(UR5eEEFTaskBase):
+    def __init__(self, backend="mjx"):
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = UR5eEEFGrasp(
+            backend=backend,
+        )
+        env.possible_goals = env.sys.init_q[:7]
+        return env
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        return true_exp(obs_var)
+
+    @property
+    def hdcqn_her_hps(self):
+        return {
+            **self.hdqn_her_hps,
+            "hidden_layer_sizes": (256, 256),
+            "hidden_cost_layer_sizes": (128, 128, 128, 64),
+            "cost_scaling": 15.0,
+            "safety_threshold": -0.06,
+            "gamma_decay": 0.10, # the higher, the slower it reaches 1.0
+            "gamma_end_value": 0.99,
+        }
+
 
 
 # class UR5eTranslateTask(UR5eTaskBase):

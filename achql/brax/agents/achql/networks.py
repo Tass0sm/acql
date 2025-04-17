@@ -1,3 +1,4 @@
+import functools
 from typing import Sequence, Tuple
 
 import spot
@@ -21,6 +22,8 @@ from achql.hierarchy.state import OptionState
 from achql.hierarchy.option import Option
 from achql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
 from achql.brax.agents.achql.argmaxes import argmax_with_safest_tiebreak, argmax_with_random_tiebreak
+
+
 
 
 @flax.struct.dataclass
@@ -49,9 +52,9 @@ def make_option_qr_fn(
         n_options = len(options)
 
         def qr(observation: types.Observation) -> jnp.ndarray:
-            state_obs, goals, aut_state = env.split_obs(observation)
-            batched_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o, gs))
-            double_qs = batched_qr(aut_state, state_obs, goals)
+            _, _, aut_state = env.split_obs(observation)
+            batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
+            double_qs = batched_qr(aut_state, observation)
             qs = jnp.min(double_qs, axis=-1)
             return qs
 
@@ -75,12 +78,14 @@ def make_option_qc_fn(
         n_options = len(options)
 
         def qc(observation: types.Observation) -> jnp.ndarray:
-            state_obs, goals, aut_state = env.split_obs(observation)
+            state_obs, _, aut_state = env.split_obs(observation)
+            _, aut_state_obs = env.split_aut_obs(observation)
 
+            qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
             cost_observation_size = state_obs.shape[-1]
             trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o, a_s))
-            double_cqs = batched_qc(aut_state, state_obs)
+            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o))
+            double_cqs = batched_qc(aut_state, qc_input)
 
             if use_sum_cost_critic:
                 cqs = jnp.max(double_cqs, axis=-1)
@@ -121,15 +126,20 @@ def make_option_inference_fn(
         def greedy_safe_option_policy(observation: types.Observation,
                                       option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
             state_obs, goals, aut_state = env.split_obs(observation)
+            _, aut_state_obs = env.split_aut_obs(observation)
 
-            batched_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o, gs))
-            double_qs = batched_qr(aut_state, state_obs, goals)
+            # aut_state = env.automaton.one_hot_decode(aut_state_obs)
+
+            qr_input = observation # jnp.concatenate((state_obs, goals), axis=-1)
+            batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
+            double_qs = batched_qr(aut_state, qr_input)
             qs = jnp.min(double_qs, axis=-1)
 
+            qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
             cost_observation_size = state_obs.shape[-1]
             trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o, a_s))
-            double_cqs = batched_qc(aut_state, state_obs)
+            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o))
+            double_cqs = batched_qc(aut_state, qc_input)
 
             if use_sum_cost_critic:
                 cqs = jnp.max(double_cqs, axis=-1)
@@ -193,15 +203,18 @@ def make_inference_fn(
         def greedy_safe_option_policy(observation: types.Observation,
                                       option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
             state_obs, goals, aut_state = env.split_obs(observation)
+            _, aut_state_obs = env.split_aut_obs(observation)
 
-            batched_qr = jax.vmap(lambda a_s, o, gs: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o, gs))
-            double_qs = batched_qr(aut_state, state_obs, goals)
+            qr_input = jnp.concatenate((state_obs, goals, aut_state_obs), axis=-1)
+            batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
+            double_qs = batched_qr(aut_state, qr_input)
             qs = jnp.min(double_qs, axis=-1)
 
+            qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
             cost_observation_size = state_obs.shape[-1]
             trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o, a_s))
-            double_cqs = batched_qc(aut_state, state_obs)
+            batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o))
+            double_cqs = batched_qc(aut_state, qc_input)
 
             if use_sum_cost_critic:
                 cqs = jnp.max(double_cqs, axis=-1)
@@ -379,6 +392,105 @@ def make_option_cost_q_network(
             init=lambda key: q_module.init(key, dummy_obs, dummy_aut_obs), apply=apply)
 
 
+# Utils for the algebraic Q network
+def get_compiled_q_function_branches(
+    option_q_networks: FeedForwardNetwork,
+    env: envs.Env,
+):
+    out_conditions = env.out_conditions
+    bdd_dict = env.automaton.bdd_dict
+    state_and_ap_to_goal_idx_dict = env.state_and_ap_to_goal_idx_dict
+
+    preds = []
+
+    def to_q_func_helper(root, children, aut_state=0):
+        nonlocal state_and_ap_to_goal_idx_dict
+
+        children = list(children)
+
+        k = root.kind()
+
+        if k == spot.op_ff:
+            return lambda params, obs: -987
+        elif k == spot.op_tt:
+            return lambda params, obs: 987
+        elif k == spot.op_ap:
+            ap_id = int(root.ap_name()[3:])
+            goal_idx = state_and_ap_to_goal_idx_dict[(aut_state, ap_id)]
+
+            def get_ap_q(params, obs):
+                # nn_input = jnp.concatenate((env.goalless_obs(obs),
+                #                             env.ith_goal(obs, goal_idx)), axis=-1)
+                # TODO, consider selecting individual goal if passing all goals
+                # is impossible.
+                # nn_input = jnp.concatenate((o, gs), axis=-1)
+                qs = option_q_network.apply(*params, obs)
+                return qs
+
+            return get_ap_q
+        elif k == spot.op_Not:
+            return lambda params, obs: -children[0](params, obs)
+        elif k == spot.op_And:
+            return lambda params, obs: jnp.min(jnp.stack(
+              (children[0](params, obs), children[1](params, obs)), axis=-1
+            ), axis=-1)
+        elif k == spot.op_Or:
+            return lambda params, obs: jnp.max(jnp.stack(
+              (children[0](params, obs), children[1](params, obs)), axis=-1
+            ), axis=-1)
+        else:
+            raise NotImplementedError(f"Formula {root} with kind = {k}")
+
+    for k, cond_bdd in sorted(out_conditions.items(), key=lambda x: x[0]):
+        if k == 0 and not env.use_incoming_conditions_for_final_state:
+            def default_q(params, obs):
+                nn_input = jnp.concatenate((env.goalless_obs(obs),
+                                            env.ith_goal(obs, 0)), axis=-1)
+                qs = hdq_networks.option_q_network.apply(*params, nn_input)
+                return qs
+            preds.append(jax.jit(default_q))
+        else:
+            f_k = spot.bdd_to_formula(cond_bdd, bdd_dict)
+            q_func_k = fold_spot_formula(functools.partial(to_q_func_helper, aut_state=k),
+                                         f_k)
+            preds.append(jax.jit(q_func_k))
+
+    return preds
+
+
+def make_algebraic_option_q_network(
+        obs_size: int,
+        num_options: int,
+        env,
+        preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+        hidden_layer_sizes: Sequence[int] = (256, 256),
+        activation: ActivationFn = linen.relu,
+        final_activation: ActivationFn = lambda x: x,
+        n_critics: int = 2
+) -> FeedForwardNetwork:
+
+    single_gc_network = h_networks.make_option_q_network(
+        obs_size,
+        num_options,
+        preprocess_observations_fn=preprocess_observations_fn,
+        hidden_layer_sizes=hidden_layer_sizes,
+        activation=activation,
+        final_activation=final_activation,
+        n_critics=n_critics,
+    )
+
+    q_func_branches = get_compiled_q_function_branches(single_gc_network, env)
+
+    def apply(processor_params, q_params, obs):
+        _, _, aut_state = env.split_obs(observation)
+        batched_q = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (processor_params, q_params), o))
+        return batched_q(aut_state, obs)
+
+    dummy_obs = jnp.zeros((1, obs_size))
+    return FeedForwardNetwork(
+            init=lambda key: single_gc_network.init(key, dummy_obs), apply=apply)
+
+
 def make_achql_networks(
         observation_size: int,
         cost_observation_size: int,
@@ -398,30 +510,89 @@ def make_achql_networks(
     assert len(options) > 0, "Must pass at least one option"
     # assert num_unique_safety_conditions == 1, "Only supporting 1 safety condition"
 
-    def preprocess_cond_fn(aut_state: int) -> int:
-        return env.state_to_unique_safety_cond_idx_arr[aut_state]
+    def qr_preprocess_obs_fn(obs: jax.Array, processor_params) -> int:
+        obs = obs[..., :-env.automaton.n_states]
+        return preprocess_observations_fn(obs, processor_params)
 
-    option_q_network = h_networks.make_multi_headed_option_q_network(
-            observation_size,
-            num_unique_safety_conditions,
-            len(options),
-            preprocess_observations_fn=preprocess_observations_fn,
-            preprocess_cond_fn=preprocess_cond_fn,
-            shared_hidden_layer_sizes=hidden_layer_sizes[:1],
-            head_hidden_layer_sizes=hidden_layer_sizes[1:],
-            activation=activation
+    option_q_network = make_algebraic_option_q_network(
+        observation_size,
+        len(options),
+        env,
+        preprocess_observations_fn=preprocess_observations_fn,
+        hidden_layer_sizes=hidden_layer_sizes,
+        activation=activation
     )
-    cost_q_network = h_networks.make_multi_headed_option_q_network(
-            cost_observation_size,
-            num_unique_safety_conditions,
-            len(options),
-            preprocess_observations_fn=preprocess_cost_observations_fn,
-            preprocess_cond_fn=preprocess_cond_fn,
-            shared_hidden_layer_sizes=hidden_cost_layer_sizes[:2],
-            head_hidden_layer_sizes=hidden_cost_layer_sizes[2:],
-            activation=activation,
-            final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
+
+    def qc_preprocess_obs_fn(state_and_aut_obs: jax.Array, trimmed_processor_params) -> int:
+        state_obs = state_and_aut_obs[..., :-env.automaton.n_states]
+        return preprocess_cost_observations_fn(state_obs, trimmed_processor_params)
+
+    cost_q_network = h_networks.make_option_q_network(
+        cost_observation_size,
+        len(options),
+        preprocess_observations_fn=qc_preprocess_obs_fn,
+        hidden_layer_sizes=hidden_cost_layer_sizes,
+        activation=activation,
+        final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
     )
+
+    # def qr_preprocess_obs_fn(obs: jax.Array, processor_params) -> int:
+    #     obs = obs[..., :-env.automaton.n_states]
+    #     return preprocess_observations_fn(obs, processor_params)
+
+    # def qc_preprocess_obs_fn(state_and_aut_obs: jax.Array, trimmed_processor_params) -> int:
+    #     state_obs = state_and_aut_obs[..., :-env.automaton.n_states]
+    #     return preprocess_cost_observations_fn(state_obs, trimmed_processor_params)
+
+    # def qr_preprocess_cond_fn(obs: jax.Array) -> int:
+    #     aut_obs = obs[-env.automaton.n_states:]
+    #     aut_state = env.automaton.one_hot_decode(aut_obs)
+    #     return env.state_to_unique_safety_cond_idx_arr[aut_state]
+
+    # def qc_preprocess_cond_fn(state_and_aut_obs: jax.Array) -> int:
+    #     aut_obs = state_and_aut_obs[-env.automaton.n_states:]
+    #     aut_state = env.automaton.one_hot_decode(aut_obs)
+    #     return env.state_to_unique_safety_cond_idx_arr[aut_state]
+
+    # option_q_network = h_networks.make_option_q_network(
+    #     observation_size,
+    #     len(options),
+    #     preprocess_observations_fn=qr_preprocess_obs_fn,
+    #     hidden_layer_sizes=hidden_layer_sizes,
+    #     activation=activation
+    # )
+    # cost_q_network = h_networks.make_option_q_network(
+    #     cost_observation_size,
+    #     len(options),
+    #     preprocess_observations_fn=qc_preprocess_obs_fn,
+    #     hidden_layer_sizes=hidden_cost_layer_sizes,
+    #     activation=activation,
+    #     final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
+    # )
+
+    # option_q_network = h_networks.make_multi_headed_option_q_network(
+    #         observation_size,
+    #         num_unique_safety_conditions,
+    #         len(options),
+    #         env,
+    #         preprocess_observations_fn=qr_preprocess_obs_fn,
+    #         preprocess_cond_fn=qr_preprocess_cond_fn,
+    #         shared_hidden_layer_sizes=hidden_layer_sizes[:1],
+    #         head_hidden_layer_sizes=hidden_layer_sizes[1:],
+    #         activation=activation
+    # )
+    # cost_q_network = h_networks.make_multi_headed_option_q_network(
+    #         cost_observation_size,
+    #         num_unique_safety_conditions,
+    #         len(options),
+    #         env,
+    #         preprocess_observations_fn=qc_preprocess_obs_fn,
+    #         preprocess_cond_fn=qc_preprocess_cond_fn,
+    #         shared_hidden_layer_sizes=hidden_cost_layer_sizes[:2],
+    #         head_hidden_layer_sizes=hidden_cost_layer_sizes[2:],
+    #         activation=activation,
+    #         final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
+    # )
 
     return ACHQLNetworks(
             # policy_network=policy_network,

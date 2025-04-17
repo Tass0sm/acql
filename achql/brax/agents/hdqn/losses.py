@@ -56,6 +56,9 @@ def make_critic_loss(
     q_error *= jnp.expand_dims(1 - truncation, -1)
 
     q_loss = 0.5 * jnp.mean(jnp.square(q_error))
-    return q_loss
+    return q_loss, {
+      "target_q": target_q,
+      "mean_reward": transitions.reward.mean(),
+    }
 
   return critic_loss

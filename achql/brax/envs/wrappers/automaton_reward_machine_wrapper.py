@@ -125,3 +125,8 @@ class AutomatonRewardMachineWrapper(Wrapper):
         nstate = nstate.replace(done=done)
 
         return nstate
+
+    def split_aut_obs(self, obs):
+        state_obs = obs[..., :-self.automaton.num_states]
+        aut_state = obs[..., -self.automaton.num_states:]
+        return state_obs, aut_state

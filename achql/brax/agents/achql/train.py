@@ -150,7 +150,7 @@ def train(
             Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
         ] = None,
         eval_environment: Optional[envs.Env] = None,
-        replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
+        replay_buffer_class_name = "TrajectoryACHQLSamplingQueue",
         hidden_layer_sizes=(256, 256),
         hidden_cost_layer_sizes=(64, 64, 64, 32),
         gamma_init_value = 0.80,
@@ -219,38 +219,29 @@ def train(
                 randomization_fn=v_randomization_fn,
         )
 
-    full_obs_size = env.full_observation_size
-    input_obs_size = env.observation_size
-    cost_input_obs_size = env.cost_observation_size
+    qr_input_size = env.qr_nn_input_size
+    qc_input_size = env.qc_nn_input_size
     action_size = env.action_size
 
     normalize_fn = lambda x, y: x
     cost_normalize_fn = lambda x, y: x
     if normalize_observations:
-        # normalization_mask = jnp.concatenate((jnp.ones((env.goalless_observation_size,), dtype=jnp.int32),
-        #                                       jnp.zeros((env.full_observation_size - env.goalless_observation_size,), dtype=jnp.int32)))
-        # normalize_fn = functools.partial(running_statistics.normalize, mask=normalization_mask)
         normalize_fn = running_statistics.normalize
-
-        cost_normalization_mask = jnp.concatenate((jnp.ones((env.goalless_observation_size,), dtype=jnp.int32),
-                                                                                    # jnp.zeros((env.automaton.n_states,), dtype=jnp.int32)
-                                                                                    ))
-        cost_normalize_fn = functools.partial(running_statistics.normalize,
-                                                                                    mask=cost_normalization_mask)
+        cost_normalize_fn = running_statistics.normalize
 
     achql_network = network_factory(
-            observation_size=input_obs_size,
-            cost_observation_size=cost_input_obs_size,
-            num_aut_states=env.automaton.n_states,
-            num_unique_safety_conditions=env.n_unique_safety_conds,
-            action_size=action_size,
-            env=env,
-            options=options,
-            preprocess_observations_fn=normalize_fn,
-            preprocess_cost_observations_fn=cost_normalize_fn,
-            hidden_layer_sizes=hidden_layer_sizes,
-            hidden_cost_layer_sizes=hidden_cost_layer_sizes,
-            use_sum_cost_critic=use_sum_cost_critic,
+        observation_size=qr_input_size,
+        cost_observation_size=qc_input_size,
+        num_aut_states=env.automaton.n_states,
+        num_unique_safety_conditions=env.n_unique_safety_conds,
+        action_size=action_size,
+        env=env,
+        options=options,
+        preprocess_observations_fn=normalize_fn,
+        preprocess_cost_observations_fn=cost_normalize_fn,
+        hidden_layer_sizes=hidden_layer_sizes,
+        hidden_cost_layer_sizes=hidden_cost_layer_sizes,
+        use_sum_cost_critic=use_sum_cost_critic,
     )
     make_policy = achql_networks.make_option_inference_fn(achql_network, env, safety_threshold, argmax_type=argmax_type)
     make_flat_policy = achql_networks.make_inference_fn(achql_network, env, safety_threshold, argmax_type=argmax_type)
@@ -259,7 +250,8 @@ def train(
     option_q_optimizer = optax.adam(learning_rate=learning_rate)
     cost_q_optimizer = optax.adam(learning_rate=learning_rate)
 
-    dummy_obs = jnp.zeros((full_obs_size,))
+    obs_size = env.observation_size
+    dummy_obs = jnp.zeros((obs_size,))
     dummy_transition = Transition(
             observation=dummy_obs,
             action=0,
@@ -359,7 +351,6 @@ def train(
                 'cost_gamma': cost_gamma,
                 'critic_loss': critic_loss,
                 'cost_critic_loss': cost_critic_loss,
-                # 'actor_loss': actor_loss,
                 **critic_info,
                 **cost_critic_info,
         }
@@ -414,10 +405,10 @@ def train(
 
         normalizer_params = running_statistics.update(
                 normalizer_params,
-            # TODO: figure out best way to get observation with dim input_obs_size
+                # TODO: figure out best way to get observation with dim input_obs_size
                 jax.tree_util.tree_map(
                         lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), data
-                ).observation[..., :input_obs_size],  # so that batch size*unroll_length is the first dimension
+                ).observation[..., :qr_input_size],  # so that batch size*unroll_length is the first dimension
                 pmap_axis_name=_PMAP_AXIS_NAME,
         )
 
@@ -580,7 +571,7 @@ def train(
     # Training state init
     training_state = _init_training_state(
             key=global_key,
-            obs_size=input_obs_size,
+            obs_size=qr_input_size,
             local_devices_to_use=local_devices_to_use,
             achql_network=achql_network,
             # policy_optimizer=policy_optimizer,

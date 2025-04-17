@@ -15,17 +15,17 @@ Grasp: Close fingers on opposite sides of a cube.
 
 See _get_obs() and ArmEnvs._convert_action() for details.
 """
-class UR5eGrasp(UR5eEnvs):
+class UR5eEEFGrasp(UR5eEnvs):
     def _get_xml_path(self):
-        return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'assets', "ur5e_grasp.xml")
+        return os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'assets', "ur5e_eef_grasp.xml")
     
     @property
     def action_size(self) -> int:
-        return 5 # Override default (actuator count)
+        return 4
     
     # See ArmEnvs._set_environment_attributes for descriptions of attributes
     def _set_environment_attributes(self):
-        self.env_name = "ur5e_grasp"
+        self.env_name = "ur5e_eef_grasp"
         self.episode_length = 100
 
         self.goal_indices = jnp.array([16, 17, 18, 19, 20, 21, 22]) # Left and right fingertip positions, and fingertip distance

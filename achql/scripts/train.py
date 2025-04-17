@@ -7,16 +7,17 @@ from brax.io import model
 from achql.brax.agents.achql import train as achql
 from achql.brax.agents.sac_her import train as sac_her
 from achql.brax.agents.crl import train as crl
+from achql.brax.agents.ddpg import train as ddpg
+from achql.brax.agents.hdqn import train as hdqn
+from achql.brax.agents.hdqn_her import train as hdqn_her
+from achql.baselines.reward_machines.qrm import train as qrm
+from achql.baselines.reward_machines.qrm_ddpg import train as qrm_ddpg
 from achql.baselines.reward_machines.crm import train as crm
 
 from achql.tasks import get_task
 from achql.brax.utils import make_aut_goal_cmdp, make_reward_machine_mdp
 
 from jaxgcrl.utils.config import RunConfig
-
-
-mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
-mlflow.set_experiment("proj2-batch-training")
 
 
 def progress_fn(num_steps, metrics, *args, **kwargs):
@@ -48,10 +49,10 @@ def training_run(run_id, env, seed, train_fn, progress_fn=progress_fn, hyperpara
     return make_inference_fn, params
 
 
-def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3)):
+def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3), extra_tasks={}):
     for env_name in envs:
         for task_name in tasks:
-            task = get_task(env_name, task_name)
+            task = get_task(env_name, task_name, extra_tasks=extra_tasks)
 
             spec = task.lo_spec
             spec_tag = type(task).__name__
@@ -60,6 +61,85 @@ def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3)):
             for seed in range(*seed_range):
                 with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": alg_tag}) as run:
                     func(run, task, seed, spec)
+
+
+def ddpg_train(run, task, seed, spec, reward_shaping=False):
+    make_inference_fn, params = training_run(
+        run.info.run_id,
+        task.env,
+        seed,
+        train_fn=ddpg.train,
+        hyperparameters=task.ddpg_hps,
+        extras={
+            "specification": spec,
+            "state_var": task.obs_var,
+        }
+    )
+
+
+def hdqn_train(run, task, seed, spec):
+    options = task.get_options()
+
+    make_inference_fn, params = training_run(
+        run.info.run_id,
+        task.env,
+        seed,
+        train_fn=hdqn.train,
+        hyperparameters=task.hdqn_hps,
+        extras={
+            "options": options,
+            "specification": spec,
+            "state_var": task.obs_var,
+        }
+    )
+
+
+def hdqn_her_train(run, task, seed, spec):
+    options = task.get_options()
+
+    make_inference_fn, params = training_run(
+        run.info.run_id,
+        task.env,
+        seed,
+        train_fn=hdqn_her.train,
+        hyperparameters=task.hdqn_her_hps,
+        extras={
+            "options": options,
+            "specification": spec,
+            "state_var": task.obs_var,
+        }
+    )
+
+
+def qrm_train(run, task, seed, spec, reward_shaping=False):
+    options = task.get_options()
+
+    make_inference_fn, params = training_run(
+        run.info.run_id,
+        make_reward_machine_mdp(task, reward_shaping=reward_shaping),
+        seed,
+        train_fn=qrm.train,
+        hyperparameters=task.crm_hps,
+        extras={
+            "options": options,
+            "specification": spec,
+            "state_var": task.obs_var,
+        }
+    )
+
+
+def qrm_ddpg_train(run, task, seed, spec, reward_shaping=False):
+    make_inference_fn, params = training_run(
+        run.info.run_id,
+        make_reward_machine_mdp(task, reward_shaping=reward_shaping),
+        seed,
+        train_fn=qrm_ddpg.train,
+        hyperparameters=task.crm_hps,
+        extras={
+            "specification": spec,
+            "state_var": task.obs_var,
+        }
+    )
 
 
 def crm_train(run, task, seed, spec, reward_shaping=False):
@@ -194,10 +274,18 @@ def crl_train(run, task, seed, spec):
             # "state_var": task.obs_var,
         }
     )
-    
-            
+
+
 def main():
-    train_for_all(["SimpleMaze"], ["SingleSubgoal"], crm_train, "CRM", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], crm_train, "CRM", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], qrm_train, "QRM", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["NotUntilAlwaysSubgoal"], qrm_train, "QRM", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["NotUntilAlwaysSubgoal"], qrm_ddpg_train, "QRM_DDPG", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["NotUntilAlwaysSubgoal"], qrm_ddpg_train, "QRM_DDPG", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["NotUntilAlwaysSubgoal"], qrm_ddpg_train, "QRM_DDPG", seed_range=(0, 1))
+
+    train_for_all(["SimpleMaze"], ["Nav"], achql_train, "ACHQL", seed_range=(0, 1))
+
     # train_for_all(["SimpleMaze"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
     # train_for_all(["ArmEEF"], ["BinpickEasyTask"], sac_her_train, "SAC_HER")
@@ -208,4 +296,7 @@ def main():
 
             
 if __name__ == "__main__":
+    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_experiment("proj2-batch-training")
+
     main()

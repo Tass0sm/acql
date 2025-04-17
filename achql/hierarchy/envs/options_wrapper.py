@@ -31,7 +31,7 @@ class OptionsWrapper(Wrapper):
         if hasattr(env, "automaton") and hasattr(env, "strip_goal_obs") and env.strip_goal_obs and env.augment_obs:
             self.extra_adapter = env.original_obs
         elif hasattr(env, "automaton") and env.augment_obs:
-            self.extra_adapter = env.original_obs
+            self.extra_adapter = lambda x: x[..., :env.original_obs_dim]
             # self.extra_adapter = env.no_automaton_obs
         else:
             self.extra_adapter = lambda x: x

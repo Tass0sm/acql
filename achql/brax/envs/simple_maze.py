@@ -162,7 +162,7 @@ class SimpleMaze(PipelineEnv):
         use_contact_forces=False,
         contact_cost_weight=5e-4,
         healthy_reward=1.0,
-        terminate_when_unhealthy=True,
+        terminate_when_unhealthy=False,
         healthy_z_range=(0.2, 1.0),
         contact_force_range=(-1.0, 1.0),
         reset_noise_scale=0.1,
@@ -170,6 +170,7 @@ class SimpleMaze(PipelineEnv):
         backend="generalized",
         maze_layout_name="open_maze",
         maze_size_scaling=4.0,
+        reward_type="default",
         **kwargs,
     ):
         xml_string, possible_starts, possible_goals = make_maze(maze_layout_name, maze_size_scaling)
@@ -218,6 +219,8 @@ class SimpleMaze(PipelineEnv):
             exclude_current_positions_from_observation
         )
         
+        self._reward_type = reward_type
+
         self.state_dim = 4
         self.pos_indices = jnp.array([0, 1])
         self.goal_indices = jnp.array([4, 5])
@@ -301,7 +304,18 @@ class SimpleMaze(PipelineEnv):
         dist = jnp.linalg.norm(obs[:2] - obs[-2:])
         success = jnp.array(dist < self.goal_dist, dtype=float)
         success_easy = jnp.array(dist < 2., dtype=float)
-        reward = -dist + healthy_reward - ctrl_cost - contact_cost
+
+        if self._reward_type == "default":
+            reward = -dist + healthy_reward - ctrl_cost - contact_cost
+        elif self._reward_type == "just_dist":
+            reward = -dist
+        elif self._reward_type == "pos_sparse":
+            reward = success
+        elif self._reward_type == "time_sparse":
+            reward = -1 + success
+        else:
+            raise NotImplementedError()
+
         state.metrics.update(
             reward_forward=forward_reward,
             reward_survive=healthy_reward,
@@ -342,3 +356,10 @@ class SimpleMaze(PipelineEnv):
     def _random_start(self, rng: jax.Array) -> jax.Array:
         idx = jax.random.randint(rng, (1,), 0, len(self.possible_starts))
         return jnp.array(self.possible_starts[idx])[0]
+
+    def reached_goal(self, obs: jax.Array, threshold: float = 2.0):
+        pos = obs[..., self.pos_indices]
+        goal = obs[..., self.goal_indices]
+        dist = jnp.linalg.norm(pos - goal, axis=-1)
+        reached = jnp.array(dist < threshold, dtype=float)
+        return reached

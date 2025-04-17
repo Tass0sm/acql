@@ -1,0 +1,1 @@
+from jaxgcrl.envs.manipulation.arm_binpick_easy_EEF import ArmBinpickEasyEEF as ArmEEFBinpickEasy

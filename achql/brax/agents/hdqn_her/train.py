@@ -231,7 +231,7 @@ def train(
       discounting=discounting,
   )
   critic_update = gradients.gradient_update_fn(
-      critic_loss, option_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME)
+      critic_loss, option_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
 
   def sgd_step(
       carry: Tuple[TrainingState, PRNGKey],
@@ -240,7 +240,7 @@ def train(
 
     key, key_critic = jax.random.split(key, 2)
 
-    critic_loss, option_q_params, option_q_optimizer_state = critic_update(
+    (critic_loss, critic_info), option_q_params, option_q_optimizer_state = critic_update(
         training_state.option_q_params,
         training_state.normalizer_params,
         training_state.target_option_q_params,
@@ -253,7 +253,7 @@ def train(
 
     metrics = {
         'critic_loss': critic_loss,
-        # 'actor_loss': actor_loss,
+        **critic_info,
     }
 
     new_training_state = TrainingState(

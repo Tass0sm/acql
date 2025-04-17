@@ -8,11 +8,13 @@ def get_task(env_name: str, task_name: str, **kwargs) -> TaskBase:
     return get_task_by_name(full_task_name, **kwargs)
 
 
-def get_task_by_name(full_task_name, **kwargs) -> TaskBase:
+def get_task_by_name(full_task_name, extra_tasks={}, **kwargs) -> TaskBase:
     if hasattr(brax_tasks, full_task_name):
         TaskClass = getattr(brax_tasks, full_task_name)
     elif hasattr(navix_tasks, full_task_name):
         TaskClass = getattr(navix_tasks, full_task_name)
+    elif full_task_name in extra_tasks:
+        TaskClass = extra_tasks[full_task_name]
     else:
         raise Exception(f"{full_task_name} not found")
 

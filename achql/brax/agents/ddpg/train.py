@@ -81,6 +81,8 @@ def _init_training_state(
 
 def train(
     environment: envs.Env,
+    specification: Callable[..., jnp.ndarray],
+    state_var,
     num_timesteps,
     episode_length: int = 1000,
     wrap_env: bool = True,
@@ -417,7 +419,7 @@ def train(
     if process_id == 0:
       if checkpoint_logdir:
         # Save current policy.
-        params = _unpmap((training_state.normalizer_params, training_state.policy_params))
+        params = _unpmap((training_state.normalizer_params, training_state.q_params, training_state.policy_params))
         path = f'{checkpoint_logdir}_ddpg_{current_step}.pkl'
         model.save_params(path, params)
 
@@ -429,7 +431,7 @@ def train(
   total_steps = current_step
   assert total_steps >= num_timesteps
 
-  params = _unpmap((training_state.normalizer_params, training_state.policy_params))
+  params = _unpmap((training_state.normalizer_params, training_state.q_params, training_state.policy_params))
 
   # If there was no mistakes the training_state should still be identical on all
   # devices.

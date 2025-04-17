@@ -157,7 +157,7 @@ class AutomatonCostWrapper(Wrapper):
 
         return ntimestep
 
-    @property
-    def cost_observation_size(self):
-        # return self.env.goalless_observation_size
-        return self.env.goalless_observation_size + self.env.automaton.n_states
+    # @property
+    # def cost_observation_size(self):
+    #     # return self.env.goalless_observation_size
+    #     return self.env.goalless_observation_size + self.env.automaton.n_states

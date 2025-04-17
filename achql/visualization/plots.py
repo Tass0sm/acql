@@ -7,9 +7,12 @@ import jax.numpy as jnp
 # from brax import envs
 # from brax.training.types import Params
 # from brax.training.types import PRNGKey
+from achql.brax.agents.achql import networks as achql_networks
 
 from achql.visualization.utils import get_mdp_network_policy_and_params
 from achql.visualization.critic import plot_function_grid, plot_simple_maze_option_arrows
+
+
 
 
 def make_plots_for_hdqn(
@@ -31,6 +34,8 @@ def make_plots_for_hdqn(
     tmp_state = env.reset(reset_key)
     tmp_state = tmp_state_fn(tmp_state)
 
+    breakpoint()
+    
     normalizer_params, option_q_params = params
 
     x_values = jnp.linspace(x_min, x_max, grid_size)
@@ -178,6 +183,62 @@ def make_plots_for_achql(
     return [(fig1, ax1), (fig2, ax2)]
 
 
+def make_plots_for_ddpg(
+        env,
+        make_policy: Callable,
+        network,
+        params,
+        label: str = "",
+        grid_size: int = 100,
+        tmp_state_fn = lambda x: x,
+        # save_and_close: bool = True,
+        x_min: float = 0.0,
+        x_max: float = 16.0,
+        y_min: float = 0.0,
+        y_max: float = 16.0,
+        with_dressing = True,
+        seed: int = 0,
+):
+    key = jax.random.PRNGKey(seed)
+    reset_key, policy_key = jax.random.split(key)
+    tmp_state = env.reset(reset_key)
+    tmp_state = tmp_state_fn(tmp_state)
+
+    x_values = jnp.linspace(x_min, x_max, grid_size)
+    y_values = jnp.linspace(y_min, y_max, grid_size)
+    X, Y = jnp.meshgrid(x_values, y_values)
+    positions = jnp.stack([X.ravel(), Y.ravel()], axis=1)
+
+    # Prepare batched input for value_net
+    obs_batch = jnp.repeat(jnp.expand_dims(tmp_state.obs, axis=0), positions.shape[0], axis=0)
+    # obs_batch = jnp.concatenate((env.goalless_obs(obs_batch),
+    #                              env.ith_goal(obs_batch, 0)), axis=-1)
+    obs_batch = obs_batch.at[:, 0:2].set(positions)
+
+    # policy
+    policy = make_policy(params, deterministic=True)
+    actions, _ = policy(obs_batch, policy_key)
+
+    # Compute the value function for the grid
+    normalizer_params, q_params, _ = params
+    value_function_output = network.q_network.apply(normalizer_params, q_params, obs_batch, actions).min(axis=-1)
+    value_function_grid = value_function_output.reshape(grid_size, grid_size)
+
+    start_position = tmp_state.obs[:2]
+    goal_position = tmp_state.obs[-2:]
+    fig, ax = plot_function_grid(
+        X, Y,
+        x_min, x_max,
+        y_min, y_max,
+        value_function_grid,
+        start_position, goal_position,
+        f"Reward - {label}",
+        with_dressing=with_dressing
+    )
+
+    return [(fig, ax)]
+
+
 def make_plots(training_run_id, **kwargs):
     mdp, options, network, make_option_policy, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
 
@@ -189,7 +250,17 @@ def make_plots(training_run_id, **kwargs):
                 return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
             case "HDCQN_AUTOMATON_HER":
                 return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+            case "HDQN_HER_FOR_AUT":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "QRM":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "QRM_WITH_MULTIHEAD":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
             case "CRM":
                 return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "CRM_WITH_MULTIHEAD":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "DDPG":
+                return make_plots_for_ddpg(mdp, make_policy, network, params, **kwargs)
             case _:
                 raise NotImplementedError(f"{alg_name} not supported")

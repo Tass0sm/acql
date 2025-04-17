@@ -279,87 +279,8 @@ def train(
         normalizer_params,
         transitions.observation,
         pmap_axis_name=_PMAP_AXIS_NAME)
-
-    def generate_crm_transitions(transition):
-      aut_obs = env.automaton_obs(transition.observation)
-      u = env.automaton.one_hot_decode(aut_obs)
-
-      next_aut_obs = env.automaton_obs(transition.next_observation)
-      v = env.automaton.one_hot_decode(next_aut_obs)
-
-      def gen_crm_tran(u):
-        obs = env.original_obs(transition.observation)
-        action = transition.action
-        next_obs = env.original_obs(transition.next_observation)
-        labels = env.automaton.eval_aps(action, next_obs, ap_params=env_state.info["ap_params"])
-        v = env.automaton.step(u, labels)
-        new_reward = env.compute_reward(u, v, obs, action, next_obs)
-
-        if env.strip_goal_obs:
-          obs = obs[..., env.non_goal_indices]
-          next_obs = next_obs[..., env.non_goal_indices]
-        
-        return Transition(
-          observation=env.make_augmented_obs(obs, u),
-          action=action,
-          reward=new_reward,
-          discount=transition.discount,
-          next_observation=env.make_augmented_obs(next_obs, v),
-          extras={
-            'state_extras': {
-              'truncation': transition.extras["state_extras"]["truncation"],
-              'automata_state': u,
-            },
-            'policy_extras': {},
-          }
-        )
-
-      crm_transitions = jax.lax.map(gen_crm_tran, jnp.arange(env.automaton.num_states))
-      return crm_transitions
-    
-    crm_transitions = jax.vmap(generate_crm_transitions)(transitions)
-    crm_transitions = jax.tree_util.tree_map(
-      lambda x: jnp.reshape(x, (-1,) + x.shape[2:]), crm_transitions
-    )
-
-    buffer_state = replay_buffer.insert(buffer_state, crm_transitions)
+    buffer_state = replay_buffer.insert(buffer_state, transitions)
     return normalizer_params, env_state, buffer_state
-
-  # def get_experience(
-  #     normalizer_params: running_statistics.RunningStatisticsState,
-  #     option_q_params: Params,
-  #     env_state: envs.State,
-  #     option_state: OptionState,
-  #     buffer_state: ReplayBufferState,
-  #     key: PRNGKey,
-  # ) -> Tuple[
-  #   running_statistics.RunningStatisticsState,
-  #   envs.State,
-  #   ReplayBufferState,
-  # ]:
-  #   policy = make_policy((normalizer_params, option_q_params))
-  #   env_state, next_option_state, transitions = hierarchical_acting.option_step(
-  #     env,
-  #     env_state,
-  #     option_state,
-  #     policy,
-  #     options,
-  #     key,
-  #     extra_fields=(
-  #       "truncation",
-  #       # Note: This seems to only be present in the jaxgcrl envs
-  #       # and I'm not sure if its important
-  #       # "seed",
-  #     ),
-  #   )
-
-  #   normalizer_params = running_statistics.update(
-  #       normalizer_params,
-  #       transitions.observation,
-  #       pmap_axis_name=_PMAP_AXIS_NAME)
-
-  #   buffer_state = replay_buffer.insert(buffer_state, transitions)
-  #   return normalizer_params, env_state, next_option_state, buffer_state
 
   def training_step(
       training_state: TrainingState,

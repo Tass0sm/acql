@@ -5,6 +5,7 @@ import mujoco
 import jax
 from jax import numpy as jnp
 
+
 class ArmEnvs(PipelineEnv):
     def __init__(self, backend="mjx", **kwargs):
         # Configure environment information (e.g. env name, noise scale, observation dimension, goal indices) and load XML
@@ -57,7 +58,7 @@ class ArmEnvs(PipelineEnv):
 
         # Run mujoco step
         pipeline_state0 = state.pipeline_state
-        if "EEF" in self.env_name:
+        if "eef" in self.env_name:
             action = self._convert_action_to_actuator_input_EEF(pipeline_state0, action)
         else: 
             arm_angles = self._get_arm_angles(pipeline_state0)

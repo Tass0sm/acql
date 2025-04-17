@@ -17,14 +17,18 @@ from .simple_maze import (
     SimpleMazeUMazeConstraint,
     SimpleMazeCenterConstraint,
     SimpleMazeSingleSubgoal,
+    SimpleMazeUSingleSubgoal,
     SimpleMazeTwoSubgoals,
+    SimpleMazeUTwoSubgoals,
     SimpleMazeBranching1,
     SimpleMazeBranching2,
     SimpleMazeObligationConstraint1,
     SimpleMazeObligationConstraint2,
     SimpleMazeObligationConstraint3,
+    SimpleMazeObligationConstraint4,
     SimpleMazeObligationConstraint5,
     SimpleMazeObligationConstraint6,
+    SimpleMazeNotUntilAlwaysSubgoal,
     SimpleMazeUntil1,
 )
 from .simple_maze_3d import (
@@ -53,6 +57,13 @@ from .ur5e import (
     UR5eEEFEasierBranchingScalabilityTestTask,
     UR5eEEFEvenEasierBranchingScalabilityTestTask,
     # UR5eEEFComplexBranchingScalabilityTestTask,
+    UR5eEEFGraspTask,
+)
+from .panda import (
+    PandaPushEasyTask
+)
+from .arm_eef import (
+    ArmEEFBinpickEasyTask
 )
 from .x_point import (
     XPointFisacTask,

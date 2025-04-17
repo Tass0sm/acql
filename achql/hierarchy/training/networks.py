@@ -83,6 +83,7 @@ def make_multi_headed_option_q_network(
     obs_size: int,
     num_heads: int,
     num_options: int,
+    env, # pass env to have access to some obs processing functions, but maybe replace this
     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     preprocess_cond_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     shared_hidden_layer_sizes: Sequence[int] = (256,),
@@ -142,10 +143,11 @@ def make_multi_headed_option_q_network(
 
   q_module = DoubleMultiHeadedDiscreteQModule(num_heads)
 
-  def apply(processor_params, q_params, obs: jnp.ndarray, aut_state: int):
-    obs = preprocess_observations_fn(obs, processor_params)
-    head = preprocess_cond_fn(aut_state)
-    return q_module.apply(q_params, obs, head)
+  def apply(processor_params, q_params, obs: jnp.ndarray):
+    processed_obs = preprocess_observations_fn(obs, processor_params)
+    head = preprocess_cond_fn(obs)
+    return q_module.apply(q_params, processed_obs, head)
+    # return jax.vmap(q_module.apply, in_axes=(None, 0, 0))(q_params, processed_obs, head)
 
   dummy_obs = jnp.zeros((1, obs_size))
   dummy_head = jnp.int32(0)

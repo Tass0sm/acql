@@ -84,7 +84,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
     eval_metrics = eval_state.info['eval_metrics']
 
     if self.has_automaton and self.obs_augmented:
-      obs = self.env.original_obs(data.observation)
+      obs = data.observation[..., :self.env.original_obs_dim]
       # obs = data.observation[..., :-self.automaton_states]
     else:
       obs = data.observation

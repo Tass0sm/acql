@@ -31,7 +31,13 @@ def partition(pred, d):
 
 
 class AutomatonWrapper(Wrapper):
-    """Tracks automaton state during interaction with environment"""
+    """Make product mdp with automaton from an input specification
+
+    This class can also make a goal conditioned mdp a non-goal-conditioned MDP
+    if necessary.
+
+    This wrapper does not change the reward at all.
+    """
 
     def __init__(
             self,
@@ -40,6 +46,7 @@ class AutomatonWrapper(Wrapper):
             state_var,
             augment_obs: bool = True,
             strip_goal_obs: bool = False,
+            # treat_aut_state_as_goal: bool = False,
     ):
         super().__init__(env)
 
@@ -69,38 +76,50 @@ class AutomatonWrapper(Wrapper):
         self.non_goal_indices = ~mask
 
         if self.augment_obs and not self.strip_goal_obs:
-            mask = jnp.zeros(self.original_obs_dim + self.automaton.n_states, dtype=bool)
+            obs_dim = self.original_obs_dim + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
+            mask = jnp.zeros(obs_dim, dtype=bool)
             mask = mask.at[env.goal_indices].set(True)
             self.full_non_goal_indices = ~mask
         elif self.augment_obs:
-            mask = jnp.zeros(self.original_obs_dim - env.goal_indices.size + self.automaton.n_states, dtype=bool)
+            obs_dim = self.original_obs_dim - env.goal_indices.size + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
+            mask = jnp.zeros(obs_dim, dtype=bool)
             mask = mask.at[env.goal_indices].set(True)
             self.full_non_goal_indices = ~mask
         elif self.strip_goal_obs:
-            mask = jnp.zeros(self.original_obs_dim - env.goal_indices.size, dtype=bool)
+            obs_dim = self.original_obs_dim - env.goal_indices.size
+            mask = jnp.zeros(obs_dim, dtype=bool)
             mask = mask.at[env.goal_indices].set(True)
             self.full_non_goal_indices = ~mask
         else:
+            obs_dim = self.original_obs_dim
             self.full_non_goal_indices = self.non_goal_indices
 
+        # make the normalization mask, where positions where mask == 1 are not normalized
         if self.augment_obs and not self.strip_goal_obs:
-            normalization_mask = jnp.zeros(self.original_obs_dim + self.automaton.n_states, dtype=bool)
-            normalization_mask = normalization_mask.at[:-self.automaton.n_states].set(True)
+            normalization_mask = jnp.zeros(obs_dim, dtype=bool)
+            if self.automaton.n_states > 1:
+                normalization_mask = normalization_mask.at[:-self.automaton.n_states].set(True)
         elif self.augment_obs:
-            normalization_mask = jnp.zeros(self.original_obs_dim - env.goal_indices.size + self.automaton.n_states, dtype=bool)
-            normalization_mask = normalization_mask.at[:-self.automaton.n_states].set(True)
+            normalization_mask = jnp.zeros(obs_dim, dtype=bool)
+            if self.automaton.n_states > 1:
+                normalization_mask = normalization_mask.at[:-self.automaton.n_states].set(True)
         elif self.strip_goal_obs:
-            normalization_mask = jnp.ones(self.original_obs_dim - env.goal_indices.size, dtype=bool)
+            normalization_mask = jnp.zeros(obs_dim, dtype=bool)
         else:
-            normalization_mask = jnp.ones(self.original_obs_dim, dtype=bool)
+            normalization_mask = jnp.zeros(obs_dim, dtype=bool)
+
+        # if treat_aut_state_as_goal and self.automaton.n_states > 1:
+        #     aut_indices = jnp.arange(obs_dim - self.automaton.n_states, obs_dim)
+        #     self.goal_indices = jnp.concatenate((env.goal_indices, aut_indices))
+        #     self.full_non_goal_indices = self.full_non_goal_indices.at[aut_indices].set(False)
 
         self.normalization_mask = normalization_mask
 
-    def original_obs(self, obs):
+    def _original_obs(self, obs):
         # takes an obs from this mdp, and returns an obs from the original
         # underlying mdp
 
-        if self.augment_obs:
+        if self.augment_obs and self.automaton.n_states > 1:
             obs = obs[..., :-self.automaton.n_states]
 
         if self.strip_goal_obs:
@@ -109,14 +128,14 @@ class AutomatonWrapper(Wrapper):
 
         return obs
 
-    def no_goal_obs(self, obs):
-        return obs[..., self.full_non_goal_indices]
+    # def no_goal_obs(self, obs):
+    #     return obs[..., self.full_non_goal_indices]
 
-    def no_automaton_obs(self, obs):
-        return obs[..., :-self.automaton.n_states]
-    
-    def automaton_obs(self, obs):
-        return obs[..., -self.automaton.n_states:]
+    # def no_automaton_obs(self, obs):
+    #     return obs[..., :-self.automaton.n_states]
+
+    # def automaton_obs(self, obs):
+    #     return obs[..., -self.automaton.n_states:]
 
     # def original_obs(self, obs):
     #     if self.augment_with_subgoals and self.augment_obs:
@@ -164,11 +183,11 @@ class AutomatonWrapper(Wrapper):
 
         # In this environment, these keys are meaningless because the
         # environment is often not goal-conditioned.
-        del state.metrics["dist"]
-        del state.metrics["success"]
-        del state.metrics["success_easy"]
+        # del state.metrics["dist"]
+        # del state.metrics["success"]
+        # del state.metrics["success_easy"]
 
-        automaton_success = jnp.array(automaton_state == 0, dtype=float)
+        automaton_success = jnp.array(automaton_state == self.accepting_state, dtype=float)
         state.metrics.update(
             automaton_success=automaton_success,
         )
@@ -186,23 +205,21 @@ class AutomatonWrapper(Wrapper):
 
     def step(self, state: State, action: jax.Array) -> State:
 
-        state = state.replace(obs=self.original_obs(state.obs))
+        state = state.replace(obs=self._original_obs(state.obs))
+        automaton_state = state.info["automata_state"]
 
         nstate = self.env.step(state, action)
 
-        del state.metrics["dist"]
-        del state.metrics["success"]
-        del state.metrics["success_easy"]
+        # del state.metrics["dist"]
+        # del state.metrics["success"]
+        # del state.metrics["success_easy"]
 
         labels = self.automaton.eval_aps(action, nstate.obs, ap_params=state.info["ap_params"])
-
-        automaton_state = state.info["automata_state"]
-
         nautomaton_state = self.automaton.step(automaton_state, labels)
 
         made_transition = jnp.where(automaton_state != nautomaton_state, jnp.uint32(1), jnp.uint32(0))
 
-        state.info.update(
+        nstate.info.update(
             automata_state=nautomaton_state,
             made_transition=made_transition
         )
@@ -216,25 +233,25 @@ class AutomatonWrapper(Wrapper):
             new_obs = jnp.concatenate((nstate.obs, self.automaton.one_hot_encode(nautomaton_state)), axis=-1)
             nstate = nstate.replace(obs=new_obs)
 
-        reward = jnp.array(nautomaton_state == self.accepting_state, dtype=float)
-        automaton_success = reward
+        # reward = jnp.array(nautomaton_state == self.accepting_state, dtype=float)
+        automaton_success = jnp.array(nautomaton_state == self.accepting_state, dtype=float)
         nstate.metrics.update(
             automaton_success=automaton_success,
         )
 
-        nstate = nstate.replace(reward=reward)
+        # nstate = nstate.replace(reward=reward)
 
         return nstate
 
-    def make_augmented_obs(self, obs, aut_state):
-        return jnp.concatenate((obs, self.automaton.one_hot_encode(aut_state)), axis=-1)
-    
+    # def make_augmented_obs(self, obs, aut_state):
+    #     return jnp.concatenate((obs, self.automaton.one_hot_encode(aut_state)), axis=-1)
+
     @property
     def observation_size(self) -> int:
         if self.augment_obs and not self.strip_goal_obs:
-            return self.env.observation_size + self.automaton.n_states
+            return self.env.observation_size + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
         elif self.augment_obs:
-            return self.env.observation_size - self.env.goal_indices.size + self.automaton.n_states
+            return self.env.observation_size - self.env.goal_indices.size + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
         elif self.strip_goal_obs:
             return self.env.observation_size - self.env.goal_indices.size
         else:
@@ -263,7 +280,31 @@ def get_automaton_goal_array(shape, out_conditions, bdd_dict, aps, state_and_ap_
 
 
 class AutomatonGoalConditionedWrapper(Wrapper):
-    """Tracks automaton state and adds goal condition inputs as necessary"""
+    """Tracks automaton state and adds goal condition inputs as necessary
+
+    First it takes an goal-conditioned base MDP and removes the goal
+    from the state space, making it non goal conditioned.
+
+    If one provides a specification like "F(g1)" and variable_goals is true,
+    then the wrapped MDP essentially becomes the same MDP as before. If not, the
+    goal is not randomly sampled and it is always the default goal provided by
+    the specification.
+
+    In either case, this class obtains the DBA from the specification and uses
+    it to keep track of progress made with respect to the specification.
+
+    The reward of this environment is based on full satisfaction of the
+    specification. There are a few options:
+
+    - positive_sparse: 0 everywhere except 1 in automaton accepting states (and
+      when condition associated with accepting state if
+      "treat_accepting_state_like_goal" is true)
+
+    - time_sparse: -1 everywhere except 0 in automaton accepting states (and
+      when condition associated with accepting state if
+      "treat_accepting_state_like_goal" is true)
+
+    """
 
     def __init__(
             self,
@@ -272,6 +313,8 @@ class AutomatonGoalConditionedWrapper(Wrapper):
             state_var,
             use_incoming_conditions_for_final_state: bool = True,
             randomize_goals: bool = True,
+            treat_accepting_state_like_goal: bool = False,
+            reward_type="positive_sparse",
     ):
         super().__init__(env)
 
@@ -287,7 +330,6 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         accepting_states = [self.automaton.automaton.state_is_accepting(i) for i in range(self.automaton.automaton.num_states())]
         assert sum(accepting_states) == 1, "Can't handle more than one accepting state"
         self.accepting_state = accepting_states.index(True)
-
 
         # To determine the necessary goal inputs, the atomic propositions used
         # in the task specification are filtered based on weather or not a goal

@@ -124,6 +124,8 @@ def semimdp_actor_step(
   step_keys = jax.random.split(step_key, env_state.obs.shape[0])
   nstate = env.step(env_state, (actions, step_keys))
 
+  # note that this should indeed use info from the next state of the
+  # transition. wrapper envs poplate info with this in mind.
   state_extras = {x: nstate.info[x] for x in extra_fields}
   return nstate, Transition(  # pytype: disable=wrong-arg-types  # jax-ndarray
       observation=env_state.obs,

@@ -28,7 +28,7 @@ class SimpleMazeTaskBase(BraxTaskBase):
 
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=2)
-        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
+        self.obs_var = Var("obs", idx=0, dim=self.env.state_dim, position=(0, 2))
 
     def get_options(self):
         return self.get_hard_coded_options()
@@ -73,19 +73,52 @@ class SimpleMazeUMazeConstraint(UMazeConstraintMixin, SimpleMazeTaskBase):
 class SimpleMazeSingleSubgoal(SingleSubgoalMixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([12.0, 4.0])
-        self.goal1_radius = 2.0
+        self.goal1_radius = 0.5
 
         super().__init__(None, 1000, backend=backend)
 
+
+class SimpleMazeUSingleSubgoal(SingleSubgoalMixin, SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 4.0])
+        self.goal1_radius = 0.5
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze(
+            terminate_when_unhealthy=False,
+            maze_layout_name="u_maze",
+            backend=backend
+        )
+        return env
 
 class SimpleMazeTwoSubgoals(TwoSubgoalsMixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.goal1_location = jnp.array([12.0, 4.0])
-        self.goal1_radius = 2.0
+        self.goal1_radius = 0.5
         self.goal2_location = jnp.array([4.0, 12.0])
-        self.goal2_radius = 2.0
+        self.goal2_radius = 0.5
 
         super().__init__(None, 1000, backend=backend)
+
+
+class SimpleMazeUTwoSubgoals(TwoSubgoalsMixin, SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 4.0])
+        self.goal1_radius = 0.5
+        self.goal2_location = jnp.array([4.0, 12.0])
+        self.goal2_radius = 0.5
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze(
+            terminate_when_unhealthy=False,
+            maze_layout_name="u_maze",
+            backend=backend
+        )
+        return env
 
 
 class SimpleMazeBranching1(Branching1Mixin, SimpleMazeTaskBase):
@@ -154,10 +187,8 @@ class SimpleMazeObligationConstraint4(SimpleMazeTaskBase):
 
         self.goal1_location = jnp.array([12.0, 4.0])
         self.goal1_radius = 2.0
-        self.goal2_location = jnp.array([4.0, 12.0])
+        self.goal2_location = jnp.array([4.0, 4.0])
         self.goal2_radius = 2.0
-        self.goal3_location = jnp.array([12.0, 12.0])
-        self.goal3_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
 
@@ -170,7 +201,6 @@ class SimpleMazeObligationConstraint4(SimpleMazeTaskBase):
 
         in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius, has_goal=True)
         in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius, has_goal=True)
-        in_goal3 = inside_circle(obs_var.position, self.goal3_location, self.goal3_radius, has_goal=True)
         phi_liveness = stl.STLUntimedEventually(
             stl.STLAnd(in_goal1, stl.STLNext(stl.STLUntimedEventually(in_goal2)))
         )
@@ -237,6 +267,40 @@ class SimpleMazeObligationConstraint6(ObligationConstraint1Mixin, SimpleMazeTask
             "max_replay_size": 10000,
             "min_replay_size": 1000,
         }
+
+
+class SimpleMazeNotUntilAlwaysSubgoal(SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 4.0])
+        self.goal1_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius, has_goal=True)
+        # not_in_goal1 = stl.STLNegation(in_goal1)
+
+        phi = stl.STLUntimedUntil(stl.STLNegation(in_goal1), stl.STLUntimedAlways(in_goal1))
+        return phi
+
+    @property
+    def rm_config(self) -> dict:
+        return {
+            "final_state": 0,
+            "terminal_states": [2],
+            "reward_functions": {
+                (1, 1): lambda s_t, a_t, s_t1: 0.0,
+                (1, 0): lambda s_t, a_t, s_t1: 0.0,
+                (0, 0): lambda s_t, a_t, s_t1: 1.0,
+                (0, 2): lambda s_t, a_t, s_t1: 0.0,
+                (2, 2): lambda s_t, a_t, s_t1: 0.0,
+            },
+            "pruned_edges": [(0, 2)]
+        }
+
 
 class SimpleMazeUntil1(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
