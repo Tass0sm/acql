@@ -74,14 +74,12 @@ def make_losses(
 
     # Double Q(s_t, o_t) for all options
     qr_input = transitions.observation
-    batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
-    qs_old = batched_qr(aut_state, qr_input)
+    qs_old = option_q_network.apply(normalizer_params, option_q_params, qr_input)
     q_old_action = jax.vmap(lambda x, i: x.at[i].get())(qs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_qr_input = transitions.next_observation
-    batched_target_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), o))
-    next_double_qs = batched_target_qr(next_aut_state, next_qr_input)
+    next_double_qs = option_q_network.apply(normalizer_params, target_option_q_params, next_qr_input)
 
     next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
     cost_observation_size = state_obs.shape[-1]
@@ -152,8 +150,7 @@ def make_losses(
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_qr_input = transitions.next_observation
-    batched_target_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, target_option_q_params), o))
-    next_double_qs = batched_target_qr(next_aut_state, next_qr_input)
+    next_double_qs = option_q_network.apply(normalizer_params, target_option_q_params, next_qr_input)
 
     next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
     batched_target_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, o))

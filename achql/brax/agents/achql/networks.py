@@ -20,7 +20,7 @@ from achql.brax.training.acme import running_statistics
 from achql.hierarchy.training import networks as h_networks
 from achql.hierarchy.state import OptionState
 from achql.hierarchy.option import Option
-from achql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
+# from achql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
 from achql.brax.agents.achql.argmaxes import argmax_with_safest_tiebreak, argmax_with_random_tiebreak
 
 
@@ -36,25 +36,18 @@ class ACHQLNetworks:
 
 def make_option_qr_fn(
     achql_networks: ACHQLNetworks,
-    env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic: bool = False,
 ):
-
-    q_func_branches = get_compiled_q_function_branches(achql_networks, env)
 
     def make_qr(
             params: types.PolicyParams,
     ) -> types.Policy:
 
         normalizer_params, option_q_params, cost_q_params = params
-        options = achql_networks.options
-        n_options = len(options)
 
         def qr(observation: types.Observation) -> jnp.ndarray:
-            _, _, aut_state = env.split_obs(observation)
-            batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
-            double_qs = batched_qr(aut_state, observation)
+            double_qs = achql_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
             qs = jnp.min(double_qs, axis=-1)
             return qs
 
@@ -74,8 +67,6 @@ def make_option_qc_fn(
     ) -> types.Policy:
 
         normalizer_params, option_q_params, cost_q_params = params
-        options = achql_networks.options
-        n_options = len(options)
 
         def qc(observation: types.Observation) -> jnp.ndarray:
             state_obs, _, aut_state = env.split_obs(observation)
@@ -107,8 +98,6 @@ def make_option_inference_fn(
     argmax_type : str = "plain"
 ):
 
-    q_func_branches = get_compiled_q_function_branches(achql_networks, env)
-
     def make_policy(
             params: types.PolicyParams,
             deterministic: bool = False,
@@ -130,9 +119,8 @@ def make_option_inference_fn(
 
             # aut_state = env.automaton.one_hot_decode(aut_state_obs)
 
-            qr_input = observation # jnp.concatenate((state_obs, goals), axis=-1)
-            batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
-            double_qs = batched_qr(aut_state, qr_input)
+            qr_input = observation
+            double_qs = achql_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
             qs = jnp.min(double_qs, axis=-1)
 
             qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
@@ -183,8 +171,6 @@ def make_inference_fn(
     argmax_type : str = "plain"
 ):
 
-    q_func_branches = get_compiled_q_function_branches(achql_networks, env)
-
     def make_policy(
             params: types.PolicyParams,
             deterministic: bool = False
@@ -205,9 +191,8 @@ def make_inference_fn(
             state_obs, goals, aut_state = env.split_obs(observation)
             _, aut_state_obs = env.split_aut_obs(observation)
 
-            qr_input = jnp.concatenate((state_obs, goals, aut_state_obs), axis=-1)
-            batched_qr = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (normalizer_params, option_q_params), o))
-            double_qs = batched_qr(aut_state, qr_input)
+            qr_input = jnp.atleast_2d(observation)
+            double_qs = achql_networks.option_q_network.apply(normalizer_params, option_q_params, qr_input)
             qs = jnp.min(double_qs, axis=-1)
 
             qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
@@ -282,119 +267,119 @@ def make_inference_fn(
     return make_policy
 
 
-class FiLM(linen.Module):
-    feature_dim: int
-    condition_dim: int
+# class FiLM(linen.Module):
+#     feature_dim: int
+#     condition_dim: int
 
-    @linen.compact
-    def __call__(self, features: jnp.ndarray, condition: jnp.ndarray) -> jnp.ndarray:
-        """
-        Args:
-                features: A tensor of shape (batch_size, feature_dim).
-                condition: A tensor of shape (batch_size, condition_dim).
-        
-        Returns:
-                A tensor of shape (batch_size, feature_dim) with modulated features.
-        """
-        # Modulation network: outputs gamma and beta from the condition
-        gamma_beta = linen.Dense(2 * self.feature_dim)(condition)  # (batch_size, 2 * feature_dim)
-        gamma, beta = jnp.split(gamma_beta, 2, axis=-1)  # Split into gamma and beta
+#     @linen.compact
+#     def __call__(self, features: jnp.ndarray, condition: jnp.ndarray) -> jnp.ndarray:
+#         """
+#         Args:
+#                 features: A tensor of shape (batch_size, feature_dim).
+#                 condition: A tensor of shape (batch_size, condition_dim).
 
-        # Apply feature-wise linear modulation
-        return gamma * features + beta
+#         Returns:
+#                 A tensor of shape (batch_size, feature_dim) with modulated features.
+#         """
+#         # Modulation network: outputs gamma and beta from the condition
+#         gamma_beta = linen.Dense(2 * self.feature_dim)(condition)  # (batch_size, 2 * feature_dim)
+#         gamma, beta = jnp.split(gamma_beta, 2, axis=-1)  # Split into gamma and beta
 
-
-class FiLMedMLP(linen.Module):
-    """FiLMed MLP module."""
-    condition_dim: int
-    layer_sizes: Sequence[int]
-    activation: ActivationFn = linen.relu
-    kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
-    bias: bool = True
-    layer_norm: bool = False
-    final_activation: ActivationFn = linen.tanh
-
-    @linen.compact
-    def __call__(self, data: jnp.ndarray, conditioning_data: jnp.ndarray):
-        hidden = data
-        for i, hidden_size in enumerate(self.layer_sizes):
-            hidden = linen.Dense(
-                    hidden_size,
-                    name=f'hidden_{i}',
-                    kernel_init=self.kernel_init,
-                    use_bias=self.bias)(
-                            hidden)
-
-            if i != len(self.layer_sizes) - 1:
-                hidden = self.activation(hidden)
-                if self.layer_norm:
-                    hidden = linen.LayerNorm()(hidden)
-
-                # hidden = FiLM(
-                #   feature_dim=hidden_size,
-                #   condition_dim=self.condition_dim
-                # )(hidden, conditioning_data)
-
-                # hidden = self.activation(hidden)
-
-        hidden = self.final_activation(hidden)
-
-        return hidden
+#         # Apply feature-wise linear modulation
+#         return gamma * features + beta
 
 
-def make_option_cost_q_network(
-    obs_size: int,
-    aut_states: int,
-    num_options: int,
-    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
-    hidden_layer_sizes: Sequence[int] = (256, 256),
-    activation: ActivationFn = linen.relu,
-    n_critics: int = 2,
-    use_sum_cost_critic: bool = False,
-) -> FeedForwardNetwork:
-    """Creates a value network."""
+# class FiLMedMLP(linen.Module):
+#     """FiLMed MLP module."""
+#     condition_dim: int
+#     layer_sizes: Sequence[int]
+#     activation: ActivationFn = linen.relu
+#     kernel_init: Initializer = jax.nn.initializers.lecun_uniform()
+#     bias: bool = True
+#     layer_norm: bool = False
+#     final_activation: ActivationFn = linen.tanh
 
-    plain_obs_size = obs_size - aut_states
+#     @linen.compact
+#     def __call__(self, data: jnp.ndarray, conditioning_data: jnp.ndarray):
+#         hidden = data
+#         for i, hidden_size in enumerate(self.layer_sizes):
+#             hidden = linen.Dense(
+#                     hidden_size,
+#                     name=f'hidden_{i}',
+#                     kernel_init=self.kernel_init,
+#                     use_bias=self.bias)(
+#                             hidden)
 
-    # Q function for discrete space of options.
-    class DiscreteCostQModule(linen.Module):
-        """Q Module."""
-        n_critics: int
+#             if i != len(self.layer_sizes) - 1:
+#                 hidden = self.activation(hidden)
+#                 if self.layer_norm:
+#                     hidden = linen.LayerNorm()(hidden)
 
-        @linen.compact
-        def __call__(self, obs: jnp.ndarray, aut_obs: jnp.ndarray):
-            hidden = jnp.concatenate([obs], axis=-1)
-            res = []
-            for _ in range(self.n_critics):
-                critic_option_qs = FiLMedMLP(
-                    condition_dim=aut_states,
-                    layer_sizes=list(hidden_layer_sizes) + [num_options],
-                    activation=activation,
-                    final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
-                    # layer_norm=True,
-                    kernel_init=jax.nn.initializers.lecun_uniform()
-                )(hidden, aut_obs)
-                res.append(critic_option_qs)
+#                 # hidden = FiLM(
+#                 #   feature_dim=hidden_size,
+#                 #   condition_dim=self.condition_dim
+#                 # )(hidden, conditioning_data)
 
-            return jnp.stack(res, axis=-1)
+#                 # hidden = self.activation(hidden)
 
-    q_module = DiscreteCostQModule(n_critics=n_critics)
+#         hidden = self.final_activation(hidden)
 
-    def apply(processor_params, q_params, obs):
-        trimmed_proc_params = jax.tree.map(lambda x: x[..., :plain_obs_size] if x.ndim >= 1 else x, processor_params)
-        state_obs, aut_state_obs = obs[..., :plain_obs_size], obs[..., plain_obs_size:]
-        norm_state_obs = preprocess_observations_fn(state_obs, trimmed_proc_params)
-        return q_module.apply(q_params, norm_state_obs, aut_state_obs)
+#         return hidden
 
-    dummy_obs = jnp.zeros((1, plain_obs_size))
-    dummy_aut_obs = jnp.zeros((1, aut_states))
-    return FeedForwardNetwork(
-            init=lambda key: q_module.init(key, dummy_obs, dummy_aut_obs), apply=apply)
+
+# def make_option_cost_q_network(
+#     obs_size: int,
+#     aut_states: int,
+#     num_options: int,
+#     preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
+#     hidden_layer_sizes: Sequence[int] = (256, 256),
+#     activation: ActivationFn = linen.relu,
+#     n_critics: int = 2,
+#     use_sum_cost_critic: bool = False,
+# ) -> FeedForwardNetwork:
+#     """Creates a value network."""
+
+#     plain_obs_size = obs_size - aut_states
+
+#     # Q function for discrete space of options.
+#     class DiscreteCostQModule(linen.Module):
+#         """Q Module."""
+#         n_critics: int
+
+#         @linen.compact
+#         def __call__(self, obs: jnp.ndarray, aut_obs: jnp.ndarray):
+#             hidden = jnp.concatenate([obs], axis=-1)
+#             res = []
+#             for _ in range(self.n_critics):
+#                 critic_option_qs = FiLMedMLP(
+#                     condition_dim=aut_states,
+#                     layer_sizes=list(hidden_layer_sizes) + [num_options],
+#                     activation=activation,
+#                     final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
+#                     # layer_norm=True,
+#                     kernel_init=jax.nn.initializers.lecun_uniform()
+#                 )(hidden, aut_obs)
+#                 res.append(critic_option_qs)
+
+#             return jnp.stack(res, axis=-1)
+
+#     q_module = DiscreteCostQModule(n_critics=n_critics)
+
+#     def apply(processor_params, q_params, obs):
+#         trimmed_proc_params = jax.tree.map(lambda x: x[..., :plain_obs_size] if x.ndim >= 1 else x, processor_params)
+#         state_obs, aut_state_obs = obs[..., :plain_obs_size], obs[..., plain_obs_size:]
+#         norm_state_obs = preprocess_observations_fn(state_obs, trimmed_proc_params)
+#         return q_module.apply(q_params, norm_state_obs, aut_state_obs)
+
+#     dummy_obs = jnp.zeros((1, plain_obs_size))
+#     dummy_aut_obs = jnp.zeros((1, aut_states))
+#     return FeedForwardNetwork(
+#             init=lambda key: q_module.init(key, dummy_obs, dummy_aut_obs), apply=apply)
 
 
 # Utils for the algebraic Q network
 def get_compiled_q_function_branches(
-    option_q_networks: FeedForwardNetwork,
+    option_q_network: FeedForwardNetwork,
     env: envs.Env,
 ):
     out_conditions = env.out_conditions
@@ -482,13 +467,15 @@ def make_algebraic_option_q_network(
     q_func_branches = get_compiled_q_function_branches(single_gc_network, env)
 
     def apply(processor_params, q_params, obs):
-        _, _, aut_state = env.split_obs(observation)
+        _, _, aut_state = env.split_obs(obs)
+        # this algebraic q network still passes the full observation to the
+        # underlying network incase it still wants to do anything with the
+        # automaton state information
         batched_q = jax.vmap(lambda a_s, o: jax.lax.switch(a_s, q_func_branches, (processor_params, q_params), o))
         return batched_q(aut_state, obs)
 
     dummy_obs = jnp.zeros((1, obs_size))
-    return FeedForwardNetwork(
-            init=lambda key: single_gc_network.init(key, dummy_obs), apply=apply)
+    return FeedForwardNetwork(init=single_gc_network.init, apply=apply)
 
 
 def make_achql_networks(
@@ -518,7 +505,7 @@ def make_achql_networks(
         observation_size,
         len(options),
         env,
-        preprocess_observations_fn=preprocess_observations_fn,
+        preprocess_observations_fn=qr_preprocess_obs_fn,
         hidden_layer_sizes=hidden_layer_sizes,
         activation=activation
     )
