@@ -9,10 +9,7 @@ import jax.numpy as jnp
 # from brax.training.types import PRNGKey
 from achql.brax.agents.achql import networks as achql_networks
 
-from achql.visualization.utils import get_mdp_network_policy_and_params
 from achql.visualization.critic import plot_function_grid, plot_simple_maze_option_arrows
-
-
 
 
 def make_plots_for_hdqn(
@@ -169,7 +166,9 @@ def make_plots_for_achql(
         cost_value_function_grid,
         start_position, goal_position,
         f"Cost - {label}",
-        with_dressing=with_dressing
+        with_dressing=with_dressing,
+        vmin=-1.0,
+        vmax=1.0,
     )
 
     plot_simple_maze_option_arrows([ax2], X, Y, options, grid_size)
@@ -239,28 +238,3 @@ def make_plots_for_ddpg(
     return [(fig, ax)]
 
 
-def make_plots(training_run_id, **kwargs):
-    mdp, options, network, make_option_policy, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
-
-    run = mlflow.get_run(run_id=training_run_id)
-    alg_name = run.data.tags["alg"]
-
-    match alg_name:
-            case "ACHQL":
-                return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
-            case "HDCQN_AUTOMATON_HER":
-                return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
-            case "HDQN_HER_FOR_AUT":
-                return make_plots_for_hdqn(mdp, network, params, **kwargs)
-            case "QRM":
-                return make_plots_for_hdqn(mdp, network, params, **kwargs)
-            case "QRM_WITH_MULTIHEAD":
-                return make_plots_for_hdqn(mdp, network, params, **kwargs)
-            case "CRM":
-                return make_plots_for_hdqn(mdp, network, params, **kwargs)
-            case "CRM_WITH_MULTIHEAD":
-                return make_plots_for_hdqn(mdp, network, params, **kwargs)
-            case "DDPG":
-                return make_plots_for_ddpg(mdp, make_policy, network, params, **kwargs)
-            case _:
-                raise NotImplementedError(f"{alg_name} not supported")

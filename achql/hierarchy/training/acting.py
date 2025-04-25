@@ -145,7 +145,8 @@ def semimdp_generate_unroll(
     policy: Policy,
     key: PRNGKey,
     unroll_length: int,
-    extra_fields: Sequence[str] = ()
+    extra_fields: Sequence[str] = (),
+    return_states: bool = False,
 ) -> Tuple[State, Transition]:
   """Collect trajectories of given unroll_length."""
 
@@ -155,7 +156,10 @@ def semimdp_generate_unroll(
     current_key, next_key = jax.random.split(current_key)
     nstate, transition = semimdp_actor_step(
         env, state, policy, current_key, extra_fields=extra_fields)
-    return (nstate, next_key), transition
+    if return_states:
+      return (nstate, next_key), (state, transition)
+    else:
+      return (nstate, next_key), transition
 
   (final_state, _), data = jax.lax.scan(
       f, (env_state, key), (), length=unroll_length)

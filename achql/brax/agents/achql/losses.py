@@ -25,13 +25,12 @@ def make_losses(
         safety_threshold: float,
         discounting: float,
         use_sum_cost_critic: bool = False,
-        argmax_type: str = "plain",
+        actor_type: str = "argmax",
 ):
   """Creates the ACHQL losses."""
 
   option_q_network = achql_network.option_q_network
   cost_q_network = achql_network.cost_q_network
-  q_func_branches = achql_networks.get_compiled_q_function_branches(achql_network, env)
 
   def safe_greedy_policy(reward_qs, cost_qs, option_key):
     "Finds option with maximal value under cost constraint"
@@ -41,16 +40,18 @@ def make_losses(
     else:
       masked_q = jnp.where(cost_qs > safety_threshold, reward_qs, -999.)
 
-    if argmax_type == "random":
+    if actor_type == "argmax_random":
       option = argmax_with_random_tiebreak(masked_q, option_key, axis=-1)
-    elif argmax_type == "safest":
+    elif actor_type == "argmax_safest":
       option = argmax_with_safest_tiebreak(masked_q, cost_qs, axis=-1, use_sum_cost_critic=use_sum_cost_critic)
-    elif argmax_type == "plain":
+    elif actor_type == "argmax":
       option = masked_q.argmax(axis=-1)
     else:
       raise NotImplementedError()
 
+    # all_unsafe = jnp.all(masked_q == -999, axis=-1)
     q = jax.vmap(lambda x, i: x.at[i].get())(reward_qs, option)
+    # q = jnp.where(all_unsafe, 0, q)
     cq = jax.vmap(lambda x, i: x.at[i].get())(cost_qs, option)
     return q, cq
 
@@ -84,8 +85,7 @@ def make_losses(
     next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
     cost_observation_size = state_obs.shape[-1]
     trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    batched_target_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, o))
-    next_double_cqs = batched_target_qc(next_aut_state, next_qc_input)
+    next_double_cqs = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, next_qc_input)
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
@@ -116,9 +116,17 @@ def make_losses(
     else:
       proportion_unsafe = jnp.where(next_cqs > safety_threshold, 0.0, 1.0).mean()
 
+    proportion_transition = transitions.extras["state_extras"]["made_transition"].mean()
+
+    # jax.lax.cond(proportion_transition > 0.0,
+    #              lambda trns: jax.debug.breakpoint(),
+    #              lambda trns: None,
+    #              transitions)
+
     return q_loss, {
       "target_q": target_q,
       "mean_reward": transitions.reward.mean(),
+      "proportion_transition": proportion_transition,
       "proportion_unsafe": proportion_unsafe
     }
 
@@ -144,8 +152,7 @@ def make_losses(
     qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
     cost_observation_size = state_obs.shape[-1]
     trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    batched_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o))
-    cqs_old = batched_qc(aut_state, qc_input)
+    cqs_old = cost_q_network.apply(trimmed_normalizer_params, cost_q_params, qc_input)
     cq_old_action = jax.vmap(lambda x, i: x.at[i].get())(cqs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
@@ -153,8 +160,7 @@ def make_losses(
     next_double_qs = option_q_network.apply(normalizer_params, target_option_q_params, next_qr_input)
 
     next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
-    batched_target_qc = jax.vmap(lambda a_s, o: cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, o))
-    next_double_cqs = batched_target_qc(next_aut_state, next_qc_input)
+    next_double_cqs = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, next_qc_input)
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)

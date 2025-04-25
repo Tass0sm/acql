@@ -7,7 +7,8 @@ from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
 from achql.brax.envs.wrappers.automaton_goal_wrapper import AutomatonGoalWrapper
 
 from achql.brax.utils import make_reward_machine_mdp
-from achql.scripts.new_achql_testing import make_aut_goal_cmdp
+# from achql.scripts.new_achql_testing import make_aut_goal_cmdp
+from achql.brax.utils import make_aut_goal_cmdp
 
 from achql.brax.agents.hdqn import networks as hdq_networks
 from achql.brax.agents.hdcqn import networks as hdcq_networks
@@ -31,7 +32,7 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
         normalize_fn = lambda x, y: x
         cost_normalize_fn = lambda x, y: x
 
-    aut_goal_cmdp = make_aut_goal_cmdp(task, randomize_goals=True)
+    aut_goal_cmdp = make_aut_goal_cmdp(task, randomize_goals=False)
     achql_network = achql_networks.make_achql_networks(
         aut_goal_cmdp.qr_nn_input_size,
         aut_goal_cmdp.qc_nn_input_size,
@@ -39,6 +40,7 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
         aut_goal_cmdp.n_unique_safety_conds,
         aut_goal_cmdp.action_size,
         aut_goal_cmdp,
+        network_type=run.data.params["network_type"],
         options=options,
         preprocess_observations_fn=normalize_fn,
         preprocess_cost_observations_fn=cost_normalize_fn,
@@ -46,8 +48,8 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
         # hidden_cost_layer_sizes=(128, 128, 128, 64),
         use_sum_cost_critic=(run.data.tags["alg"] == "ABLATION_FOUR"),
     )
-    make_option_policy = achql_networks.make_option_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], argmax_type=run.data.params.get("argmax_type", "safest"))
-    make_policy = achql_networks.make_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], argmax_type=run.data.params.get("argmax_type", "safest"))    
+    make_option_policy = achql_networks.make_option_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], actor_type=run.data.params.get("actor_type", "safest"))
+    make_policy = achql_networks.make_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], actor_type=run.data.params.get("actor_type", "safest"))    
 
     return aut_goal_cmdp, options, achql_network, make_option_policy, make_policy, params
 

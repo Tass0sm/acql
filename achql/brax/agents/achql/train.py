@@ -150,7 +150,8 @@ def train(
             Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
         ] = None,
         eval_environment: Optional[envs.Env] = None,
-        replay_buffer_class_name = "TrajectoryACHQLSamplingQueue",
+        # replay_buffer_class_name = "TrajectoryACHQLSamplingQueue",
+        replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
         hidden_layer_sizes=(256, 256),
         hidden_cost_layer_sizes=(64, 64, 64, 32),
         gamma_init_value = 0.80,
@@ -159,8 +160,17 @@ def train(
         gamma_end_value = 0.98,
         gamma_goal_value = 1.0,
         use_sum_cost_critic = False,
-        argmax_type = "plain",
+        actor_type = "argmax",
+        network_type = "default",
+        disable_her_and_goal_randomization_mark: Optional[float] = None,
 ):
+    """disable_her_and_goal_randomization_mark: Optional[float] - if this is
+    none, do not change the state of "use_her" if this is a float from [0, 1],
+    this is the proportion of epochs after which goal_randomization and
+    hindsight experience replay is disabled.
+
+    """
+
     process_id = jax.process_index()
     local_devices_to_use = jax.local_device_count()
     if max_devices_per_host is not None:
@@ -236,6 +246,7 @@ def train(
         num_unique_safety_conditions=env.n_unique_safety_conds,
         action_size=action_size,
         env=env,
+        network_type=network_type,
         options=options,
         preprocess_observations_fn=normalize_fn,
         preprocess_cost_observations_fn=cost_normalize_fn,
@@ -243,8 +254,8 @@ def train(
         hidden_cost_layer_sizes=hidden_cost_layer_sizes,
         use_sum_cost_critic=use_sum_cost_critic,
     )
-    make_policy = achql_networks.make_option_inference_fn(achql_network, env, safety_threshold, argmax_type=argmax_type)
-    make_flat_policy = achql_networks.make_inference_fn(achql_network, env, safety_threshold, argmax_type=argmax_type)
+    make_policy = achql_networks.make_option_inference_fn(achql_network, env, safety_threshold, actor_type=actor_type)
+    make_flat_policy = achql_networks.make_inference_fn(achql_network, env, safety_threshold, actor_type=actor_type)
 
     # policy_optimizer = optax.adam(learning_rate=learning_rate)
     option_q_optimizer = optax.adam(learning_rate=learning_rate)
@@ -304,7 +315,7 @@ def train(
             safety_threshold=safety_threshold,
             discounting=discounting,
             use_sum_cost_critic=use_sum_cost_critic,
-            argmax_type=argmax_type,
+            actor_type=actor_type,
     )
     critic_update = gradients.gradient_update_fn(
             critic_loss, option_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
@@ -482,6 +493,9 @@ def train(
         experience_key, training_key, sampling_key = jax.random.split(key, 3)
         buffer_state, transitions = replay_buffer.sample(buffer_state)
 
+        use_her
+
+
         batch_keys = jax.random.split(sampling_key, transitions.observation.shape[0])
         transitions = jax.vmap(ReplayBufferClass.flatten_crl_fn, in_axes=(None, None, 0, 0))(
                 use_her, env, transitions, batch_keys
@@ -656,9 +670,18 @@ def train(
     assert replay_size >= min_replay_size
     training_walltime = time.time() - t
 
+    # epoch_to_disable_her_and_goal_randomization = int(
+    #     disable_her_and_goal_randomization_mark * num_evals_after_init
+    # )
+
     current_step = 0
-    for _ in range(num_evals_after_init):
+    for i in range(num_evals_after_init):
         logging.info('step %s', current_step)
+
+        # if epoch_to_disable_her_and_goal_randomization > 1:
+        #     print("disabling HER and goal randomization")
+        #     env.randomize_goals = False
+        #     use_her = False
 
         # Optimization
         epoch_key, local_key = jax.random.split(local_key)

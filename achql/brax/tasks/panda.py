@@ -18,27 +18,21 @@ class PandaTaskBase(BraxTaskBase):
 
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=2)
-        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
+        self.obs_var = Var("obs", idx=0, dim=self.env.state_dim, position=(0, 2))
 
     def get_options(self):
         raise NotImplementedError
 
 
-class PandaPushEasyTask(PandaTaskBase):
-    def __init__(self, backend="mjx"):
-        super().__init__(None, 1000, backend=backend)
+class PandaPushEasyTaskBase(PandaTaskBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def _build_env(self, backend: str) -> GoalConditionedEnv:
         env = PandaPushEasy(
             backend=backend
         )
         return env
-
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        return true_exp(obs_var)
 
     @property
     def sac_her_hps(self):
@@ -107,3 +101,14 @@ class PandaPushEasyTask(PandaTaskBase):
             "energy_fn": "l2",
             "multiplier_num_sgd_steps": 1,
         }
+
+
+class PandaPushEasyTrue(PandaPushEasyTaskBase):
+    def __init__(self, backend="mjx"):
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        return true_exp(obs_var)

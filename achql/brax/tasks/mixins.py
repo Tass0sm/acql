@@ -261,3 +261,21 @@ class ObligationConstraint2Mixin:
 
 class ObligationConstraint3Mixin(ObligationConstraint2Mixin):
     pass
+
+
+class Until1Mixin:
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        not_in_obs1 = stl.STLNegation(inside_circle(obs_var.position, self.obs1_location, self.obs1_radius))
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius, has_goal=True)
+        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius, has_goal=True)
+
+        phi = stl.STLUntimedUntil(
+            not_in_obs1,
+            stl.STLAnd(in_goal1,
+                       stl.STLNext(stl.STLUntimedEventually(in_goal2)))
+        )
+        return phi

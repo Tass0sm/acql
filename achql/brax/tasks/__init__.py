@@ -11,6 +11,7 @@ from .ant_maze import (
     AntMazeObligationConstraint3,
     AntMazeDiagonal,
     AntMazeObligationConstraint6,
+    AntMazeUntil1,
 )
 from .simple_maze import (
     SimpleMazeNav,
@@ -60,10 +61,13 @@ from .ur5e import (
     UR5eEEFGraspTask,
 )
 from .panda import (
-    PandaPushEasyTask
+    PandaPushEasyTrue,
 )
 from .arm_eef import (
-    ArmEEFBinpickEasyTask
+    ArmEEFBinpickEasyTrue,
+    ArmEEFBinpickEasySingleSubgoal,
+    ArmEEFPushEasyTrue,
+    ArmEEFPushEasySingleSubgoal,
 )
 from .x_point import (
     XPointFisacTask,

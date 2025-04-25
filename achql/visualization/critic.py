@@ -54,6 +54,8 @@ def plot_function_grid(
         start_position, goal_position,
         label,
         with_dressing=True,
+        vmin=None,
+        vmax=None,
 ):
 
     fig, ax = plt.subplots(figsize=(8, 8), frameon=with_dressing)
@@ -61,7 +63,10 @@ def plot_function_grid(
     if not with_dressing:
         ax.set_axis_off()
 
-    im = ax.imshow(function_values_grid, extent=[x_min, x_max, y_min, y_max], origin='lower', cmap='plasma', zorder=1)
+    im = ax.imshow(function_values_grid, extent=[x_min, x_max, y_min, y_max],
+                   vmin=vmin,
+                   vmax=vmax,
+                   origin='lower', cmap='plasma', zorder=1)
 
     if with_dressing:
         plt.colorbar(im, ax=ax, label='Value (Goal-Conditioned)')

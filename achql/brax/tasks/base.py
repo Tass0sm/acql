@@ -49,14 +49,14 @@ class BraxTaskBase(TaskBase):
     @property
     def hdqn_her_hps(self):
         return {
-            "num_timesteps": 10_000_000,
+            "num_timesteps": 5_000_000,
             "reward_scaling": 1,
             "num_evals": 50,
             "episode_length": 1000,
             "normalize_observations": True,
             "action_repeat": 1,
             "discounting": 0.99,
-            "learning_rate": 5e-5,
+            "learning_rate": 1e-4,
             "num_envs": 256,
             "batch_size": 256,
             "unroll_length": 62,
@@ -66,6 +66,8 @@ class BraxTaskBase(TaskBase):
             # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
             "min_replay_size": 1000,
             "use_her": True,
+            "actor_type": "argmax_safest",
+            "network_type": "default",
         }
 
     @property
@@ -199,4 +201,54 @@ class BraxTaskBase(TaskBase):
             # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
             # "min_replay_size": 1000,
             # "use_her": True,
+        }
+
+    @property
+    def sac_her_hps(self):
+        return {
+            "learning_rate": 1e-4,
+            "discounting": 0.97,
+            "batch_size": 256,
+            "normalize_observations": True,
+            "reward_scaling": 10.0,
+            # target update rate
+            "tau": 0.005,
+            "min_replay_size": 100,
+            "max_replay_size": 10000,
+            "deterministic_eval": False,
+            "train_step_multiplier": 64,
+            "unroll_length": 150,
+            "h_dim": 256,
+            "n_hidden": 2,
+            # layer norm
+            "use_ln": True,
+            # hindsight experience replay
+            "use_her": True,
+            # --------------------
+            # run params
+            "total_env_steps": 10_000_000,
+            "episode_length": 150,
+            "num_envs": 256,
+            "num_eval_envs": 256,
+            "num_evals": 50,
+            "action_repeat": 1,
+            "max_devices_per_host": 1,
+            # --------------------
+            # # "learning_rate": 3e-4,
+            # "discounting": 0.97,
+            # "batch_size": 256,
+            # "normalize_observations": True,
+            # "reward_scaling": 10,
+            # "num_timesteps": 2_000_000,
+            # "num_evals": 50,
+            # "episode_length": 256,
+            # "action_repeat": 1,
+            # "unroll_length": 62, # TODO: Reducing this increases time. What else does it affect?
+            # "multiplier_num_sgd_steps": 1,
+            # "max_devices_per_host": 1,
+            # "max_replay_size": 10000,
+            # # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."
+            # "min_replay_size": 1000,
+            # "use_her": True,
+            # "num_envs": 512,
         }

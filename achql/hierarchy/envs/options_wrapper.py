@@ -10,6 +10,9 @@ import jax
 from jax import numpy as jnp
 
 from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
+from achql.brax.envs.wrappers.automaton_multi_goal_conditioned_wrapper import AutomatonMultiGoalConditionedWrapper
+from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
+from achql.brax.utils import recursive_is_instance
 
 
 class OptionsWrapper(Wrapper):
@@ -28,11 +31,15 @@ class OptionsWrapper(Wrapper):
         self.options = options
         self.takes_key = takes_key
 
-        if hasattr(env, "automaton") and hasattr(env, "strip_goal_obs") and env.strip_goal_obs and env.augment_obs:
-            self.extra_adapter = env.original_obs
-        elif hasattr(env, "automaton") and env.augment_obs:
-            self.extra_adapter = lambda x: x[..., :env.original_obs_dim]
-            # self.extra_adapter = env.no_automaton_obs
+        if recursive_is_instance(env, AutomatonMultiGoalConditionedWrapper):
+            self.extra_adapter = lambda x: x[..., :env.no_goal_obs_dim]
+        elif recursive_is_instance(env, AutomatonGoalConditionedWrapper):
+            self.extra_adapter = lambda x: x[..., :env.no_goal_obs_dim]
+        # elif hasattr(env, "automaton") and hasattr(env, "strip_goal_obs") and env.strip_goal_obs and env.augment_obs:
+        #     self.extra_adapter = env.original_obs
+        # elif hasattr(env, "automaton") and env.augment_obs:
+        #     self.extra_adapter = lambda x: x[..., :env.original_obs_dim]
+        #     # self.extra_adapter = env.no_automaton_obs
         else:
             self.extra_adapter = lambda x: x
 
@@ -72,6 +79,7 @@ class OptionsWrapper(Wrapper):
             def for_body(unused, x):
                 s_t, iters, r_t, c_t, key = x
                 key, inf_key = jax.random.split(key)
+                breakpoint()
                 a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], self.extra_adapter(s_t.obs), inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward

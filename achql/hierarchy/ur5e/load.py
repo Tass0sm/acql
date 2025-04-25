@@ -108,3 +108,49 @@ def load_ur5e_eef_options(
         )
 
     return options_l
+
+
+def load_ur5e_eef_binpick_options(
+        termination_prob: float = 1.0,
+        termination_policy = None,
+        adapter: Optional[Callable] = None,
+        ctrl_scale: float = 0.5,
+):
+
+    options_l = []
+
+    ctrl_dict = {
+        "up": jnp.array([0.0, 0.0, 1.0, 0.0]),
+        "forward": jnp.array([0.0, 1.0, 0.0, 0.0]),
+        "right": jnp.array([1.0, 0.0, 0.0, 0.0]),
+        "left": jnp.array([-1.0, 0.0, 0.0, 0.0]),
+        "backward": jnp.array([0.0, -1.0, 0.0, 0.0]),
+        "down": jnp.array([0.0, 0.0, -1.0, 0.0]),
+        "grasp": jnp.array([0.0, 0.0, 0.0, 1.0]),
+        "release": jnp.array([0.0, 0.0, 0.0, -1.0]),
+    }
+
+    def hard_policy(
+            ctrl,
+            observations: types.Observation,
+            key_sample: PRNGKey
+    ) -> Tuple[types.Action, types.Extra]:
+        return ctrl * ctrl_scale, {
+            'log_prob': 0.0,
+            'raw_action': ctrl
+        }
+
+    if termination_policy is None:
+        termination_policy = BernoulliTerminationPolicy(termination_prob)
+
+    for name, ctrl in ctrl_dict.items():
+        print(name, ctrl)
+        options_l.append(
+            Option(
+                name, None, None, functools.partial(hard_policy, ctrl),
+                termination_policy=termination_policy,
+                adapter=adapter
+            )
+        )
+
+    return options_l

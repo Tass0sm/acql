@@ -302,29 +302,14 @@ class SimpleMazeNotUntilAlwaysSubgoal(SimpleMazeTaskBase):
         }
 
 
-class SimpleMazeUntil1(SimpleMazeTaskBase):
+class SimpleMazeUntil1(Until1Mixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
         self.obs1_location = jnp.array([8.0, 8.0])
         self.obs1_radius = 2.0
 
-        self.goal1_location = jnp.array([12.0, 12.0])
+        self.goal1_location = jnp.array([12.0, 8.0])
         self.goal1_radius = 2.0
-        self.goal2_location = jnp.array([4.0, 4.0])
+        self.goal2_location = jnp.array([4.0, 8.0])
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
-
-    def _build_hi_spec(self, wp_var: Var) -> Expression:
-        pass
-
-    def _build_lo_spec(self, obs_var: Var) -> Expression:
-        not_in_obs1 = stl.STLNegation(inside_circle(obs_var.position, self.obs1_location, self.obs1_radius))
-        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius, has_goal=True)
-        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius, has_goal=True)
-
-        phi = stl.STLUntimedUntil(
-            not_in_obs1,
-            stl.STLAnd(in_goal1,
-                       stl.STLNext(stl.STLUntimedEventually(in_goal2)))
-        )
-        return phi

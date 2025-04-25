@@ -31,13 +31,13 @@ class AntMazeTaskBase(BraxTaskBase):
 
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=2)
-        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 2))
+        self.obs_var = Var("obs", idx=0, dim=self.env.state_dim, position=(0, 2))
 
     def get_options(self):
         return self.get_learned_options()
 
     def get_learned_options(self):
-        adapter = lambda x: x[..., 2:-2]
+        adapter = lambda x: x[..., 2:]
         return load_ant_options(termination_policy=FixedLengthTerminationPolicy(3),
                                 # termination_prob=0.3,
                                 adapter=adapter)
@@ -268,3 +268,25 @@ class AntMazeObligationConstraint6(ObligationConstraint1Mixin, AntMazeTaskBase):
 
 #         phi = stl.STLAnd(phi_liveness, phi_safety)
 #         return phi
+
+
+class AntMazeUntil1(Until1Mixin, AntMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0])
+        self.obs1_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 8.0])
+        self.goal1_radius = 0.5
+        self.goal2_location = jnp.array([4.0, 8.0])
+        self.goal2_radius = 0.5
+
+        super().__init__(None, 1000, backend=backend)
+
+    @property
+    def achql_hps(self):
+        return {
+            **self.hdqn_her_hps,
+            "num_timesteps": 10_000_000,
+            "cost_scaling": 1.0,
+            "safety_threshold": 0.0,
+        }

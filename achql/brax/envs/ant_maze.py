@@ -364,3 +364,10 @@ class AntMaze(PipelineEnv):
     def _random_start(self, rng: jax.Array) -> jax.Array:
         idx = jax.random.randint(rng, (1,), 0, len(self.possible_starts))
         return jnp.array(self.possible_starts[idx])[0]
+
+    def reached_goal(self, obs: jax.Array, threshold: float = 2.0):
+        pos = obs[..., self.pos_indices]
+        goal = obs[..., self.goal_indices]
+        dist = jnp.linalg.norm(pos - goal, axis=-1)
+        reached = jnp.array(dist < threshold, dtype=float)
+        return reached
