@@ -27,7 +27,7 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
 
     def _create_vars(self):
         self.wp_var = Var("wp", idx=0, dim=3)
-        self.obs_var = Var("obs", idx=0, dim=self.env.observation_size, position=(0, 3))
+        self.obs_var = Var("obs", idx=0, dim=self.env.state_dim, position=(0, 3))
 
     def get_options(self):
         return self.get_hard_coded_options()
@@ -64,7 +64,7 @@ class SimpleMaze3DUMazeConstraint(UMazeConstraintMixin, SimpleMaze3DTaskBase):
 
 class SimpleMaze3DSingleSubgoal(SingleSubgoalMixin, SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
-        self.goal1_location = jnp.array([4.0, 12.0, 10.0])
+        self.goal1_location = jnp.array([12.0, 8.0, 10.0])
         self.goal1_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
@@ -79,6 +79,30 @@ class SimpleMaze3DTwoSubgoals(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze3D(
+            terminate_when_unhealthy=False,
+            maze_layout_name="easy_maze",
+            backend=backend
+        )
+        return env
+
+class SimpleMaze3DTwoSubgoals2(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 12.0, 10.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 4.0, 2.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze3D(
+            terminate_when_unhealthy=False,
+            maze_layout_name="easy_maze",
+            backend=backend
+        )
+        return env
 
 class SimpleMaze3DBranching1(Branching1Mixin, SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
@@ -120,6 +144,27 @@ class SimpleMaze3DObligationConstraint3(ObligationConstraint3Mixin, SimpleMaze3D
         self.goal1_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
+
+class SimpleMaze3DUntil1(Until1Mixin, SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0, 6.0])
+        self.obs1_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 12.0, 12.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 4.0, 2.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = SimpleMaze3D(
+            terminate_when_unhealthy=False,
+            maze_layout_name="easy_maze",
+            backend=backend
+        )
+        return env
 
 
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):

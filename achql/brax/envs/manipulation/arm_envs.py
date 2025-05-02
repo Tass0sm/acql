@@ -58,6 +58,7 @@ class ArmEnvs(PipelineEnv):
 
         # Run mujoco step
         pipeline_state0 = state.pipeline_state
+
         if "eef" in self.env_name:
             action = self._convert_action_to_actuator_input_EEF(pipeline_state0, action)
         else: 
@@ -141,7 +142,7 @@ class ArmEnvs(PipelineEnv):
         
         # Gripper control
         # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
-        if self.env_name not in ("arm_reach"):
+        if self.env_name not in ("arm_reach", "ur5e_push_easy"):
             gripper_action = jnp.where(action[-1] > 0, jnp.array([0, 0], dtype=float), jnp.array([255, 255], dtype=float))
             converted_action = jnp.concatenate([arm_action] + [gripper_action])
         else:

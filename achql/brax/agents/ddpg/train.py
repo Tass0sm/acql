@@ -87,17 +87,16 @@ def train(
     episode_length: int = 1000,
     wrap_env: bool = True,
     action_repeat: int = 1,
-    num_envs: int = 128,
-    # num_sampling_per_update: int = 50,
-    num_eval_envs: int = 16,
+    num_envs: int = 1,
+    num_eval_envs: int = 128,
     learning_rate: float = 1e-4,
     discounting: float = 0.9,
     seed: int = 0,
     batch_size: int = 256,
     num_evals: int = 1,
-    normalize_observations: bool = True,
+    normalize_observations: bool = False,
     max_devices_per_host: Optional[int] = None,
-    reward_scaling: float = 1.,
+    reward_scaling: float = 1.0,
     tau: float = 0.005,
     min_replay_size: int = 0,
     max_replay_size: Optional[int] = 10_0000,
@@ -424,7 +423,10 @@ def train(
         model.save_params(path, params)
 
       # Run evals.
-      metrics = evaluator.run_evaluation(_unpmap((training_state.normalizer_params, training_state.policy_params)), training_metrics)
+      metrics = evaluator.run_evaluation(
+        _unpmap(
+          (training_state.normalizer_params, training_state.policy_params)),
+        training_metrics)
       logging.info(metrics)
       progress_fn(current_step, metrics)
 

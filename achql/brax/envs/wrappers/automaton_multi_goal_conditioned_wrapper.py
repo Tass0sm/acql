@@ -31,37 +31,10 @@ def partition(pred, d):
     return fs, ts
 
 
-def get_automaton_goal_array(shape, out_conditions, bdd_dict, aps, state_and_ap_to_goal_idx_dict, goal_dim):
-    goal_array = jnp.zeros(shape)
-
-    # A little hacky
-    def register_ap(x, goal_dict_k):
-        if x.kind() == spot.op_ap:
-            ap_id = int(x.ap_name()[3:])
-            goal_dict_k[ap_id] = aps[ap_id].info["goal"]
-
-    for k, cond_bdd in out_conditions.items():
-        goal_dict_k = { }
-        f = spot.bdd_to_formula(cond_bdd, bdd_dict)
-        f.traverse(register_ap, goal_dict_k)
-
-        for i, goal in goal_dict_k.items():
-            goal_idx = state_and_ap_to_goal_idx_dict[(k, i)]
-            goal_array = goal_array.at[k, goal_idx*goal_dim:(goal_idx+1)*goal_dim].set(goal)
-
-    return goal_array
-
-
-class AutomatonGoalConditionedWrapper(Wrapper):
+class AutomatonMultiGoalConditionedWrapper(Wrapper):
     """Wraps a product MDP that is not goal conditioned and doesn't augment the
-    goal, and instead augments the obs with an encoding of the automaton state
-    based on automaton goals. This encoding relies on unique set of goals being
-    associated with each automaton state.
-
-    if use_incoming_conditions_for_final_state is True, rewards depend not only on
-    reaching the accepting state but also on staying at the final state's
-    corresponding goal.
-
+    goal, and instead augments the obs with all of the goals in the task and an
+    encoding of the automaton state (one-hot).
     """
 
     def __init__(
@@ -69,7 +42,7 @@ class AutomatonGoalConditionedWrapper(Wrapper):
             env: Env,
             use_incoming_conditions_for_final_state: bool = True,
             randomize_goals: bool = True,
-            randomize_starts: bool = False,
+            randomize_starts: bool = True,
             # reward_type="positive_sparse",
     ):
         super().__init__(env)
@@ -86,8 +59,14 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         no_goal_spot_aps, goal_spot_aps = partition(lambda k, _: k in goal_aps, self.automaton.spot_aps)
         no_goal_spot_aps_bdds = [spot.formula_to_bdd(x, self.automaton.bdd_dict, None) for x in no_goal_spot_aps.values()]
         no_goal_spot_aps_union_bdd = reduce(buddy.bdd_or, no_goal_spot_aps_bdds, buddy.bddfalse)
+        self.n_goal_aps = len(goal_aps)
         self.goal_ap_indices = jnp.array([k for k in goal_aps])
         self.max_param_dim = max([ap.info["goal"].size for ap in goal_aps.values()])
+
+        # collect a dict mapping ap id to its position in a vector of just goal
+        self.ap_id_to_goal_idx_dict = {}
+        for i, goal_ap in enumerate(goal_aps):
+            self.ap_id_to_goal_idx_dict[goal_ap] = i
 
         # We construct an automaton encoding the liveness constraint within the
         # input task specification. This uses a modified version of the Alpern
@@ -122,8 +101,12 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         # liveness constraint "a0 & !a1", where a1 is not associated with a
         # subgoal, would be transformed into "a0".
         self.out_conditions = {}
+        self.out_condition_formulas = {}
+        self.out_condition_functions = {}
         for q, cond in plain_out_conditions.items():
             self.out_conditions[q] = buddy.bdd_exist(cond, buddy.bdd_support(no_goal_spot_aps_union_bdd))
+            self.out_condition_formulas[q] = spot.bdd_to_formula(self.out_conditions[q], self.automaton.bdd_dict)
+            self.out_condition_functions[q] = get_func_from_spot_formula(self.out_condition_formulas[q], len(self.automaton.aps))
 
         self.live_states = jnp.array([k for k in self.out_conditions])
 
@@ -133,79 +116,53 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         supports = [buddy.bdd_support(x) for x in self.out_conditions.values()]
         max_i, max_e = max(enumerate([buddy.bdd_nodecount(s) for s in supports]), key=itemgetter(1))
 
-        # There is always an implicit final goal. If there are no subgoals, set
-        # the goal_width and goal_idx dict accordingly.
-        self.state_and_ap_to_goal_idx_dict = {}
-        self.state_and_goal_idx_to_ap_dict = {}
-
         if max_e < 1:
             warnings.warn("Warning: No goals in specification.")
 
         self.goal_width = max_e
-
-        for k, cond in self.out_conditions.items():
-            goal_idx = 0
-            cond_formula = spot.bdd_to_formula(cond, self.automaton.bdd_dict)
-
-            # A little hacky
-            def register_ap(x):
-                nonlocal goal_idx
-                if x.kind() == spot.op_ap:
-                    ap_id = int(x.ap_name()[3:])
-                    self.state_and_ap_to_goal_idx_dict[(k, ap_id)] = goal_idx
-                    self.state_and_goal_idx_to_ap_dict[(k, goal_idx)] = ap_id
-                    goal_idx += 1
-
-            cond_formula.traverse(register_ap)
-
         self.goal_dim = self.env.goal_indices.size
-        self.all_goals_dim = self.goal_width * self.goal_dim
 
         self.randomize_goals = randomize_goals
         self._randomize_starts = randomize_starts
 
         if randomize_starts:
             self.possible_starts = jnp.concatenate((self.possible_starts, self.possible_goals), axis=0)
-
+        
         automaton_ap_params = jnp.zeros((self.automaton.n_aps, self.max_param_dim))
+        automaton_goal_ap_params = jnp.zeros((self.n_goal_aps, self.max_param_dim))
         for k, ap in self.automaton.aps.items():
             if k in goal_aps:
                 dim = ap.info["goal"].size
                 automaton_ap_params = automaton_ap_params.at[k, :dim].set(ap.info["goal"])
+
+                g_k = self.ap_id_to_goal_idx_dict[k]
+                automaton_goal_ap_params = automaton_goal_ap_params.at[g_k, :dim].set(ap.info["goal"])
             elif ap.default_params is not None:
                 dim = ap.default_params.size
                 automaton_ap_params = automaton_ap_params.at[k, :dim].set(ap.default_params)
 
         self.automaton_ap_params = automaton_ap_params
-        self.automaton_goal_array = get_automaton_goal_array((self.automaton.n_states, self.all_goals_dim),
-                                                             self.out_conditions,
-                                                             self.automaton.bdd_dict,
-                                                             self.automaton.aps,
-                                                             self.state_and_ap_to_goal_idx_dict,
-                                                             self.goal_dim)
+        self.automaton_goal_ap_params = automaton_goal_ap_params
+        self.all_goals_dim = automaton_goal_ap_params.flatten().size
         self.original_obs_dim = env.observation_size
         self.no_goal_obs_dim = self.state_dim
 
-    def _get_random_goal_array(self, rng: jax.Array):
-        ap_goals = []
-        ap_params = jnp.zeros((self.automaton.n_aps, self.max_param_dim))
+    def _get_random_ap_params(self, rng: jax.Array):
+        ap_params = jnp.zeros((self.n_goal_aps, self.max_param_dim))
+        goal_ap_params = jnp.zeros((self.n_goal_aps, self.max_param_dim))
 
         for k, ap in self.automaton.aps.items():
             if "goal" in ap.info:
                 ap_goal_key, rng = jax.random.split(rng)
                 goal = self._random_target(ap_goal_key)
                 ap_params = ap_params.at[k].set(goal)
-                ap_goals.append(goal)
+
+                g_k = self.ap_id_to_goal_idx_dict[k]
+                goal_ap_params = goal_ap_params.at[g_k].set(goal)
             elif ap.default_params is not None:
                 ap_params = ap_params.at[k].set(ap.default_params)
 
-        ap_goal_array = jnp.stack(ap_goals)
-        goal_array = jnp.zeros((self.automaton.n_states, self.all_goals_dim))
-
-        for (k, gi), ap in self.state_and_goal_idx_to_ap_dict.items():
-            goal_array = goal_array.at[k, gi*self.goal_dim:(gi+1)*self.goal_dim].set(ap_goal_array[ap])
-
-        return ap_params, goal_array
+        return ap_params, goal_ap_params
 
     # def original_obs(self, obs):
     #     return obs[..., :self.original_obs_dim]
@@ -238,25 +195,16 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         all_goals = obs[..., self.no_goal_obs_dim:self.no_goal_obs_dim+self.all_goals_dim]
         return all_goals[..., i*self.goal_dim:(i+1)*self.goal_dim]
 
-    def _current_goals(self, aut_state, default_goal, goal_array):
-        # assumes that state zero is the accepting state
-        # return jax.lax.cond(jnp.logical_and(aut_state != 0, jnp.isin(aut_state, self.live_states)),
-        #                     lambda: goal_array.at[aut_state].get(),
-        #                     lambda: default_goal)
-        return jax.lax.cond(jnp.isin(aut_state, self.live_states),
-                            lambda: goal_array.at[aut_state].get(),
-                            lambda: default_goal)
-
     # def _goalless_obs(self, obs):
     #     return obs[..., :self.no_goal_obs_dim]
 
-    def _modify_goals_for_aut_state(self, obs, aut_state, goal_array):
-        # default_goal = self._default_goal(obs)
+    def current_goal(self, obs, i):
+        all_goals = obs[..., self.no_goal_obs_dim:self.no_goal_obs_dim+self.all_goals_dim]
+        return all_goals[..., i*self.goal_dim:(i+1)*self.goal_dim]
 
-        # for now, in unsafe states just say that the goal is the goal from the initial state.
-        default_goal = goal_array[self.automaton.init_state]
+    def _modify_goals_for_aut_state(self, obs, aut_state, goal_ap_params):
         return jnp.concatenate((obs,
-                                self._current_goals(aut_state, default_goal, goal_array),
+                                goal_ap_params.flatten(),
                                 self.automaton.one_hot_encode(aut_state)), axis=-1)
 
     # def aut_state_from_obs(self, obs):
@@ -274,22 +222,15 @@ class AutomatonGoalConditionedWrapper(Wrapper):
         state = self.env.reset(reset_key)
 
         if self.randomize_goals:
-            ap_params, goal_array = self._get_random_goal_array(random_goal_key)
+            ap_params, goal_ap_params = self._get_random_ap_params(random_goal_key)
             state.info["ap_params"] = ap_params
-            state.info["goal_array"] = goal_array
+            state.info["goal_ap_params"] = goal_ap_params
         else:
             state.info["ap_params"] = self.automaton_ap_params
-            state.info["goal_array"] = self.automaton_goal_array
+            state.info["goal_ap_params"] = self.automaton_goal_ap_params
 
         automaton_state = state.info["automata_state"]
-        new_obs = self._modify_goals_for_aut_state(state.obs, automaton_state, state.info["goal_array"])
-
-        if hasattr(self.env, "_update_goal_visualization"):
-            goal = new_obs[self.goal_indices]
-            state = state.replace(
-                pipeline_state=self.env._update_goal_visualization(state.pipeline_state, goal)
-            )
-
+        new_obs = self._modify_goals_for_aut_state(state.obs, automaton_state, state.info["goal_ap_params"])
         state = state.replace(obs=new_obs)
 
         # In this environment, these keys are sometimes meaningless because
@@ -343,18 +284,28 @@ class AutomatonGoalConditionedWrapper(Wrapper):
             automaton_success=automaton_success,
         )
 
-        new_obs = self._modify_goals_for_aut_state(nstate.obs, nautomaton_state, state.info["goal_array"])
+        new_obs = self._modify_goals_for_aut_state(nstate.obs, nautomaton_state, state.info["goal_ap_params"])
         nstate = nstate.replace(obs=new_obs, reward=reward)
+
         return nstate
+
+    # def reached_goal(self, obs: jax.Array, threshold: float = 2.0, ap_params = None):
+    #     labels = self.automaton.eval_aps(None, obs, ap_params=ap_params)
+    #     pos_non_aut = obs[..., self.pos_indices]
+    #     goal_non_aut = obs[..., self.goal_indices]
+    #     self.out_condition_functions[q]
+    #     reached = jnp.array(non_aut_dist < threshold, dtype=float)
+    #     return reached
 
     @property
     def observation_size(self) -> int:
-        return self.no_goal_obs_dim + min(self.goal_width, 1) * self.goal_dim + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
+        return self.no_goal_obs_dim + self.automaton_goal_ap_params.flatten().size + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
 
     @property
     def qr_nn_input_size(self) -> int:
-        return self.no_goal_obs_dim + self.goal_dim
+        return self.no_goal_obs_dim + self.goal_dim * self.goal_width
+        # return self.no_goal_obs_dim + self.automaton_ap_params.flatten().size
 
     @property
     def qc_nn_input_size(self) -> int:
-        return self.no_goal_obs_dim + self.goal_dim
+        return self.no_goal_obs_dim

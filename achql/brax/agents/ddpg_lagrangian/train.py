@@ -223,13 +223,15 @@ def train(
       dummy_data_sample=dummy_transition,
       sample_batch_size=batch_size * grad_updates_per_step // device_count)
 
-  lambda_loss, critic_loss, cost_critic_loss, actor_loss = ddpg_lagrangian_losses.make_losses(
-      ddpg_lagrangian_network=ddpg_lagrangian_network,
-      reward_scaling=reward_scaling,
-      cost_scaling=cost_scaling,
-      cost_budget=cost_budget,
-      discounting=discounting,
-      )
+  lambda_loss, critic_loss, cost_critic_loss, actor_loss = acddpg_losses.make_losses(
+    acddpg_network=acddpg_network,
+    env=env,
+    reward_scaling=reward_scaling,
+    cost_scaling=cost_scaling,
+    safety_threshold=safety_threshold,
+    discounting=discounting,
+    use_sum_cost_critic=use_sum_cost_critic,
+  )
   lambda_update = gradients.gradient_update_fn(  # pytype: disable=wrong-arg-types  # jax-ndarray
       lambda_loss, lambda_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True
   )

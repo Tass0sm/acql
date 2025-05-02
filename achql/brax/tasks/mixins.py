@@ -279,3 +279,42 @@ class Until1Mixin:
                        stl.STLNext(stl.STLUntimedEventually(in_goal2)))
         )
         return phi
+
+
+class LoopMixin:
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius, has_goal=True)
+        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius, has_goal=True)
+
+        phi = stl.STLUntimedAlways(
+            stl.STLUntimedEventually(
+                stl.STLAnd(in_goal1,
+                           stl.STLNext(stl.STLUntimedEventually(in_goal2)))))
+
+        return phi
+
+
+class LoopWithObsMixin:
+
+    def _build_hi_spec(self, wp_var: Var) -> Expression:
+        pass
+
+    def _build_lo_spec(self, obs_var: Var) -> Expression:
+        at_obs1 = inside_circle(obs_var.position, self.obs1_location, self.obs1_radius)
+        phi_safety = stl.STLUntimedAlways(stl.STLNegation(at_obs1))
+
+        in_goal1 = inside_circle(obs_var.position, self.goal1_location, self.goal1_radius, has_goal=True)
+        in_goal2 = inside_circle(obs_var.position, self.goal2_location, self.goal2_radius, has_goal=True)
+
+        phi_liveness = stl.STLUntimedAlways(
+            stl.STLUntimedEventually(
+                stl.STLAnd(in_goal1,
+                           stl.STLNext(stl.STLUntimedEventually(in_goal2)))))
+
+        phi = stl.STLAnd(phi_liveness, phi_safety)
+
+        return phi

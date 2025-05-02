@@ -8,6 +8,7 @@ import jax.numpy as jnp
 # from brax.training.types import Params
 # from brax.training.types import PRNGKey
 from achql.brax.agents.achql import networks as achql_networks
+from achql.brax.agents.acddpg import networks as acddpg_networks
 
 from achql.visualization.critic import plot_function_grid, plot_simple_maze_option_arrows
 
@@ -97,6 +98,7 @@ def make_plots_for_achql(
         y_max: float = 16.0,
         with_dressing = True,
         seed: int = 0,
+        use_sum_cost_critic=False,
 ):
     key = jax.random.PRNGKey(seed)
     reset_key, policy_key = jax.random.split(key)
@@ -172,6 +174,101 @@ def make_plots_for_achql(
     )
 
     plot_simple_maze_option_arrows([ax2], X, Y, options, grid_size)
+
+    # if save_and_close:
+    #     fig2.savefig(f"figures/cost_value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
+    #     # fig2.savefig(f"figures/cost_value_function_{label}.pdf", format="pdf", bbox_inches='tight', pad_inches=0)
+    #     fig2.savefig(f"figures/cost_value_function_{label}.svg", format="svg", bbox_inches='tight', pad_inches=0)
+    #     plt.close(fig2)
+
+    return [(fig1, ax1), (fig2, ax2)]
+
+
+def make_plots_for_acddpg(
+        env,
+        make_policy: Callable,
+        network,
+        params,
+        label: str = "",
+        grid_size: int = 100,
+        tmp_state_fn = lambda x: x,
+        # save_and_close: bool = True,
+        x_min: float = 0.0,
+        x_max: float = 16.0,
+        y_min: float = 0.0,
+        y_max: float = 16.0,
+        with_dressing = True,
+        seed: int = 0,
+        use_sum_cost_critic=False,
+):
+    key = jax.random.PRNGKey(seed)
+    reset_key, policy_key = jax.random.split(key)
+    tmp_state = env.reset(reset_key)
+    tmp_state = tmp_state_fn(tmp_state)
+
+    normalizer_params, q_params, cost_q_params, policy_params = params
+
+    x_values = jnp.linspace(x_min, x_max, grid_size)
+    y_values = jnp.linspace(y_min, y_max, grid_size)
+    X, Y = jnp.meshgrid(x_values, y_values)
+    positions = jnp.stack([X.ravel(), Y.ravel()], axis=1)
+
+    # Prepare batched input for value_net
+    obs_batch = jnp.repeat(jnp.expand_dims(tmp_state.obs, axis=0), positions.shape[0], axis=0)
+    obs_batch = obs_batch.at[:, 0:2].set(positions)
+
+    # policy
+    policy = make_policy((normalizer_params, policy_params), deterministic=True)
+    actions, _ = policy(obs_batch, policy_key)
+
+    # qr
+    make_qr = acddpg_networks.make_qr_fn(network)
+    qr_fn = make_qr(params)
+
+    # qc
+    make_qc = acddpg_networks.make_qc_fn(network, env, use_sum_cost_critic=use_sum_cost_critic)
+    qc_fn = make_qc(params)
+
+    # Compute the value function for the grid
+    # value_q_function_output = network.option_q_network.apply(normalizer_params, option_q_params, obs_batch).min(axis=-1)
+    value_function_output = qr_fn(obs_batch, actions)
+    value_function_grid = value_function_output.reshape(grid_size, grid_size)
+
+    # Compute the cost value function for the grid
+    cost_value_function_output = qc_fn(obs_batch, actions)
+    cost_value_function_grid = cost_value_function_output.reshape(grid_size, grid_size)
+
+    start_position = tmp_state.obs[:2]
+    goal_position = env.ith_goal(tmp_state.obs, 0)
+    fig1, ax1 = plot_function_grid(
+        X, Y,
+        x_min, x_max,
+        y_min, y_max,
+        value_function_grid,
+        start_position, goal_position,
+        f"Reward - {label}",
+        with_dressing=with_dressing,
+        with_contour_lines=True,
+    )
+
+    # if save_and_close:
+    #     fig1.savefig(f"figures/value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)
+    #     # fig1.savefig(f"figures/value_function_{label}.pdf", format="pdf", bbox_inches='tight', pad_inches=0)
+    #     fig1.savefig(f"figures/value_function_{label}.svg", format="svg", bbox_inches='tight', pad_inches=0)
+    #     plt.close(fig1)
+
+    fig2, ax2 = plot_function_grid(
+        X, Y,
+        x_min, x_max,
+        y_min, y_max,
+        cost_value_function_grid,
+        start_position, goal_position,
+        f"Cost - {label}",
+        with_dressing=with_dressing,
+        with_contour_lines=False,
+        vmin=-1.0,
+        vmax=1.0,
+    )
 
     # if save_and_close:
     #     fig2.savefig(f"figures/cost_value_function_{label}.png", format="png", bbox_inches='tight', pad_inches=0)

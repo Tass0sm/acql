@@ -1,0 +1,39 @@
+import mlflow
+
+from achql.visualization.utils import get_mdp_network_policy_and_params
+
+from achql.visualization.plots import (
+    make_plots_for_achql,
+    make_plots_for_acddpg,
+    make_plots_for_ddpg,
+    make_plots_for_hdqn
+)
+
+
+def make_plots(training_run_id, **kwargs):
+    mdp, options, network, make_option_policy, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
+
+    run = mlflow.get_run(run_id=training_run_id)
+    alg_name = run.data.tags["alg"]
+
+    match alg_name:
+            case "ACHQL":
+                return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+            case "ACDDPG":
+                return make_plots_for_acddpg(mdp, make_policy, network, params, **kwargs)
+            case "HDCQN_AUTOMATON_HER":
+                return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+            case "HDQN_HER_FOR_AUT":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "QRM":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "QRM_WITH_MULTIHEAD":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "CRM":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "CRM_WITH_MULTIHEAD":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "DDPG":
+                return make_plots_for_ddpg(mdp, make_policy, network, params, **kwargs)
+            case _:
+                raise NotImplementedError(f"{alg_name} not supported")

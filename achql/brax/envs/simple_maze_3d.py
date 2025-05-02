@@ -16,6 +16,27 @@ GOAL = G = 'g'
 
 # Z, X, Y / k, i, j (therefore, not viewing from typical x-y viewpoint)
 OPEN_MAZE = [[['T', 1, 1, 1, 'T'],
+              ['T', R, G, G, 'T'],
+              ['T', G, 0, G, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', 1, 1, 1, 'T']],
+             [['T', 1, 1, 1, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', G, 0, G, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', 1, 1, 1, 'T']],
+             [['T', 1, 1, 1, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', G, G, G, 'T'],
+              ['T', 1, 1, 1, 'T']],
+             [['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T'],
+              ['T', 1, 1, 1, 'T']]]
+
+EASY_MAZE = [[['T', 1, 1, 1, 'T'],
               ['T', R, G, R, 'T'],
               ['T', G, 0, G, 'T'],
               ['T', R, G, R, 'T'],
@@ -66,6 +87,8 @@ def find_goals(structure, size_scaling):
 def make_maze(maze_layout_name, maze_size_scaling):
     if maze_layout_name == "open_maze":
         maze_layout = OPEN_MAZE
+    elif maze_layout_name == "easy_maze":
+        maze_layout = EASY_MAZE
     else:
         raise ValueError(f"Unknown maze layout: {maze_layout_name}")
 
@@ -220,9 +243,7 @@ class SimpleMaze3D(PipelineEnv):
             "success": zero,
             "success_easy": zero
         }
-        info = {"seed": 0}
         state = State(pipeline_state, obs, reward, done, metrics)
-        state.info.update(info)
         return state
 
     # Todo rename seed to traj_id
@@ -230,12 +251,6 @@ class SimpleMaze3D(PipelineEnv):
         """Run one timestep of the environment's dynamics."""
         pipeline_state0 = state.pipeline_state
         pipeline_state = self.pipeline_step(pipeline_state0, action)
-
-        if "steps" in state.info.keys():
-            seed = state.info["seed"] + jnp.where(state.info["steps"], 0, 1)
-        else:
-            seed = state.info["seed"]
-        info = {"seed": seed}
 
         velocity = (pipeline_state.x.pos[0] - pipeline_state0.x.pos[0]) / self.dt
         forward_reward = velocity[0]
@@ -273,7 +288,6 @@ class SimpleMaze3D(PipelineEnv):
             success=success,
             success_easy=success_easy
         )
-        state.info.update(info)
         return state.replace(
             pipeline_state=pipeline_state, obs=obs, reward=reward, done=done
         )
@@ -298,3 +312,10 @@ class SimpleMaze3D(PipelineEnv):
     def _random_start(self, rng: jax.Array) -> jax.Array:
         idx = jax.random.randint(rng, (1,), 0, len(self.possible_starts))
         return jnp.array(self.possible_starts[idx])[0]
+
+    def reached_goal(self, obs: jax.Array, threshold: float = 2.0):
+        pos = obs[..., self.pos_indices]
+        goal = obs[..., self.goal_indices]
+        dist = jnp.linalg.norm(pos - goal, axis=-1)
+        reached = jnp.array(dist < threshold, dtype=float)
+        return reached

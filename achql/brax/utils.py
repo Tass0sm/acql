@@ -97,7 +97,7 @@ def make_aut_goal_mdp(task, randomize_goals=True):
     return mdp
 
 
-def make_aut_goal_cmdp(task, randomize_goals=True, margin=1.0, relu_cost=False, spec_overwriter=lambda x: x):
+def make_aut_goal_cmdp(task, randomize_starts=False, randomize_goals=True, margin=1.0, relu_cost=False, spec_overwriter=lambda x: x):
     mdp = AutomatonWrapper(
         task.env,
         task.lo_spec,
@@ -109,7 +109,7 @@ def make_aut_goal_cmdp(task, randomize_goals=True, margin=1.0, relu_cost=False, 
     mdp = AutomatonGoalConditionedWrapper(
         mdp,
         randomize_goals=randomize_goals,
-        # randomize_starts=randomize_starts
+        randomize_starts=randomize_starts
     )
 
     # mdp = AutomatonGoalConditionedWrapper(

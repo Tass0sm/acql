@@ -15,7 +15,7 @@ spot = ">=2.12.1,<3"
 [pypi-dependencies]
 achql = { path = ".", editable = true }
 torch = ">=2.4.1, <3"
-numpy = ">=2.1.1, <3"
+numpy = "<2"
 scipy = ">=1.14.1, <2"
 minari = { version = ">=0.5.0, <0.6", extras = ["all"] }
 mlflow = ">=2.16.2, <3"
@@ -43,6 +43,8 @@ evosax = ">=0.1.6, <0.2"
 jupyternotify = ">=0.1.15, <0.2"
 ur-rtde = ">=1.6.0, <2"
 hyperopt = ">=0.2.7, <0.3"
-brax = ">=0.12.1, <0.13"
+brax = { path = "/home/tassos/phd/research/second-project/brax", editable = true }
 navix = { path = "/home/tassos/phd/research/second-project/navix", editable = true }
 corallab-stl = { path = "/home/tassos/phd/research/corallab-stl", editable = true }
+ruff = ">=0.11.4, <0.12"
+jaxgcrl = { path = "/home/tassos/phd/research/second-project/jaxgcrl", editable = true }

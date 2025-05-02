@@ -145,7 +145,7 @@ class UR5eEnvs(ArmEnvs):
         # Gripper control
         # Binary open-closedness: if positive, set to actuator value 0 (totally closed); if negative, set to actuator value 255 (totally open)
         # The UR5e Gripper (Robotiq-85), has a single control input
-        if self.env_name not in ("ur5e_reach", "ur5e_reach_shelf"):
+        if self.env_name not in ("ur5e_reach", "ur5e_push_easy", "ur5e_push_hard", "ur5e_reach_shelf"):
             gripper_action = jnp.where(action[-1] > 0, jnp.array([0], dtype=float), jnp.array([255], dtype=float))
             converted_action = jnp.concatenate([arm_action] + [gripper_action])
         else:

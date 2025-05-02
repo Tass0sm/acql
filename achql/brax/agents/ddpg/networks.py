@@ -38,10 +38,11 @@ def make_inference_fn(ddpg_networks: DDPGNetworks):
 def make_ddpg_networks(
     observation_size: int,
     action_size: int,
-    preprocess_observations_fn: types.PreprocessObservationFn = types
-    .identity_observation_preprocessor,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
     hidden_layer_sizes: Sequence[int] = (256, 256),
-    activation: networks.ActivationFn = linen.elu) -> DDPGNetworks:
+    activation: networks.ActivationFn = linen.relu,
+    layer_norm: bool = False,
+) -> DDPGNetworks:
 
   parametric_action_distribution = distribution.NormalTanhDistribution(event_size=action_size)
   policy_network = networks.make_policy_network(
@@ -49,14 +50,19 @@ def make_ddpg_networks(
       observation_size,
       preprocess_observations_fn=preprocess_observations_fn,
       hidden_layer_sizes=hidden_layer_sizes,
-      activation=activation)
+      activation=activation,
+      layer_norm=layer_norm,
+  )
   q_network = networks.make_q_network(
       observation_size,
       action_size,
       preprocess_observations_fn=preprocess_observations_fn,
       hidden_layer_sizes=hidden_layer_sizes,
-      activation=activation)
+      activation=activation,
+      layer_norm=layer_norm,
+  )
   return DDPGNetworks(
       policy_network=policy_network,
       q_network=q_network,
-      parametric_action_distribution=parametric_action_distribution)
+      parametric_action_distribution=parametric_action_distribution,
+  )

@@ -82,10 +82,8 @@ def make_losses(
     next_qr_input = transitions.next_observation
     next_double_qs = option_q_network.apply(normalizer_params, target_option_q_params, next_qr_input)
 
-    next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
-    cost_observation_size = state_obs.shape[-1]
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    next_double_cqs = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, next_qc_input)
+    next_qc_input = transitions.next_observation
+    next_double_cqs = cost_q_network.apply(normalizer_params, target_cost_q_params, next_qc_input)
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)
@@ -149,18 +147,16 @@ def make_losses(
 
     # Double Q(s_t, o_t) for all options
 
-    qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
-    cost_observation_size = state_obs.shape[-1]
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    cqs_old = cost_q_network.apply(trimmed_normalizer_params, cost_q_params, qc_input)
+    qc_input = transitions.observation
+    cqs_old = cost_q_network.apply(normalizer_params, cost_q_params, qc_input)
     cq_old_action = jax.vmap(lambda x, i: x.at[i].get())(cqs_old, transitions.action)
 
     # Q1(s_t+1, o_t+1)/Q2(s_t+1, o_t+1) for all options
     next_qr_input = transitions.next_observation
     next_double_qs = option_q_network.apply(normalizer_params, target_option_q_params, next_qr_input)
 
-    next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
-    next_double_cqs = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, next_qc_input)
+    next_qc_input = transitions.next_observation
+    next_double_cqs = cost_q_network.apply(normalizer_params, target_cost_q_params, next_qc_input)
 
     # Q(s_t+1, o_t+1) for all options
     next_qs = jnp.min(next_double_qs, axis=-1)

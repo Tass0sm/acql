@@ -21,6 +21,8 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
+from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
+
 from achql.brax.training.acme import running_statistics
 from achql.brax.her import replay_buffers
 
@@ -201,6 +203,7 @@ def train(
     )
 
     assert num_envs % device_count == 0
+    environment = TrajectoryIdWrapper(environment, key_name="seed")
     environment = OptionsWrapper(
         environment,
         options,
@@ -263,9 +266,10 @@ def train(
 
     obs_size = env.observation_size
     dummy_obs = jnp.zeros((obs_size,))
+    dummy_option = 0
     dummy_transition = Transition(
             observation=dummy_obs,
-            action=0,
+            action=dummy_option,
             reward=0.,
             discount=0.,
             next_observation=dummy_obs,
@@ -322,9 +326,254 @@ def train(
     cost_critic_update = gradients.gradient_update_fn(
             cost_critic_loss, cost_q_optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True)
 
+    prefill_replay_buffer, training_epoch_with_timing = define_training_functions(
+        critic_update,
+        cost_critic_update,
+        safety_gamma_scheduler,
+        num_prefill_actor_steps,
+        make_policy,
+        unroll_length,
+        env,
+        qr_input_size,
+        replay_buffer,
+        env_steps_per_actor_step,
+        num_training_steps_per_epoch,
+        use_her,
+        ReplayBufferClass,
+        batch_size,
+        tau,
+        multiplier_num_sgd_steps,
+    )
+
+    global_key, local_key = jax.random.split(jax.random.PRNGKey(seed))
+    local_key = jax.random.fold_in(local_key, process_id)
+
+    # Training state init
+    training_state = _init_training_state(
+            key=global_key,
+            obs_size=qr_input_size,
+            local_devices_to_use=local_devices_to_use,
+            achql_network=achql_network,
+            # policy_optimizer=policy_optimizer,
+            option_q_optimizer=option_q_optimizer,
+            cost_q_optimizer=cost_q_optimizer,
+    )
+    del global_key
+
+    local_key, rb_key, env_key, eval_key = jax.random.split(local_key, 4)
+
+    # Env init
+    env_keys = jax.random.split(env_key, num_envs // jax.process_count())
+    env_keys = jnp.reshape(env_keys, (local_devices_to_use, -1) + env_keys.shape[1:])
+    env_state = jax.pmap(env.reset)(env_keys)
+
+    # Replay buffer init
+    buffer_state = jax.pmap(replay_buffer.init)(jax.random.split(rb_key, local_devices_to_use))
+
+    if not eval_environment:
+        eval_environment = environment
+        eval_env = env
+    else:
+        if wrap_env:
+            eval_environment = OptionsWrapper(
+                eval_environment,
+                options,
+                discounting=discounting,
+                use_sum_cost_critic=use_sum_cost_critic
+            )
+
+            if isinstance(eval_environment, envs.Env):
+                wrap_for_training = envs.training.wrap
+            else:
+                wrap_for_training = envs_v1.wrappers.wrap_for_training
+
+            eval_env = wrap_for_training(
+                    eval_environment,
+                    episode_length=episode_length,
+                    action_repeat=action_repeat,
+                    randomization_fn=v_randomization_fn,
+            )
+
+    evaluator = HierarchicalEvaluatorWithSpecification(
+            eval_env,
+            functools.partial(make_policy, deterministic=deterministic_eval),
+            options,
+            specification=specification,
+            state_var=state_var,
+            num_eval_envs=num_eval_envs,
+            episode_length=episode_length,
+            action_repeat=action_repeat,
+            key=eval_key
+    )
+
+    # Run initial eval
+    if process_id == 0 and num_evals > 1:
+        metrics = evaluator.run_evaluation(
+                _unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params)),
+                training_metrics={})
+        logging.info(metrics)
+        progress_fn(
+            0,
+            metrics,
+            env=eval_environment,
+            make_policy=make_policy,
+            network=achql_network,
+            params=_unpmap((training_state.normalizer_params,
+                                            training_state.option_q_params,
+                                            training_state.cost_q_params))
+        )
+
+    # Create and initialize the replay buffer.
+    t = time.time()
+    prefill_key, local_key = jax.random.split(local_key)
+    prefill_keys = jax.random.split(prefill_key, local_devices_to_use)
+    training_state, env_state, buffer_state, _ = prefill_replay_buffer(
+            training_state, env_state, buffer_state, prefill_keys
+    )
+
+    replay_size = jnp.sum(jax.vmap(replay_buffer.size)(buffer_state)) * jax.process_count()
+    logging.info('replay size after prefill %s', replay_size)
+    assert replay_size >= min_replay_size
+    training_walltime = time.time() - t
+
+    if disable_her_and_goal_randomization_mark is not None:
+        epoch_to_disable_her_and_goal_randomization = int(
+            disable_her_and_goal_randomization_mark * num_evals_after_init
+        )
+    else:
+        epoch_to_disable_her_and_goal_randomization = None
+
+    current_step = 0
+    for i in range(num_evals_after_init):
+        logging.info('step %s', current_step)
+
+        if i == epoch_to_disable_her_and_goal_randomization and process_id == 0:
+            print("disabling HER and goal randomization")
+            environment.randomize_goals = False
+            use_her = False
+
+            if wrap_env:
+                if isinstance(environment, envs.Env):
+                    wrap_for_training = envs.training.wrap
+                else:
+                    wrap_for_training = envs_v1.wrappers.wrap_for_training
+
+                rng = jax.random.PRNGKey(seed)
+                rng, key = jax.random.split(rng)
+                v_randomization_fn = None
+                if randomization_fn is not None:
+                    v_randomization_fn = functools.partial(
+                            randomization_fn,
+                            rng=jax.random.split(
+                                    key, num_envs // jax.process_count() // local_devices_to_use),
+                    )
+                env = wrap_for_training(
+                        environment,
+                        episode_length=episode_length,
+                        action_repeat=action_repeat,
+                        randomization_fn=v_randomization_fn,
+                )
+
+            prefill_replay_buffer, training_epoch_with_timing = define_training_functions(
+                critic_update,
+                cost_critic_update,
+                safety_gamma_scheduler,
+                num_prefill_actor_steps,
+                make_policy,
+                unroll_length,
+                env,
+                qr_input_size,
+                replay_buffer,
+                env_steps_per_actor_step,
+                num_training_steps_per_epoch,
+                use_her,
+                ReplayBufferClass,
+                batch_size,
+                tau,
+                multiplier_num_sgd_steps,
+            )
+
+            # Reset envs
+            env_keys = jax.random.split(env_key, num_envs // jax.process_count())
+            env_keys = jnp.reshape(env_keys, (local_devices_to_use, -1) + env_keys.shape[1:])
+            env_state = jax.pmap(env.reset)(env_keys)
+
+            # # clear data in replay buffer
+            # buffer_state = jax.pmap(replay_buffer.init)(jax.random.split(rb_key, local_devices_to_use))
+
+            # prefill_key, local_key = jax.random.split(local_key)
+            # prefill_keys = jax.random.split(prefill_key, local_devices_to_use)
+            # training_state, env_state, buffer_state, _ = prefill_replay_buffer(
+            #         training_state, env_state, buffer_state, prefill_keys
+            # )
+
+
+        # Optimization
+        epoch_key, local_key = jax.random.split(local_key)
+        epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
+        (training_state, env_state, buffer_state, training_walltime, training_metrics) = training_epoch_with_timing(
+            training_state, env_state, buffer_state, training_walltime, epoch_keys
+        )
+        current_step = int(_unpmap(training_state.env_steps))
+
+        # Eval and logging
+        if process_id == 0:
+            if checkpoint_logdir:
+                # Save current policy.
+                params = _unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params))
+                path = f'{checkpoint_logdir}_dq_{current_step}.pkl'
+                model.save_params(path, params)
+
+            # Run evals.
+            metrics = evaluator.run_evaluation(_unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params)), training_metrics)
+            logging.info(metrics)
+            progress_fn(
+                current_step,
+                metrics,
+                env=eval_environment,
+                make_policy=make_policy,
+                network=achql_network,
+                params=_unpmap((training_state.normalizer_params,
+                                                training_state.option_q_params,
+                                                training_state.cost_q_params)),
+            )
+
+    total_steps = current_step
+    assert total_steps >= num_timesteps
+
+    params = _unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params))
+
+    # If there was no mistakes the training_state should still be identical on all
+    # devices.
+    pmap.assert_is_replicated(training_state)
+    logging.info('total steps: %s', total_steps)
+    pmap.synchronize_hosts()
+    return (make_flat_policy, params, metrics)
+
+
+def define_training_functions(
+        critic_update,
+        cost_critic_update,
+        safety_gamma_scheduler,
+        num_prefill_actor_steps,
+        make_policy,
+        unroll_length,
+        env,
+        qr_input_size,
+        replay_buffer,
+        env_steps_per_actor_step,
+        num_training_steps_per_epoch,
+        use_her,
+        ReplayBufferClass,
+        batch_size,
+        tau,
+        multiplier_num_sgd_steps
+):
+
     def sgd_step(
             carry: Tuple[TrainingState, PRNGKey],
-            transitions: Transition) -> Tuple[Tuple[TrainingState, PRNGKey], Metrics]:
+            transitions: Transition
+    ) -> Tuple[Tuple[TrainingState, PRNGKey], Metrics]:
         training_state, key = carry
 
         key, key_critic, key_cost_critic = jax.random.split(key, 3)
@@ -448,7 +697,7 @@ def train(
             normalizer_params=normalizer_params,
             env_steps=training_state.env_steps + env_steps_per_actor_step
         )
-        
+
         training_state, buffer_state, metrics = additional_sgds(training_state, buffer_state, training_key)
         return training_state, env_state, buffer_state, metrics
 
@@ -492,9 +741,6 @@ def train(
     ) -> Tuple[TrainingState, ReplayBufferState, Metrics]:
         experience_key, training_key, sampling_key = jax.random.split(key, 3)
         buffer_state, transitions = replay_buffer.sample(buffer_state)
-
-        use_her
-
 
         batch_keys = jax.random.split(sampling_key, transitions.observation.shape[0])
         transitions = jax.vmap(ReplayBufferClass.flatten_crl_fn, in_axes=(None, None, 0, 0))(
@@ -557,9 +803,9 @@ def train(
             training_state: TrainingState,
             env_state: envs.State,
             buffer_state: ReplayBufferState,
+            training_walltime,
             key: PRNGKey
     ) -> Tuple[TrainingState, envs.State, ReplayBufferState, Metrics]:
-        nonlocal training_walltime
         t = time.time()
 
         (training_state, env_state, buffer_state, metrics) = training_epoch(
@@ -577,150 +823,6 @@ def train(
                 'training/walltime': training_walltime,
                 **{f'training/{name}': value for name, value in metrics.items()}
         }
-        return training_state, env_state, buffer_state, metrics
+        return training_state, env_state, buffer_state, training_walltime, metrics
 
-    global_key, local_key = jax.random.split(jax.random.PRNGKey(seed))
-    local_key = jax.random.fold_in(local_key, process_id)
-
-    # Training state init
-    training_state = _init_training_state(
-            key=global_key,
-            obs_size=qr_input_size,
-            local_devices_to_use=local_devices_to_use,
-            achql_network=achql_network,
-            # policy_optimizer=policy_optimizer,
-            option_q_optimizer=option_q_optimizer,
-            cost_q_optimizer=cost_q_optimizer,
-    )
-    del global_key
-
-    local_key, rb_key, env_key, eval_key = jax.random.split(local_key, 4)
-
-    # Env init
-    env_keys = jax.random.split(env_key, num_envs // jax.process_count())
-    env_keys = jnp.reshape(env_keys, (local_devices_to_use, -1) + env_keys.shape[1:])
-    env_state = jax.pmap(env.reset)(env_keys)
-
-    # Replay buffer init
-    buffer_state = jax.pmap(replay_buffer.init)(jax.random.split(rb_key, local_devices_to_use))
-
-    if not eval_environment:
-        eval_environment = environment
-        eval_env = env
-    else:
-        if wrap_env:
-            eval_environment = OptionsWrapper(
-                eval_environment,
-                options,
-                discounting=discounting,
-                use_sum_cost_critic=use_sum_cost_critic
-            )
-
-            if isinstance(eval_environment, envs.Env):
-                wrap_for_training = envs.training.wrap
-            else:
-                wrap_for_training = envs_v1.wrappers.wrap_for_training
-
-            eval_env = wrap_for_training(
-                    eval_environment,
-                    episode_length=episode_length,
-                    action_repeat=action_repeat,
-                    randomization_fn=v_randomization_fn,
-            )
-
-    evaluator = HierarchicalEvaluatorWithSpecification(
-            eval_env,
-            functools.partial(make_policy, deterministic=deterministic_eval),
-            options,
-            specification=specification,
-            state_var=state_var,
-            num_eval_envs=num_eval_envs,
-            episode_length=episode_length,
-            action_repeat=action_repeat,
-            key=eval_key
-    )
-
-    # Run initial eval
-    if process_id == 0 and num_evals > 1:
-        metrics = evaluator.run_evaluation(
-                _unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params)),
-                training_metrics={})
-        logging.info(metrics)
-        progress_fn(
-            0,
-            metrics,
-            env=eval_environment,
-            make_policy=make_policy,
-            network=achql_network,
-            params=_unpmap((training_state.normalizer_params,
-                                            training_state.option_q_params,
-                                            training_state.cost_q_params))
-        )
-
-    # Create and initialize the replay buffer.
-    t = time.time()
-    prefill_key, local_key = jax.random.split(local_key)
-    prefill_keys = jax.random.split(prefill_key, local_devices_to_use)
-    training_state, env_state, buffer_state, _ = prefill_replay_buffer(
-            training_state, env_state, buffer_state, prefill_keys
-    )
-
-    replay_size = jnp.sum(jax.vmap(replay_buffer.size)(buffer_state)) * jax.process_count()
-    logging.info('replay size after prefill %s', replay_size)
-    assert replay_size >= min_replay_size
-    training_walltime = time.time() - t
-
-    # epoch_to_disable_her_and_goal_randomization = int(
-    #     disable_her_and_goal_randomization_mark * num_evals_after_init
-    # )
-
-    current_step = 0
-    for i in range(num_evals_after_init):
-        logging.info('step %s', current_step)
-
-        # if epoch_to_disable_her_and_goal_randomization > 1:
-        #     print("disabling HER and goal randomization")
-        #     env.randomize_goals = False
-        #     use_her = False
-
-        # Optimization
-        epoch_key, local_key = jax.random.split(local_key)
-        epoch_keys = jax.random.split(epoch_key, local_devices_to_use)
-        (training_state, env_state, buffer_state, training_metrics) = training_epoch_with_timing(
-            training_state, env_state, buffer_state, epoch_keys
-        )
-        current_step = int(_unpmap(training_state.env_steps))
-
-        # Eval and logging
-        if process_id == 0:
-            if checkpoint_logdir:
-                # Save current policy.
-                params = _unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params))
-                path = f'{checkpoint_logdir}_dq_{current_step}.pkl'
-                model.save_params(path, params)
-
-            # Run evals.
-            metrics = evaluator.run_evaluation(_unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params)), training_metrics)
-            logging.info(metrics)
-            progress_fn(
-                current_step,
-                metrics,
-                env=eval_environment,
-                make_policy=make_policy,
-                network=achql_network,
-                params=_unpmap((training_state.normalizer_params,
-                                                training_state.option_q_params,
-                                                training_state.cost_q_params)),
-            )
-
-    total_steps = current_step
-    assert total_steps >= num_timesteps
-
-    params = _unpmap((training_state.normalizer_params, training_state.option_q_params, training_state.cost_q_params))
-
-    # If there was no mistakes the training_state should still be identical on all
-    # devices.
-    pmap.assert_is_replicated(training_state)
-    logging.info('total steps: %s', total_steps)
-    pmap.synchronize_hosts()
-    return (make_flat_policy, params, metrics)
+    return prefill_replay_buffer, training_epoch_with_timing

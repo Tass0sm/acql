@@ -313,3 +313,28 @@ class SimpleMazeUntil1(Until1Mixin, SimpleMazeTaskBase):
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
+
+class SimpleMazeLoop(LoopMixin, SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0])
+        self.obs1_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 8.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 8.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+class SimpleMazeLoopWithObs(LoopWithObsMixin, SimpleMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0])
+        self.obs1_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 8.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 8.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)

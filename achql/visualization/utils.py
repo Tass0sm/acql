@@ -10,10 +10,12 @@ from achql.brax.utils import make_reward_machine_mdp
 # from achql.scripts.new_achql_testing import make_aut_goal_cmdp
 from achql.brax.utils import make_aut_goal_cmdp
 
+from brax.training.agents.ppo import networks as ppo_networks
 from achql.brax.agents.hdqn import networks as hdq_networks
 from achql.brax.agents.hdcqn import networks as hdcq_networks
 from achql.brax.agents.hdqn_automaton_her import networks as hdq_aut_networks
 from achql.brax.agents.achql import networks as achql_networks
+from achql.brax.agents.acddpg import networks as acddpg_networks
 from achql.brax.agents.sac_her import networks as sac_networks
 from achql.brax.agents.ddpg import networks as ddpg_networks
 
@@ -32,6 +34,9 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
         normalize_fn = lambda x, y: x
         cost_normalize_fn = lambda x, y: x
 
+    h_dim = int(run.data.params.get("h_dim", 256))
+    n_hidden = int(run.data.params.get("n_hidden", 2))
+
     aut_goal_cmdp = make_aut_goal_cmdp(task, randomize_goals=False)
     achql_network = achql_networks.make_achql_networks(
         aut_goal_cmdp.qr_nn_input_size,
@@ -44,7 +49,7 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
         options=options,
         preprocess_observations_fn=normalize_fn,
         preprocess_cost_observations_fn=cost_normalize_fn,
-        # hidden_layer_sizes=(256, 256),
+        hidden_layer_sizes=[h_dim] * n_hidden,
         # hidden_cost_layer_sizes=(128, 128, 128, 64),
         use_sum_cost_critic=(run.data.tags["alg"] == "ABLATION_FOUR"),
     )
@@ -52,6 +57,40 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
     make_policy = achql_networks.make_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], actor_type=run.data.params.get("actor_type", "safest"))    
 
     return aut_goal_cmdp, options, achql_network, make_option_policy, make_policy, params
+
+
+def get_acddpg_mdp_network_policy_and_params(task, run, params):
+    if run.data.params["normalize_observations"] == "True":
+        normalize_fn = running_statistics.normalize
+        cost_normalize_fn = running_statistics.normalize
+    else:
+        normalize_fn = lambda x, y: x
+        cost_normalize_fn = lambda x, y: x
+
+    layer_norm = run.data.params.get("use_ln", True)
+    h_dim = int(run.data.params.get("h_dim", 256))
+    n_hidden = int(run.data.params.get("n_hidden", 2))
+
+    aut_goal_cmdp = make_aut_goal_cmdp(task, randomize_goals=False)
+    acddpg_network = acddpg_networks.make_acddpg_networks(
+        aut_goal_cmdp.qr_nn_input_size,
+        aut_goal_cmdp.qc_nn_input_size,
+        aut_goal_cmdp.automaton.n_states,
+        aut_goal_cmdp.n_unique_safety_conds,
+        aut_goal_cmdp.action_size,
+        aut_goal_cmdp,
+        network_type=run.data.params.get("network_type", "old_default"),
+        preprocess_observations_fn=normalize_fn,
+        preprocess_cost_observations_fn=cost_normalize_fn,
+        hidden_layer_sizes=[h_dim] * n_hidden,
+        layer_norm=layer_norm,
+        # hidden_layer_sizes=(256, 256),
+        # hidden_cost_layer_sizes=(128, 128, 128, 64),
+        use_sum_cost_critic=(run.data.tags["alg"] == "ABLATION_FOUR"),
+    )
+    make_policy = acddpg_networks.make_inference_fn(acddpg_network)
+
+    return aut_goal_cmdp, None, acddpg_network, None, make_policy, params
 
 
 def get_hdqn_her_for_aut_mdp_network_policy_and_params(task, run, params):
@@ -91,8 +130,32 @@ def get_ddpg_mdp_network_policy_and_params(task, run, params):
     else:
         normalize_fn = lambda x, y: x
 
+    layer_norm = run.data.params.get("use_ln", True)
+    h_dim = int(run.data.params.get("h_dim", 256))
+    n_hidden = int(run.data.params.get("n_hidden", 2))
+
     mdp = task.env
     ddpg_network = ddpg_networks.make_ddpg_networks(
+        mdp.observation_size,
+        mdp.action_size,
+        preprocess_observations_fn=normalize_fn,
+        layer_norm=layer_norm,
+        hidden_layer_sizes=[h_dim] * n_hidden,
+    )
+    make_policy = ddpg_networks.make_inference_fn(ddpg_network)
+
+    return mdp, None, ddpg_network, None, make_policy, params
+
+
+def get_ppo_mdp_network_policy_and_params(task, run, params):
+
+    if run.data.params["normalize_observations"] == "True":
+        normalize_fn = running_statistics.normalize
+    else:
+        normalize_fn = lambda x, y: x
+
+    mdp = task.env
+    ddpg_network = ppo_networks.make_ppo_networks(
         mdp.observation_size,
         mdp.action_size,
         preprocess_observations_fn=normalize_fn,
@@ -151,11 +214,17 @@ def get_sac_mdp_network_policy_and_params(task, run, params):
     else:
         normalize_fn = lambda x, y: x
 
+    layer_norm = run.data.params.get("use_ln", True)
+    h_dim = int(run.data.params.get("h_dim", 256))
+    n_hidden = int(run.data.params.get("n_hidden", 2))
+
     mdp = task.env
     sac_network = sac_networks.make_sac_networks(
         mdp.observation_size,
         mdp.action_size,
-        normalize_fn
+        normalize_fn,
+        layer_norm=layer_norm,
+        hidden_layer_sizes=[h_dim] * n_hidden,
     )
     make_policy = sac_networks.make_inference_fn(sac_network)
 
@@ -177,6 +246,8 @@ def get_mdp_network_policy_and_params(training_run_id):
     match alg_name:
             case "ACHQL":
                 return get_achql_mdp_network_policy_and_params(task, run, params)
+            case "ACDDPG":
+                return get_acddpg_mdp_network_policy_and_params(task, run, params)
             case "HDCQN_AUTOMATON_HER":
                 return get_achql_mdp_network_policy_and_params(task, run, params)
             case "HDQN_HER_FOR_AUT":
@@ -193,6 +264,10 @@ def get_mdp_network_policy_and_params(training_run_id):
                 return get_rm_with_multihead_mdp_network_policy_and_params(task, run, params)
             case "DDPG":
                 return get_ddpg_mdp_network_policy_and_params(task, run, params)
+            case "DDPG_HER":
+                return get_ddpg_mdp_network_policy_and_params(task, run, params)
+            case "PPO":
+                return get_ppo_mdp_network_policy_and_params(task, run, params)
             case _:
                 raise NotImplementedError(f"{alg_name} not supported")
 

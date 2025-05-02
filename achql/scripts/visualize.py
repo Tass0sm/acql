@@ -2,31 +2,46 @@ import mlflow
 
 import jax.numpy as jnp
 
-from achql.visualization.plots import make_plots
+from achql.visualization.interface import make_plots
 
 
 mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
 mlflow.set_experiment("proj2-notebook")
 
 def main():
-    training_run_id = "428237866d314cd090eea114554ac4c6"
+    training_run_id = "4b312b50b43849a78ee69ee96c026b2e"
+
+    # goal_params = jnp.array([[8., 8., 4., 12.],
+    #                          [8., 8., 8., 12.],
+    #                          [8., 8., 12., 12.],
+    #                          [8., 8., 12., 8.],
+    #                          [8., 8., 12., 4.]])
 
     plots = make_plots(
         training_run_id,
-        # label="SumCost",
+        label="First Stage",
         # tmp_state_fn=lambda x: x.replace(obs=x.obs.at[4:].set(jnp.array([12., 4.]))),
         # tmp_state_fn=lambda x: x.replace(obs=x.obs.at[4:].set(jnp.array([0., 0., 1.]))),
-        # tmp_state_fn=lambda x: x.replace(obs=x.obs.at[4:].set(jnp.array([1., 0., 0.]))),
-        # tmp_state_fn=lambda x: x.replace(obs=x.obs.at[4:].set(jnp.array([12., 12., 0., 1.]))),
+        # tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-4:].set(jnp.array([0., 0., 1., 0.]))),
+        # tmp_state_fn=lambda x: x.replace(obs=x.obs.at[4:8].set(goal_param)),
         # save_and_close=False,
         seed=0,
-        label="Initial",
+        # label="Initial",
         grid_size=50,
         # x_min = 0.0,
         # x_max = 16.0,
         # y_min = 0.0,
         # y_max = 16.0,
     )
+
+    # plots += make_plots(
+    #     training_run_id,
+    #     label="Second Stage",
+    #     tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-6:].set(jnp.array([4., 8., 0., 0., 1., 0.]))),
+    #     seed=0,
+    #     # label="Initial",
+    #     grid_size=50,
+    # )
 
     # plots += make_plots(
     #     training_run_id,
@@ -66,5 +81,5 @@ def main():
 if __name__ == "__main__":
     plots = main()
 
-    for plot in plots:
-        plot[0].show()
+    for i, plot in enumerate(plots):
+        plot[0].savefig(f"./tmp_{i}.png")

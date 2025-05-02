@@ -24,18 +24,24 @@ class EvaluatorWithSpecification(Evaluator):
   """Class to run evaluations."""
 
   def __init__(
-          self,
-          eval_env: envs.Env,
-          eval_policy_fn: Callable[[PolicyParams], Policy],
-          specification: Callable[..., jnp.ndarray],
-          state_var,
-          num_eval_envs: int,
-          episode_length: int,
-          action_repeat: int,
-          key: PRNGKey
+      self,
+      eval_env: envs.Env,
+      eval_policy_fn: Callable[[PolicyParams], Policy],
+      specification: Callable[..., jnp.ndarray],
+      state_var,
+      num_eval_envs: int,
+      episode_length: int,
+      action_repeat: int,
+      key: PRNGKey,
+      return_states: bool = False,
   ):
       self._key = key
       self._eval_walltime = 0.
+
+      self.env = eval_env
+      self.has_automaton = hasattr(eval_env, "automaton")
+      self.obs_augmented = eval_env.augment_obs if self.has_automaton else None
+      self.automaton_states = eval_env.automaton.num_states if self.has_automaton else None
 
       eval_env = envs.training.EvalWrapper(eval_env)
 
@@ -44,14 +50,18 @@ class EvaluatorWithSpecification(Evaluator):
           reset_keys = jax.random.split(key, num_eval_envs)
           eval_first_state = eval_env.reset(reset_keys)
           return generate_unroll(
-              eval_env,
-              eval_first_state,
-              eval_policy_fn(policy_params),
-              key,
-              unroll_length=episode_length // action_repeat)
+            eval_env,
+            eval_first_state,
+            eval_policy_fn(policy_params),
+            key,
+            unroll_length=episode_length // action_repeat,
+            return_states=return_states,
+          )
 
       self._generate_eval_unroll = jax.jit(generate_eval_unroll)
       self._steps_per_unroll = episode_length * num_eval_envs
+
+      self._return_states = return_states
 
       self.specification = specification
       self.state_var = state_var
@@ -59,20 +69,29 @@ class EvaluatorWithSpecification(Evaluator):
   def run_evaluation(self,
                      policy_params: PolicyParams,
                      training_metrics: Metrics,
-                     aggregate_episodes: bool = True) -> Metrics:
+                     aggregate_episodes: bool = True,
+                     return_data: bool = False) -> Metrics:
     """Run one epoch of evaluation."""
     self._key, unroll_key = jax.random.split(self._key)
 
     t = time.time()
 
-    eval_state, data = self._generate_eval_unroll(policy_params, unroll_key)
+    eval_state, all_data = self._generate_eval_unroll(policy_params, unroll_key)
+
+    if self._return_states:
+      states, data = all_data
+    else:
+      data = all_data
+
     # put the batch dim first
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
 
     eval_metrics = eval_state.info['eval_metrics']
 
+    obs = data.observation[..., :self.env.state_dim]
+
     # From data, calculate robustness
-    robustness_traces = jax.vmap(self.specification)({ self.state_var.idx: data.observation,
+    robustness_traces = jax.vmap(self.specification)({ self.state_var.idx: obs,
                                                        # "action": data.action
                                                       })
     robustness = robustness_traces[..., 0]
@@ -91,6 +110,10 @@ class EvaluatorWithSpecification(Evaluator):
               for name, value in eval_metrics.episode_metrics.items()
           }
       )
+
+    metrics['eval/proportion_robustness_over_zero'] = jnp.mean(jnp.where(robustness > 0, 1.0, 0.0))
+    metrics['eval/min_episode_robustness'] = jnp.min(robustness)
+    metrics['eval/max_episode_robustness'] = jnp.max(robustness)
     metrics['eval/avg_episode_length'] = np.mean(eval_metrics.episode_steps)
     metrics['eval/epoch_eval_time'] = epoch_eval_time
     metrics['eval/sps'] = self._steps_per_unroll / epoch_eval_time
@@ -101,4 +124,7 @@ class EvaluatorWithSpecification(Evaluator):
         **metrics
     }
 
-    return metrics  # pytype: disable=bad-return-type  # jax-ndarray
+    if return_data:
+      return metrics, eval_state, all_data
+    else:
+      return metrics  # pytype: disable=bad-return-type  # jax-ndarray

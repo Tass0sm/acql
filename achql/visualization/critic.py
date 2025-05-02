@@ -54,6 +54,7 @@ def plot_function_grid(
         start_position, goal_position,
         label,
         with_dressing=True,
+        with_contour_lines=True,
         vmin=None,
         vmax=None,
 ):
@@ -72,8 +73,9 @@ def plot_function_grid(
         plt.colorbar(im, ax=ax, label='Value (Goal-Conditioned)')
 
     # Add contour lines
-    contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 50)  # Adjust levels if needed
-    ax.contour(X, Y, function_values_grid, levels=contour_levels, colors='black', linewidths=0.5, zorder=2)
+    if with_contour_lines:
+        contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 50)  # Adjust levels if needed
+        ax.contour(X, Y, function_values_grid, levels=contour_levels, colors='black', linewidths=0.5, zorder=2)
 
     # # Overlay the maze structure (with higher zorder)
     # draw(env, ax)

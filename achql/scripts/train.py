@@ -1,13 +1,23 @@
 import functools
+import tempfile
+from pathlib import Path
+import matplotlib.pyplot as plt
 
 import mlflow
 
+import jax.numpy as jnp
 from brax.io import model
 
+from jaxgcrl.utils.config import RunConfig
+
+from achql.brax.agents.ppo import train as ppo
 from achql.brax.agents.achql import train as achql
+from achql.brax.agents.acddpg import train as acddpg
 from achql.brax.agents.sac_her import train as sac_her
+from achql.brax.agents.sac import train as sac
 from achql.brax.agents.crl import train as crl
 from achql.brax.agents.ddpg import train as ddpg
+from achql.brax.agents.ddpg_her import train as ddpg_her
 from achql.brax.agents.hdqn import train as hdqn
 from achql.brax.agents.hdqn_her import train as hdqn_her
 from achql.baselines.reward_machines.qrm import train as qrm
@@ -17,13 +27,69 @@ from achql.baselines.reward_machines.crm import train as crm
 from achql.tasks import get_task
 from achql.brax.utils import make_aut_goal_cmdp, make_reward_machine_mdp
 
-from jaxgcrl.utils.config import RunConfig
+from achql.visualization.plots import make_plots_for_achql
 
 
 def progress_fn(num_steps, metrics, *args, **kwargs):
     print(f"Logging for {num_steps}")
     print(metrics)
     mlflow.log_metrics(metrics, step=num_steps)
+
+
+def progress_fn_with_figs(num_steps, metrics, *args, **kwargs):
+    print(f"Logging for {num_steps}")
+    print(metrics)
+    mlflow.log_metrics(metrics, step=num_steps)
+
+    env = kwargs["env"]
+    make_policy = kwargs["make_policy"]
+    network = kwargs["network"]
+    params = kwargs["params"]
+
+    plots_1 = make_plots_for_achql(env, make_policy, network, params,
+                                   grid_size=50)
+
+    # plots_2 = make_plots_for_achql(env, make_policy, network, params,
+    #                                grid_size=50,
+    #                                tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-5:].set(jnp.array([4., 12., 0., 0., 1.]))))
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        path = Path(tmp_dir, f"value_function_state1_{num_steps:09}.png")
+        plots_1[0][0].savefig(path)
+        mlflow.log_artifact(path)
+        path = Path(tmp_dir, f"safety_function_state1_{num_steps:09}.png")
+        plots_1[1][0].savefig(path)
+        mlflow.log_artifact(path)
+
+    # with tempfile.TemporaryDirectory() as tmp_dir:
+    #     path = Path(tmp_dir, f"value_function_state2_{num_steps:09}.png")
+    #     plots_2[0][0].savefig(path)
+    #     mlflow.log_artifact(path)
+
+    for plot in plots_1:
+        plt.close(plot[0])
+        del plot
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        path = Path(tmp_dir, f"policy_params_{num_steps:09}")
+        model.save_params(path, params)
+        mlflow.log_artifact(path)
+
+
+def progress_fn_with_saving(num_steps, metrics, *args, **kwargs):
+    print(f"Logging for {num_steps}")
+    print(metrics)
+    mlflow.log_metrics(metrics, step=num_steps)
+
+    env = kwargs["env"]
+    make_policy = kwargs["make_policy"]
+    network = kwargs["network"]
+    params = kwargs["params"]
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        path = Path(tmp_dir, f"policy_params_{num_steps:09}")
+        model.save_params(path, params)
+        mlflow.log_artifact(path)
 
 
 def training_run(run_id, env, seed, train_fn, progress_fn=progress_fn, hyperparameters={}, extras={}):
@@ -70,6 +136,20 @@ def ddpg_train(run, task, seed, spec, reward_shaping=False):
         seed,
         train_fn=ddpg.train,
         hyperparameters=task.ddpg_hps,
+        extras={
+            "specification": spec,
+            "state_var": task.obs_var,
+        }
+    )
+
+
+def ppo_train(run, task, seed, spec):
+    make_inference_fn, params = training_run(
+        run.info.run_id,
+        task.env,
+        seed,
+        train_fn=ppo.train,
+        hyperparameters=task.ppo_hps,
         extras={
             "specification": spec,
             "state_var": task.obs_var,
@@ -167,11 +247,88 @@ def achql_train(run, task, seed, spec, margin=1.0):
         make_aut_goal_cmdp(task, margin=margin, randomize_goals=task.achql_hps["use_her"]),
         seed,
         train_fn=achql.train,
-        hyperparameters=task.achql_hps,
+        progress_fn=progress_fn_with_figs,
+        hyperparameters=task.achql_hps | { "network_type": "old_multihead" },
         extras={
             "options": options,
             "specification": spec,
             "state_var": task.obs_var,
+            "eval_environment": make_aut_goal_cmdp(task, margin=margin, randomize_goals=False),
+        }
+    )
+
+
+def acddpg_train(run, task, seed, spec, margin=1.0):
+    def train_fn(environment, progress_fn, seed,
+                 specification=None,
+                 state_var=None,
+                 eval_env=None,
+                 **kwargs):
+        hyperparameters = { k: v for k, v in kwargs.items() \
+                            if k in ["learning_rate", "discounting", "batch_size",
+                                     "normalize_observations", "reward_scaling",
+                                     "cost_scaling", "tau", "min_replay_size",
+                                     "max_replay_size", "deterministic_eval",
+                                     "train_step_multiplier", "unroll_length", "h_dim",
+                                     "n_hidden", "use_ln", "use_her",
+                                     "lambda_update_interval", "gamma_init_value",
+                                     "gamma_update_period", "gamma_decay",
+                                     "gamma_end_value", "gamma_goal_value",
+                                     "safety_threshold", "network_type",
+                                     "use_sum_cost_critic"] }
+
+        agent = acddpg.ACDDPG(**hyperparameters)
+
+        run_params = { k: v for k, v in kwargs.items() \
+                       if k in ["total_env_steps",
+                                "episode_length",
+                                "num_envs",
+                                "num_eval_envs",
+                                "num_evals",
+                                "action_repeat",
+                                "max_devices_per_host"] }
+
+        run_config = RunConfig(
+            env=environment,
+            seed=seed,
+            **run_params
+        )
+
+        return agent.train_fn(
+            config=run_config,
+            train_env=environment,
+            specification=spec,
+            state_var=task.obs_var,
+            eval_env=eval_env,
+            progress_fn=progress_fn,
+        )
+
+    return training_run(
+        run.info.run_id,
+        make_aut_goal_cmdp(task, margin=margin, randomize_goals=task.acddpg_hps["use_her"]),
+        seed,
+        train_fn=train_fn,
+        hyperparameters=task.acddpg_hps,
+        progress_fn=progress_fn_with_saving,
+        extras={
+            "specification": spec,
+            "state_var": task.obs_var,
+            "eval_environment": make_aut_goal_cmdp(task, margin=margin, randomize_goals=False),
+        }
+    )
+
+
+def sac_train(run, task, seed, spec, margin=1.0):
+    return training_run(
+        run.info.run_id,
+        task.env,
+        seed,
+        train_fn=sac.train,
+        # progress_fn=progress_fn_with_figs,
+        hyperparameters=task.sac_hps,
+        extras={
+            # "specification": spec,
+            # "state_var": task.obs_var,
         }
     )
 
@@ -210,12 +367,62 @@ def sac_her_train(run, task, seed, spec):
             progress_fn=progress_fn,
         )
     
-    make_inference_fn, params = training_run(
+    return training_run(
         run.info.run_id,
         task.env,
         seed,
         train_fn=train_fn,
         hyperparameters=task.sac_her_hps,
+        extras={
+            # "options": options,
+            # "specification": spec,
+            # "state_var": task.obs_var,
+        }
+    )
+
+
+def ddpg_her_train(run, task, seed, spec):
+
+    def train_fn(environment, progress_fn, seed, **kwargs):
+        hyperparameters = { k: v for k, v in kwargs.items() \
+                            if k in ["learning_rate", "discounting", "batch_size",
+                                     "normalize_observations", "reward_scaling", "cost_scaling",
+                                     "tau", "min_replay_size", "max_replay_size", "deterministic_eval",
+                                     "train_step_multiplier", "unroll_length", "h_dim", "n_hidden",
+                                     "use_ln", "use_her", "lambda_update_interval", "gamma_init_value",
+                                     "gamma_update_period", "gamma_decay", "gamma_end_value", "gamma_goal_value",
+                                     "safety_threshold", "network_type", "use_sum_cost_critic"] }
+
+        agent = ddpg_her.DDPG(**hyperparameters)
+
+        run_params = { k: v for k, v in kwargs.items() \
+                       if k in ["total_env_steps",
+                                "episode_length",
+                                "num_envs",
+                                "num_eval_envs",
+                                "num_evals",
+                                "action_repeat",
+                                "max_devices_per_host"] }
+
+        run_config = RunConfig(
+            env=environment,
+            seed=seed,
+            **run_params
+        )
+
+        return agent.train_fn(
+            config=run_config,
+            train_env=environment,
+            # eval_env=eval_env,
+            progress_fn=progress_fn,
+        )
+
+    return training_run(
+        run.info.run_id,
+        task.env,
+        seed,
+        train_fn=train_fn,
+        hyperparameters=task.ddpg_her_hps,
         extras={
             # "options": options,
             # "specification": spec,
@@ -277,6 +484,14 @@ def crl_train(run, task, seed, spec):
 
 
 def main():
+    # train_for_all(["SimpleMaze"], ["Loop"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+
+    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["AntMaze"], ["ObligationConstraint1"], achql_train, "ACHQL", seed_range=(0, 3))
+
+    # train_for_all(["SimpleMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 3))
+    # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 3))
+
     # train_for_all(["SimpleMaze"], ["TwoSubgoals"], crm_train, "CRM", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["TwoSubgoals"], qrm_train, "QRM", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["NotUntilAlwaysSubgoal"], qrm_train, "QRM", seed_range=(0, 1))
@@ -284,7 +499,45 @@ def main():
     # train_for_all(["SimpleMaze"], ["NotUntilAlwaysSubgoal"], qrm_ddpg_train, "QRM_DDPG", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["NotUntilAlwaysSubgoal"], qrm_ddpg_train, "QRM_DDPG", seed_range=(0, 1))
 
-    train_for_all(["SimpleMaze"], ["Nav"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["Nav"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["AntMaze"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["AntMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(1, 3))
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, 3))
+
+    # train_for_all(["PandaPushEasy"], ["True"], sac_her_train, "SAC_HER", seed_range=(0, 1))
+    # train_for_all(["ArmEEFPushEasy"], ["True"], sac_her_train, "SAC_HER", seed_range=(0, 1))
+
+    # train_for_all(["ArmEEFBinpickEasy"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["ArmEEFBinpickEasy"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))
+
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, 3))
+
+    # train_for_all(["SimpleMaze3D"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 3))
+    # train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, 3))
+    # train_for_all(["SimpleMaze3D"], ["TwoSubgoals2"], achql_train, "ACHQL", seed_range=(0, 3))
+    # train_for_all(["SimpleMaze3D"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 3))
+
+    # train_for_all(["SimpleMaze"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["ObligationConstraint1"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze3D"], ["Until1"], acddpg_train, "ACDDPG", seed_range=(0, 3))
+    # train_for_all(["PandaReach"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 3))
+    # train_for_all(["PandaReach"], ["True"], sac_her_train, "SAC", seed_range=(0, 1))
+
+    # train_for_all(["UR5eReach"], ["True"], ppo_train, "PPO", seed_range=(0, 1))
+    # train_for_all(["UR5eReach"], ["True"], sac_train, "SAC", seed_range=(0, 1))
+    # train_for_all(["UR5eReach"], ["True"], sac_her_train, "SAC_HER", seed_range=(0, 1))
+    # train_for_all(["UR5eReach"], ["True"], ddpg_her_train, "DDPG_HER", seed_range=(0, 1))
+    # train_for_all(["UR5eReach"], ["True"], crl_train, "CRL", seed_range=(0, 1))
+    # train_for_all(["UR5eReach"], ["True"], ddpg_her_train, "DDPG_HER", seed_range=(0, 1))
+    # train_for_all(["UR5eReach"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+
+    # train_for_all(["UR5ePushEasy"], ["True"], ppo_train, "PPO", seed_range=(0, 1))
+    # train_for_all(["UR5ePushEasy"], ["True"], sac_her_train, "SAC_HER", seed_range=(0, 1))
+    # train_for_all(["UR5ePushEasy"], ["True"], ddpg_her_train, "DDPG_HER", seed_range=(0, 1))
+    # train_for_all(["UR5ePushEasy"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+    # train_for_all(["UR5ePushEasy"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+    # train_for_all(["UR5ePushHard"], ["TwoSubgoals"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+
 
     # train_for_all(["SimpleMaze"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
@@ -294,7 +547,7 @@ def main():
     # train_for_all(["ArmEEF"], ["BinpickEasyTask"], crl_train, "CRL", seed_range=(0, 1))
     # train_for_all(["ArmEEF"], ["BinpickEasyTask"], crl_train, "CRL")
 
-            
+
 if __name__ == "__main__":
     mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
     mlflow.set_experiment("proj2-batch-training")
