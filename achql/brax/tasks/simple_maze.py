@@ -39,8 +39,8 @@ class SimpleMazeTaskBase(BraxTaskBase):
 
     @property
     def achql_hps(self):
-        return super().achql_hps | { "episode_length": 500,
-                                     "batch_size": 128,
+        return super().achql_hps | { "episode_length": 1000,
+                                     "batch_size": 256,
                                      "multiplier_num_sgd_steps": 1 }
 
 
@@ -157,14 +157,6 @@ class SimpleMazeObligationConstraint1(ObligationConstraint1Mixin, SimpleMazeTask
 
         super().__init__(None, 1000, backend=backend)
 
-    @property
-    def hdcqn_her_hps(self):
-        return {
-            **self.hdqn_her_hps,
-            "cost_scaling": 1.0,
-            "safety_threshold": 0.0,
-            "gamma_end_value": 0.93,
-        }
 
 class SimpleMazeObligationConstraint2(ObligationConstraint2Mixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
@@ -256,25 +248,6 @@ class SimpleMazeObligationConstraint6(ObligationConstraint1Mixin, SimpleMazeTask
         phi = stl.STLAnd(phi_liveness, phi_safety)
         return phi
 
-    @property
-    def hdqn_hps(self):
-        return {
-            "num_timesteps": 10_000_000,
-            "reward_scaling": 1,
-            "num_evals": 50,
-            "episode_length": 1000,
-            "normalize_observations": True,
-            "action_repeat": 1,
-            "discounting": 0.99,
-            "learning_rate": 1e-4,
-            "num_envs": 256,
-            "batch_size": 256,
-            "grad_updates_per_step": 64,
-            "max_devices_per_host": 1,
-            "max_replay_size": 10000,
-            "min_replay_size": 1000,
-        }
-
 
 class SimpleMazeNotUntilAlwaysSubgoal(SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
@@ -314,9 +287,9 @@ class SimpleMazeUntil1(Until1Mixin, SimpleMazeTaskBase):
         self.obs1_location = jnp.array([8.0, 8.0])
         self.obs1_radius = 2.0
 
-        self.goal1_location = jnp.array([12.0, 8.0])
+        self.goal1_location = jnp.array([12.0, 12.0])
         self.goal1_radius = 2.0
-        self.goal2_location = jnp.array([4.0, 8.0])
+        self.goal2_location = jnp.array([4.0, 4.0])
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
