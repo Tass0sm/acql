@@ -36,6 +36,13 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
     def get_hard_coded_options(self):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(3))
 
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "episode_length": 1000,
+                                     "batch_size": 128,
+                                     "multiplier_num_sgd_steps": 8 }
+
+
 
 class SimpleMaze3DNav(SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):

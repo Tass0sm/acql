@@ -192,7 +192,7 @@ class BraxTaskBase(TaskBase):
             "num_envs": 256,
             "batch_size": 256,
             "unroll_length": 62,
-            "multiplier_num_sgd_steps": 2,
+            "multiplier_num_sgd_steps": 1,
             "max_devices_per_host": 1,
             "max_replay_size": 10000,
             # 8192, the default, causes the error "TypeError: broadcast_in_dim shape must have every element be nonnegative, got (-2, 50)."

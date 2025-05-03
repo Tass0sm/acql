@@ -35,13 +35,11 @@ class SimpleMazeTaskBase(BraxTaskBase):
         return self.get_hard_coded_options()
 
     def get_hard_coded_options(self):
-        return load_hard_coded_xy_point_options(termination_policy=FixedLengthTerminationPolicy(3))
+        return load_hard_coded_xy_point_options(termination_policy=FixedLengthTerminationPolicy(5))
 
     @property
     def achql_hps(self):
-        return super().achql_hps | { "episode_length": 1000,
-                                     "batch_size": 256,
-                                     "multiplier_num_sgd_steps": 1 }
+        return super().achql_hps | { "episode_length": 200 }
 
 
 class SimpleMazeNav(SimpleMazeTaskBase):
@@ -206,6 +204,7 @@ class SimpleMazeObligationConstraint4(SimpleMazeTaskBase):
 
         phi = stl.STLAnd(phi_liveness, phi_safety)
         return phi
+
 
 class SimpleMazeObligationConstraint5(ObligationConstraint1Mixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
