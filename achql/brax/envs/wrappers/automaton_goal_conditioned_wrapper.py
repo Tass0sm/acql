@@ -349,7 +349,7 @@ class AutomatonGoalConditionedWrapper(Wrapper):
 
     @property
     def observation_size(self) -> int:
-        return self.no_goal_obs_dim + min(self.goal_width, 1) * self.goal_dim + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
+        return self.no_goal_obs_dim + max(self.goal_width, 1) * self.goal_dim + (self.automaton.n_states if self.automaton.n_states > 1 else 0)
 
     @property
     def qr_nn_input_size(self) -> int:

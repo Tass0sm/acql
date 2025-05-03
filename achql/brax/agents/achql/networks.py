@@ -539,13 +539,12 @@ def get_compiled_cost_q_function_branches_for_active_goal_obs(
                 goal = env.ith_goal(obs, goal_idx)
                 aut_state_obs = obs[..., -env.automaton.n_states:]
                 nn_input = jnp.concatenate((goalless_obs, goal, aut_state_obs), axis=-1)
-                # qs = option_q_network.apply(*params, nn_input)
 
                 if nn_input.ndim < 2:
                     nn_input = jnp.atleast_2d(nn_input)
-                    qs = option_q_network.apply(*params, nn_input).squeeze()
+                    qs = cost_q_network.apply(*params, nn_input).squeeze()
                 else:
-                    qs = option_q_network.apply(*params, nn_input)
+                    qs = cost_q_network.apply(*params, nn_input)
 
                 return qs
 
@@ -568,7 +567,7 @@ def get_compiled_cost_q_function_branches_for_active_goal_obs(
             def default_q(params, obs):
                 nn_input = jnp.concatenate((env.goalless_obs(obs),
                                             env.ith_goal(obs, 0)), axis=-1)
-                qs = hdq_networks.option_q_network.apply(*params, nn_input)
+                qs = hdq_networks.cost_q_network.apply(*params, nn_input)
                 return qs
             preds.append(jax.jit(default_q))
         else:
