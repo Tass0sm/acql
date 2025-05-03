@@ -46,8 +46,7 @@ def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, 
         augment_adapter(o)
         
     # reset the environment
-    # rng = jax.random.PRNGKey(seed)
-    rng = jnp.array([3250434155, 376207441], dtype=jnp.uint32)
+    rng = jax.random.PRNGKey(seed)
     state = jit_reset(rng)
 
     # has to be 2d for vmap inside hierarchical policy

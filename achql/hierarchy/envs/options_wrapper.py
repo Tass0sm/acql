@@ -79,7 +79,6 @@ class OptionsWrapper(Wrapper):
             def for_body(unused, x):
                 s_t, iters, r_t, c_t, key = x
                 key, inf_key = jax.random.split(key)
-                breakpoint()
                 a_t, _ = jax.lax.switch(o_t, [o.inference for o in self.options], self.extra_adapter(s_t.obs), inf_key)
                 s_t1 = self.env.step(s_t, a_t)
                 r_t1 = r_t + jnp.pow(self.discounting, iters) * s_t1.reward

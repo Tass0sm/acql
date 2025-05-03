@@ -14,7 +14,7 @@ mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
 mlflow.set_experiment("proj2-notebook")
 
 def main():
-    training_run_id = "43f7847843e944cd9df5b615680518c4"
+    training_run_id = "15f79474c087431dae32070308f1d2c0"
     logged_model_path = f'runs:/{training_run_id}/policy_params'
     real_path = mlflow.artifacts.download_artifacts(logged_model_path)
     params = model.load_params(real_path)
@@ -25,8 +25,8 @@ def main():
     inference_fn = make_policy(params, deterministic=True)
     jit_inference_fn = jax.jit(inference_fn)
 
-    rollout, opt_traj, action = hierarchy.get_rollout(mdp, jit_inference_fn, options, n_steps=300, seed=1, render_every=1)
-    # rollout, action = flat.get_rollout(mdp, jit_inference_fn, n_steps=1000, seed=1, render_every=1)
+    # rollout, opt_traj, action = hierarchy.get_rollout(mdp, jit_inference_fn, options, n_steps=1000, seed=0, render_every=1)
+    rollout, action = flat.get_rollout(mdp, jit_inference_fn, n_steps=1000, seed=1, render_every=1)
 
     mediapy.write_video('./rollout.mp4',
         mdp.render(

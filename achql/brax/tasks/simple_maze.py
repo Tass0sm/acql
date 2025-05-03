@@ -9,6 +9,7 @@ from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 from achql.brax.tasks.mixins import *
 from achql.hierarchy.xy_point.load import load_hard_coded_xy_point_options
+from achql.hierarchy.option import FixedLengthTerminationPolicy
 
 from achql.stl import Expression, Var
 import achql.stl as stl
@@ -34,7 +35,13 @@ class SimpleMazeTaskBase(BraxTaskBase):
         return self.get_hard_coded_options()
 
     def get_hard_coded_options(self):
-        return load_hard_coded_xy_point_options()
+        return load_hard_coded_xy_point_options(termination_policy=FixedLengthTerminationPolicy(3))
+
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "episode_length": 500,
+                                     "batch_size": 128,
+                                     "multiplier_num_sgd_steps": 1 }
 
 
 class SimpleMazeNav(SimpleMazeTaskBase):
@@ -317,15 +324,13 @@ class SimpleMazeUntil1(Until1Mixin, SimpleMazeTaskBase):
 
 class SimpleMazeLoop(LoopMixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):
-        self.obs1_location = jnp.array([8.0, 8.0])
-        self.obs1_radius = 2.0
-
         self.goal1_location = jnp.array([12.0, 8.0])
         self.goal1_radius = 2.0
         self.goal2_location = jnp.array([4.0, 8.0])
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
 
 class SimpleMazeLoopWithObs(LoopWithObsMixin, SimpleMazeTaskBase):
     def __init__(self, backend="mjx"):

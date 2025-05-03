@@ -290,3 +290,26 @@ class AntMazeUntil1(Until1Mixin, AntMazeTaskBase):
             "cost_scaling": 1.0,
             "safety_threshold": 0.0,
         }
+
+
+class AntMazeLoop(LoopMixin, AntMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 8.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 8.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+
+class AntMazeLoopWithObs(LoopWithObsMixin, AntMazeTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0])
+        self.obs1_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 8.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 8.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)

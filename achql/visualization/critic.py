@@ -74,8 +74,12 @@ def plot_function_grid(
 
     # Add contour lines
     if with_contour_lines:
-        contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 50)  # Adjust levels if needed
-        ax.contour(X, Y, function_values_grid, levels=contour_levels, colors='black', linewidths=0.5, zorder=2)
+
+        try:
+            contour_levels = jnp.linspace(function_values_grid.min(), function_values_grid.max(), 50)  # Adjust levels if needed
+            ax.contour(X, Y, function_values_grid, levels=contour_levels, colors='black', linewidths=0.5, zorder=2)
+        except ValueError:
+            pass
 
     # # Overlay the maze structure (with higher zorder)
     # draw(env, ax)
@@ -552,9 +556,7 @@ def make_plots_for_forbidden_actions(
     options, _ = policy(obs_batch, None)
 
     # Compute the cost value function for the grid
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :env.cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    cost_obs_batch = env.cost_obs(obs_batch)
-    cost_q_function_output = network.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, cost_obs_batch).min(axis=-1)
+    cost_q_function_output = network.cost_q_network.apply(normalizer_params, cost_q_params, obs_batch).min(axis=-1)
     cost_q_function_output = jax.vmap(lambda x, i: x.at[i].get())(cost_q_function_output, options)
     cost_q_function_output_grid = cost_q_function_output.reshape(grid_size, grid_size)
     is_forbidden_grid = cost_q_function_output_grid <= safety_minimum

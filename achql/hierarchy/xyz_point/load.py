@@ -56,6 +56,7 @@ from achql.hierarchy.option import Option, BernoulliTerminationPolicy
 
 def load_hard_coded_xyz_point_options(
         termination_prob: float = 1.0,
+        termination_policy = None,
         adapter: Optional[Callable] = None,
 ):
 
@@ -85,11 +86,15 @@ def load_hard_coded_xyz_point_options(
         }
 
     for name, ctrl in ctrl_dict.items():
+
+        if termination_policy is None:
+            termination_policy = BernoulliTerminationPolicy(termination_prob)
+
         print(name, ctrl)
         options_l.append(
             Option(
                 name, None, None, functools.partial(hard_policy, ctrl),
-                termination_policy=BernoulliTerminationPolicy(termination_prob),
+                termination_policy=termination_policy,
                 adapter=adapter
             )
         )

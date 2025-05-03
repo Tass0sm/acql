@@ -12,6 +12,8 @@ from .ant_maze import (
     AntMazeDiagonal,
     AntMazeObligationConstraint6,
     AntMazeUntil1,
+    AntMazeLoop,
+    AntMazeLoopWithObs,
 )
 from .simple_maze import (
     SimpleMazeNav,
@@ -46,6 +48,8 @@ from .simple_maze_3d import (
     SimpleMaze3DObligationConstraint2,
     SimpleMaze3DObligationConstraint3,
     SimpleMaze3DUntil1,
+    SimpleMaze3DLoop,
+    SimpleMaze3DLoopWithObs,
 )
 from .ur5e import (
     UR5eReachTrue,
@@ -55,6 +59,7 @@ from .ur5e import (
     UR5ePushHardTrue,
     UR5ePushHardSingleSubgoal,
     UR5ePushHardTwoSubgoals,
+    UR5ePushHardObligationConstraint,
     # UR5eReachShelfTask,
     # UR5eReachShelfEEFTask,
     # UR5eTranslateTask,

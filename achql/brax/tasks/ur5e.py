@@ -308,6 +308,25 @@ class UR5ePushHardTwoSubgoals(TwoSubgoalsMixin, UR5ePushHardTaskBase):
                                       "batch_size": 128,
                                       "train_step_multiplier": 64 }
 
+
+class UR5ePushHardObligationConstraint(ObligationConstraint2Mixin, UR5ePushHardTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([0.0, 0.4, 0.03])
+        self.obs_radius = 0.05
+        
+        self.goal1_location = jnp.array([0.25, 0.4, 0.03])
+        self.goal1_radius = 0.1
+
+        super().__init__(None, 1000, backend=backend)
+
+    @property
+    def acddpg_hps(self):
+        return super().acddpg_hps | { "total_env_steps": 15_000_000,
+                                      "episode_length": 150,
+                                      "batch_size": 128,
+                                      "train_step_multiplier": 64 }
+
+
 # class UR5eReachShelfTask(UR5eTaskBase):
 #     def __init__(self, backend="mjx"):
 #         super().__init__(None, 1000, backend=backend)

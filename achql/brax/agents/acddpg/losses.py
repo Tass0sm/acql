@@ -75,12 +75,8 @@ def make_losses(
     next_q = q_network.apply(normalizer_params, target_q_params,
                              transitions.next_observation, next_action)
 
-    next_state_obs, next_goals, next_aut_state = env.split_obs(transitions.next_observation)
-    _, next_aut_state_obs = env.split_aut_obs(transitions.next_observation)
-    next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
-    cost_observation_size = next_state_obs.shape[-1]
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    next_double_cq = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, next_qc_input, next_action)
+    next_qc_input = transitions.next_observation
+    next_double_cq = cost_q_network.apply(normalizer_params, target_cost_q_params, next_qc_input, next_action)
 
     if use_sum_cost_critic:
       next_cq = jnp.max(next_double_cq, axis=-1)
@@ -125,17 +121,15 @@ def make_losses(
     next_state_obs, next_goals, next_aut_state = env.split_obs(transitions.next_observation)
     _, next_aut_state_obs = env.split_aut_obs(transitions.next_observation)
 
-    qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
-    cost_observation_size = state_obs.shape[-1]
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    cq_old_action = cost_q_network.apply(trimmed_normalizer_params, cost_q_params, qc_input, transitions.action)
+    qc_input = transitions.observation
+    cq_old_action = cost_q_network.apply(normalizer_params, cost_q_params, qc_input, transitions.action)
 
     next_dist_params = policy_network.apply(normalizer_params, policy_params, transitions.next_observation)
     next_action = parametric_action_distribution.sample_no_postprocessing(next_dist_params, key)
     next_action = parametric_action_distribution.postprocess(next_action)
 
-    next_qc_input = jnp.concatenate((next_state_obs, next_aut_state_obs), axis=-1)
-    next_cost_q = cost_q_network.apply(trimmed_normalizer_params, target_cost_q_params, next_qc_input, next_action)
+    next_qc_input = transitions.next_observation
+    next_cost_q = cost_q_network.apply(normalizer_params, target_cost_q_params, next_qc_input, next_action)
     # next_cost_v = jnp.min(next_cost_q, axis=-1)
 
     if use_sum_cost_critic:
@@ -200,17 +194,15 @@ def make_losses(
     min_q = jnp.min(q_action, axis=-1) * truncation_mask
 
     # Qc(s, pi(s))
-    qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
-    cost_observation_size = state_obs.shape[-1]
-    trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-    cost_q_action = cost_q_network.apply(trimmed_normalizer_params, cost_q_params, qc_input, diff_action)
+    qc_input = transitions.observation
+    cost_q_action = cost_q_network.apply(normalizer_params, cost_q_params, qc_input, diff_action)
 
     if use_sum_cost_critic:
       raise NotImplementedError()
     else:
       min_cost_q = jnp.min(cost_q_action, axis=-1)
 
-    actor_loss = -min_q # + (lambda_multiplier * min_cost_q)
+    actor_loss = -min_q + (lambda_multiplier * min_cost_q)
     return jnp.mean(actor_loss), {
       'raw_action_mean': jnp.mean(diff_action_raw),
       'raw_action_std': jnp.std(diff_action_raw),

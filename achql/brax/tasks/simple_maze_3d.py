@@ -9,6 +9,7 @@ from achql.brax.tasks.base import BraxTaskBase
 from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 from achql.brax.tasks.mixins import *
 from achql.hierarchy.xyz_point.load import load_hard_coded_xyz_point_options
+from achql.hierarchy.option import FixedLengthTerminationPolicy
 
 from achql.stl import Expression, Var
 import achql.stl as stl
@@ -33,7 +34,7 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
         return self.get_hard_coded_options()
 
     def get_hard_coded_options(self):
-        return load_hard_coded_xyz_point_options()
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(3))
 
 
 class SimpleMaze3DNav(SimpleMaze3DTaskBase):
@@ -165,6 +166,29 @@ class SimpleMaze3DUntil1(Until1Mixin, SimpleMaze3DTaskBase):
             backend=backend
         )
         return env
+
+
+class SimpleMaze3DLoop(LoopMixin, SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.goal1_location = jnp.array([12.0, 12.0, 10.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 4.0, 2.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+
+class SimpleMaze3DLoopWithObs(LoopWithObsMixin, SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0, 6.0])
+        self.obs1_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 12.0, 10.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 4.0, 2.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
 
 
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):

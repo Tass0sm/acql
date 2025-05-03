@@ -115,7 +115,7 @@ def training_run(run_id, env, seed, train_fn, progress_fn=progress_fn, hyperpara
     return make_inference_fn, params
 
 
-def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3), extra_tasks={}):
+def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3), extra_tasks={}, **kwargs):
     for env_name in envs:
         for task_name in tasks:
             task = get_task(env_name, task_name, extra_tasks=extra_tasks)
@@ -126,7 +126,7 @@ def train_for_all(envs, tasks, func, alg_tag, seed_range=(0, 3), extra_tasks={})
 
             for seed in range(*seed_range):
                 with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": alg_tag}) as run:
-                    func(run, task, seed, spec)
+                    func(run, task, seed, spec, **kwargs)
 
 
 def ddpg_train(run, task, seed, spec, reward_shaping=False):
@@ -484,13 +484,15 @@ def crl_train(run, task, seed, spec):
 
 
 def main():
-    # train_for_all(["SimpleMaze"], ["Loop"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze3D"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["AntMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
 
-    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], achql_train, "ACHQL", seed_range=(0, 1))
-    # train_for_all(["AntMaze"], ["ObligationConstraint1"], achql_train, "ACHQL", seed_range=(0, 3))
+    # train_for_all(["SimpleMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["AntMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 1))
 
-    # train_for_all(["SimpleMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 3))
-    # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 3))
+
 
     # train_for_all(["SimpleMaze"], ["TwoSubgoals"], crm_train, "CRM", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["TwoSubgoals"], qrm_train, "QRM", seed_range=(0, 1))
@@ -531,12 +533,7 @@ def main():
     # train_for_all(["UR5eReach"], ["True"], ddpg_her_train, "DDPG_HER", seed_range=(0, 1))
     # train_for_all(["UR5eReach"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
 
-    # train_for_all(["UR5ePushEasy"], ["True"], ppo_train, "PPO", seed_range=(0, 1))
-    # train_for_all(["UR5ePushEasy"], ["True"], sac_her_train, "SAC_HER", seed_range=(0, 1))
-    # train_for_all(["UR5ePushEasy"], ["True"], ddpg_her_train, "DDPG_HER", seed_range=(0, 1))
-    # train_for_all(["UR5ePushEasy"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
-    # train_for_all(["UR5ePushEasy"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
-    # train_for_all(["UR5ePushHard"], ["TwoSubgoals"], acddpg_train, "ACDDPG", seed_range=(0, 1))
+    train_for_all(["UR5ePushHard"], ["ObligationConstraint"], acddpg_train, "ACDDPG", seed_range=(0, 1), margin=0.05)
 
 
     # train_for_all(["SimpleMaze"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))

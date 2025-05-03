@@ -374,9 +374,10 @@ def make_acddpg_networks(
 
         q_network = make_algebraic_q_network_for_active_goal_obs(single_gc_network, env)
 
-        def qc_preprocess_obs_fn(state_and_aut_obs: jax.Array, trimmed_processor_params) -> jax.Array:
-            state_obs = state_and_aut_obs[..., :-env.automaton.n_states]
-            return preprocess_cost_observations_fn(state_obs, trimmed_processor_params)
+        def qc_preprocess_obs_fn(state_and_goal_and_aut_state: jax.Array, processor_params) -> jax.Array:
+            state_and_goal = state_and_goal_and_aut_state[..., :-env.automaton.n_states]
+            obs = preprocess_cost_observations_fn(state_and_goal, processor_params)
+            return obs
 
         cost_q_network = networks.make_q_network(
                 cost_observation_size,

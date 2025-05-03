@@ -68,16 +68,7 @@ def make_option_qc_fn(
         normalizer_params, option_q_params, cost_q_params = params
 
         def qc(observation: types.Observation) -> jnp.ndarray:
-            state_obs, _, aut_state = env.split_obs(observation)
-            _, aut_state_obs = env.split_aut_obs(observation)
-
-            qc_input = jnp.concatenate((state_obs, aut_state_obs), axis=-1)
-            cost_observation_size = state_obs.shape[-1]
-            trimmed_normalizer_params = jax.tree.map(lambda x: x[..., :cost_observation_size] if x.ndim >= 1 else x, normalizer_params)
-            # batched_qc = jax.vmap(lambda a_s, o: achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, o))
-            # double_cqs = batched_qc(aut_state, qc_input)
-            double_cqs = achql_networks.cost_q_network.apply(trimmed_normalizer_params, cost_q_params, qc_input)
-
+            double_cqs = achql_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
 
             if use_sum_cost_critic:
                 cqs = jnp.max(double_cqs, axis=-1)
@@ -700,7 +691,7 @@ def make_achql_networks(
 
         option_q_network = make_algebraic_option_q_network_for_active_goal_obs(single_gc_network, env)
 
-        def qr_preprocess_obs_fn(state_and_goal_and_aut_obs: jax.Array, processor_params) -> jax.Array:
+        def qc_preprocess_obs_fn(state_and_goal_and_aut_obs: jax.Array, processor_params) -> jax.Array:
             state_and_goal = state_and_goal_and_aut_obs[..., :-env.automaton.n_states]
             obs = preprocess_cost_observations_fn(state_and_goal, processor_params)
             return obs
@@ -738,9 +729,10 @@ def make_achql_networks(
 
         option_q_network = make_algebraic_option_q_network_for_active_goal_obs(single_gc_network, env)
 
-        def qc_preprocess_obs_fn(state_and_aut_obs: jax.Array, trimmed_processor_params) -> int:
-            state_obs = state_and_aut_obs[..., :-env.automaton.n_states]
-            return preprocess_cost_observations_fn(state_obs, trimmed_processor_params)
+        def qc_preprocess_obs_fn(state_and_goal_and_aut_obs: jax.Array, processor_params) -> jax.Array:
+            state_and_goal = state_and_goal_and_aut_obs[..., :-env.automaton.n_states]
+            obs = preprocess_cost_observations_fn(state_and_goal, processor_params)
+            return obs
 
         def qc_preprocess_cond_fn(state_and_aut_obs: jax.Array) -> int:
             aut_obs = state_and_aut_obs[..., -env.automaton.n_states:]

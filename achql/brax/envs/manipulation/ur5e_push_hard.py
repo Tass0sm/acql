@@ -37,7 +37,7 @@ class UR5ePushHard(UR5eEnvs):
         self.goal_reach_thresh = 0.1
 
         self.arm_noise_scale = 0
-        self.cube_noise_scale = jnp.array([0.25, 0.25])
+        self.cube_noise_scale = jnp.array([0.15, 0.15])
         self.goal_noise_scale = jnp.array([0.50, 0.25, 0.0])
         
     def _get_initial_state(self, rng):

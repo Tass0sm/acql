@@ -32,8 +32,6 @@ def make_plots_for_hdqn(
     tmp_state = env.reset(reset_key)
     tmp_state = tmp_state_fn(tmp_state)
 
-    breakpoint()
-    
     normalizer_params, option_q_params = params
 
     x_values = jnp.linspace(x_min, x_max, grid_size)
