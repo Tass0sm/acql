@@ -34,13 +34,11 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
         return self.get_hard_coded_options()
 
     def get_hard_coded_options(self):
-        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(3))
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
 
     @property
     def achql_hps(self):
-        return super().achql_hps | { "episode_length": 1000,
-                                     "batch_size": 128,
-                                     "multiplier_num_sgd_steps": 8 }
+        return super().achql_hps | { "episode_length": 200 }
 
 
 
@@ -90,7 +88,6 @@ class SimpleMaze3DTwoSubgoals(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
     def _build_env(self, backend: str) -> GoalConditionedEnv:
         env = SimpleMaze3D(
             terminate_when_unhealthy=False,
-            maze_layout_name="easy_maze",
             backend=backend
         )
         return env
@@ -107,7 +104,6 @@ class SimpleMaze3DTwoSubgoals2(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
     def _build_env(self, backend: str) -> GoalConditionedEnv:
         env = SimpleMaze3D(
             terminate_when_unhealthy=False,
-            maze_layout_name="easy_maze",
             backend=backend
         )
         return env
@@ -169,7 +165,6 @@ class SimpleMaze3DUntil1(Until1Mixin, SimpleMaze3DTaskBase):
     def _build_env(self, backend: str) -> GoalConditionedEnv:
         env = SimpleMaze3D(
             terminate_when_unhealthy=False,
-            maze_layout_name="easy_maze",
             backend=backend
         )
         return env

@@ -38,12 +38,16 @@ class AntMazeTaskBase(BraxTaskBase):
 
     def get_learned_options(self):
         adapter = lambda x: x[..., 2:]
-        return load_ant_options(termination_policy=FixedLengthTerminationPolicy(3),
-                                # termination_prob=0.3,
+        return load_ant_options(termination_policy=FixedLengthTerminationPolicy(4),
                                 adapter=adapter)
 
     def get_hard_coded_options(self):
         raise NotImplementedError()
+
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "num_envs": 128,
+                                     "episode_length": 250 }
 
 
 class AntMazeNav(AntMazeTaskBase):
@@ -281,15 +285,6 @@ class AntMazeUntil1(Until1Mixin, AntMazeTaskBase):
         self.goal2_radius = 0.5
 
         super().__init__(None, 1000, backend=backend)
-
-    @property
-    def achql_hps(self):
-        return {
-            **self.hdqn_her_hps,
-            "num_timesteps": 10_000_000,
-            "cost_scaling": 1.0,
-            "safety_threshold": 0.0,
-        }
 
 
 class AntMazeLoop(LoopMixin, AntMazeTaskBase):
