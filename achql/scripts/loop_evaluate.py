@@ -22,13 +22,45 @@ from achql.visualization import hierarchy, flat
 
 
 def main():
+
+    # SimpleMaze:
+    # training_run_ids = ["60381ad329ce430b89b42c77735ddb58",
+    #                     "3283f5d0c5ca4ccaa117e6b392a6eea0",
+    #                     "2b7114b0e259452a9cc8c8c20b43061f",
+    #                     "837be13827d9485fa3ade7441040db48",
+    #                     "2173dddaebf4450ca8daceb9bb745a20"]
+
+    # SimpleMaze3D:
+    training_run_ids = ["53632e8fafb34899b35238f0caa1481d",
+                        "9751a09445c944cd9930820b67609b43",
+                        "230b8f32ec0c41eb98cdd9641ac69597",
+                        "a3b14cd0a16644d58364749841ca1f6d",
+                        "e6d8daa8ab99461d940132234de4634e"]
+
+    rs = []
+    srs = []
+    for seed, training_run_id in enumerate(training_run_ids):
+        num_loops, success_rate = evaluate_for_run_and_seed(training_run_id, seed)
+        print(f"{seed} - {num_loops} - {success_rate}")
+
+        rs.append(num_loops)
+        srs.append(success_rate)
+
+    rs = jnp.array(rs)
+    srs = jnp.array(srs)
+
+    print(f"Num Loops: {rs.mean()} +- {rs.std()}")
+    print(f"Success Rate: {srs.mean()} +- {srs.std()}")
+
+    return rs, srs
+
+
+def evaluate_for_run_and_seed(training_run_id, seed):
     # process_id = jax.process_index()
-    seed = 0
     global_key, local_key = jax.random.split(jax.random.PRNGKey(seed))
     # local_key = jax.random.fold_in(local_key, process_id)
     _, _, _, eval_key = jax.random.split(local_key, 4)
 
-    training_run_id = "e5fa731af4f64f80853b17af75e0c069"
     run = mlflow.get_run(run_id=training_run_id)
 
     task = get_task_by_name(run.data.tags["spec"])
@@ -165,25 +197,28 @@ def run_final_eval(evaluator, loop_counter, training_run_id, mdp):
 
     safety_robustness = eval_state.info["eval_metrics"].episode_metrics["robustness"]
 
-    print("Success Rate: ", jnp.logical_and(safety_robustness > 0, num_loops > 0).mean())
+    success_rate = jnp.logical_and(safety_robustness > 0, num_loops > 0).mean()
+
+    # print("Success Rate: ", )
 
     # put the batch dim first
-    state = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), state)
-    num_rollouts, num_steps = state.obs.shape[:-1]
+    # state = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), state)
+    # num_rollouts, num_steps = state.obs.shape[:-1]
 
-    for i in range(16): # range(num_rollouts):
-        if safety_robustness[i] > 0 and num_loops[i] > 0:
-            print(f"visualizing for final rollout {i}")
-            rollout_states = []
-            for j in range(num_steps):
-                ps = jax.tree.map(lambda x: x[i, j], state.pipeline_state)
-                rollout_states.append(ps)
-       
-            mediapy.write_video(f'./eval-rollout-{i}.mp4',
-                                mdp.render(rollout_states, camera='overview'),
-                                fps=1.0 / mdp.dt)
+    # for i in range(16): # range(num_rollouts):
+    #     if safety_robustness[i] > 0 and num_loops[i] > 0:
+    #         print(f"visualizing for final rollout {i}")
+    #         rollout_states = []
+    #         for j in range(num_steps):
+    #             ps = jax.tree.map(lambda x: x[i, j], state.pipeline_state)
+    #             rollout_states.append(ps)
 
-    return metrics, eval_state, all_data
+    #         mediapy.write_video(f'./eval-rollout-{i}.mp4',
+    #                             mdp.render(rollout_states, camera='overview'),
+    #                             fps=1.0 / mdp.dt)
+
+    # return metrics, eval_state, all_data
+    return num_loops, success_rate
 
 
 if __name__ == "__main__":
