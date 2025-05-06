@@ -28,15 +28,14 @@ def plot_simple_maze_option_arrows(axs, X, Y, options, grid_size):
         ax.quiver(X[::2, ::2], Y[::2, ::2], option_vector_grid[..., 0], option_vector_grid[..., 1])
 
 
-def plot_3d_env_option_arrows(axs, X, Y, options, grid_size):
+def plot_simple_maze_3d_option_arrows(axs, X, Y, options, grid_size):
     # Option arrows
-
-    arrows = jnp.array([[0.0, 0.0],   # , 1.0],
-                        [0.0, 1.0],   # , 0.0],
-                        [1.0, 0.0],   # , 0.0],
-                        [-1.0, 0.0],   # , 0.0],
-                        [0.0, -1.0],   # , 0.0],
-                        [0.0, 0.0]])   # , -1.0]])
+    arrows = jnp.array([[0.7, 0.7],
+                        [0.0, 1.0],
+                        [1.0, 0.0],
+                        [-1.0, 0.0],
+                        [0.0, -1.0],
+                        [-0.7, -0.7]])
 
     option_vectors = jax.vmap(lambda o: arrows.at[o].get())(options)
     option_vector_grid = option_vectors.reshape(grid_size, grid_size, 2)

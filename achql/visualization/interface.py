@@ -4,6 +4,7 @@ from achql.visualization.utils import get_mdp_network_policy_and_params
 
 from achql.visualization.plots import (
     make_plots_for_achql,
+    make_plots_for_3d_achql,
     make_plots_for_acddpg,
     make_plots_for_ddpg,
     make_plots_for_hdqn
@@ -18,7 +19,13 @@ def make_plots(training_run_id, **kwargs):
 
     match alg_name:
             case "ACHQL":
-                return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+                env_name = run.data.tags["env"]
+                if env_name in ["SimpleMaze", "AntMaze"]:
+                    return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+                elif env_name in ["SimpleMaze3D"]:
+                    return make_plots_for_3d_achql(mdp, make_option_policy, network, params, **kwargs)
+                else:
+                    raise NotImplementedError(f"Visualizing ACHQL with {env_name} not supported")
             case "ACDDPG":
                 return make_plots_for_acddpg(mdp, make_policy, network, params, **kwargs)
             case "HDCQN_AUTOMATON_HER":
