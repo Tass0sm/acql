@@ -38,7 +38,8 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
 
     @property
     def achql_hps(self):
-        return super().achql_hps | { "episode_length": 200 }
+        return super().achql_hps | { "episode_length": 200,
+                                     "multiplier_num_sgd_steps": 4 }
 
 
 
@@ -85,12 +86,6 @@ class SimpleMaze3DTwoSubgoals(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = SimpleMaze3D(
-            terminate_when_unhealthy=False,
-            backend=backend
-        )
-        return env
 
 class SimpleMaze3DTwoSubgoals2(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
@@ -101,12 +96,6 @@ class SimpleMaze3DTwoSubgoals2(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = SimpleMaze3D(
-            terminate_when_unhealthy=False,
-            backend=backend
-        )
-        return env
 
 class SimpleMaze3DBranching1(Branching1Mixin, SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
@@ -162,12 +151,32 @@ class SimpleMaze3DUntil1(Until1Mixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def _build_env(self, backend: str) -> GoalConditionedEnv:
-        env = SimpleMaze3D(
-            terminate_when_unhealthy=False,
-            backend=backend
-        )
-        return env
+    def get_hard_coded_options(self):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
+
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "episode_length": 100 }
+
+
+class SimpleMaze3DUntil2(Until1Mixin, SimpleMaze3DTaskBase):
+    def __init__(self, backend="mjx"):
+        self.obs1_location = jnp.array([8.0, 8.0, 6.0])
+        self.obs1_radius = 2.0
+
+        self.goal1_location = jnp.array([12.0, 8.0, 6.0])
+        self.goal1_radius = 2.0
+        self.goal2_location = jnp.array([4.0, 8.0, 6.0])
+        self.goal2_radius = 2.0
+
+        super().__init__(None, 1000, backend=backend)
+
+    def get_hard_coded_options(self):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
+
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "episode_length": 100 }
 
 
 class SimpleMaze3DLoop(LoopMixin, SimpleMaze3DTaskBase):
@@ -191,6 +200,14 @@ class SimpleMaze3DLoopWithObs(LoopWithObsMixin, SimpleMaze3DTaskBase):
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
+    def get_hard_coded_options(self):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
+
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "num_timesteps": 10_000_000,
+                                     "episode_length": 100 }
 
 
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):

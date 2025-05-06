@@ -33,6 +33,7 @@ from .simple_maze import (
     SimpleMazeObligationConstraint6,
     SimpleMazeNotUntilAlwaysSubgoal,
     SimpleMazeUntil1,
+    SimpleMazeUntil2,
     SimpleMazeLoop,
     SimpleMazeLoopWithObs,
 )
@@ -48,6 +49,7 @@ from .simple_maze_3d import (
     SimpleMaze3DObligationConstraint2,
     SimpleMaze3DObligationConstraint3,
     SimpleMaze3DUntil1,
+    SimpleMaze3DUntil2,
     SimpleMaze3DLoop,
     SimpleMaze3DLoopWithObs,
 )

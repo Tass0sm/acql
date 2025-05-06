@@ -46,8 +46,7 @@ class AntMazeTaskBase(BraxTaskBase):
 
     @property
     def achql_hps(self):
-        return super().achql_hps | { "num_envs": 128,
-                                     "episode_length": 250 }
+        return super().achql_hps | { "episode_length": 250 }
 
 
 class AntMazeNav(AntMazeTaskBase):
