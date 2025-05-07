@@ -52,6 +52,7 @@ from .simple_maze_3d import (
     SimpleMaze3DUntil2,
     SimpleMaze3DLoop,
     SimpleMaze3DLoopWithObs,
+    SimpleMaze3DLoopWithObs2,
 )
 from .ur5e import (
     UR5eReachTrue,
@@ -61,6 +62,7 @@ from .ur5e import (
     UR5ePushHardTrue,
     UR5ePushHardSingleSubgoal,
     UR5ePushHardTwoSubgoals,
+    UR5ePushHardBranching1,
     UR5ePushHardObligationConstraint,
     # UR5eReachShelfTask,
     # UR5eReachShelfEEFTask,
