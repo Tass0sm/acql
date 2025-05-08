@@ -288,16 +288,12 @@ def train(
       v = env.automaton.one_hot_decode(next_aut_obs)
 
       def gen_crm_tran(u):
-        obs = env.original_obs(transition.observation)
+        obs = transition.observation[..., :env.state_dim]
         action = transition.action
-        next_obs = env.original_obs(transition.next_observation)
+        next_obs = transition.next_observation[..., :env.state_dim]
         labels = env.automaton.eval_aps(action, next_obs, ap_params=env_state.info["ap_params"])
         v = env.automaton.step(u, labels)
         new_reward = env.compute_reward(u, v, obs, action, next_obs)
-
-        if env.strip_goal_obs:
-          obs = obs[..., env.non_goal_indices]
-          next_obs = next_obs[..., env.non_goal_indices]
         
         return Transition(
           observation=env.make_augmented_obs(obs, u),

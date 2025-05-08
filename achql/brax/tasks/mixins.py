@@ -280,6 +280,22 @@ class Until1Mixin:
         )
         return phi
 
+    @property
+    def rm_config(self) -> dict:
+        return {
+            "final_state": 0,
+            "terminal_states": [3],
+            "reward_functions": {
+                (1, 1): lambda s_t, a_t, s_t1: 0.0,
+                (1, 3): lambda s_t, a_t, s_t1: 0.0,
+                (1, 2): lambda s_t, a_t, s_t1: 0.0,
+                (2, 2): lambda s_t, a_t, s_t1: 0.0,
+                (2, 0): lambda s_t, a_t, s_t1: 1.0,
+                (0, 0): lambda s_t, a_t, s_t1: 1.0,
+            },
+            "pruned_edges": [(1, 3), (0, 0)]
+        }
+
 
 class LoopMixin:
 
@@ -318,3 +334,32 @@ class LoopWithObsMixin:
         phi = stl.STLAnd(phi_liveness, phi_safety)
 
         return phi
+
+    @property
+    def rm_config(self) -> dict:
+        return {
+            "final_state": 0,
+            "terminal_states": [3],
+            "reward_functions": {
+                (0, 0): lambda s_t, a_t, s_t1: 0.0,
+                (0, 1): lambda s_t, a_t, s_t1: 0.0,
+                (0, 2): lambda s_t, a_t, s_t1: 0.0,
+                (0, 3): lambda s_t, a_t, s_t1: 0.0,
+
+                (1, 0): lambda s_t, a_t, s_t1: 0.0,
+                (1, 1): lambda s_t, a_t, s_t1: 0.0,
+                (1, 2): lambda s_t, a_t, s_t1: 0.0,
+                (1, 3): lambda s_t, a_t, s_t1: 0.0,
+
+                (2, 0): lambda s_t, a_t, s_t1: 1.0,
+                (2, 1): lambda s_t, a_t, s_t1: 0.0,
+                (2, 2): lambda s_t, a_t, s_t1: 0.0,
+                (2, 3): lambda s_t, a_t, s_t1: 0.0,
+
+                (3, 0): lambda s_t, a_t, s_t1: 0.0,
+                (3, 1): lambda s_t, a_t, s_t1: 0.0,
+                (3, 2): lambda s_t, a_t, s_t1: 0.0,
+                (3, 3): lambda s_t, a_t, s_t1: 0.0,
+            },
+            "pruned_edges": [(0, 0), (0, 2), (1, 1), (1, 0), (2, 2), (2, 1), (0, 3), (1, 3), (2, 3), (3, 3)]
+        }

@@ -95,6 +95,8 @@ class AutomatonRewardMachineWrapper(Wrapper):
         else:
             self.potential_function = lambda u: 0
 
+    def original_obs(self, obs):
+        return obs[..., :-self.automaton.n_states]
 
     def strip_obs_goal(obs):
         return obs[..., self.strip_goal_indices]

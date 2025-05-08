@@ -45,6 +45,10 @@ class AntMazeTaskBase(BraxTaskBase):
         raise NotImplementedError()
 
     @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 250 }
+
+    @property
     def achql_hps(self):
         return super().achql_hps | { "episode_length": 250 }
 

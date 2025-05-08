@@ -134,8 +134,8 @@ class AutomatonWrapper(Wrapper):
     # def no_automaton_obs(self, obs):
     #     return obs[..., :-self.automaton.n_states]
 
-    # def automaton_obs(self, obs):
-    #     return obs[..., -self.automaton.n_states:]
+    def automaton_obs(self, obs):
+        return obs[..., -self.automaton.n_states:]
 
     # def original_obs(self, obs):
     #     if self.augment_with_subgoals and self.augment_obs:
@@ -243,8 +243,8 @@ class AutomatonWrapper(Wrapper):
 
         return nstate
 
-    # def make_augmented_obs(self, obs, aut_state):
-    #     return jnp.concatenate((obs, self.automaton.one_hot_encode(aut_state)), axis=-1)
+    def make_augmented_obs(self, obs, aut_state):
+        return jnp.concatenate((obs, self.automaton.one_hot_encode(aut_state)), axis=-1)
 
     @property
     def observation_size(self) -> int:
