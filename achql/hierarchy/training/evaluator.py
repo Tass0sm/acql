@@ -142,6 +142,7 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
     }
 
     if return_data:
+      eval_state.info.update(eval_metrics=eval_metrics)
       return metrics, eval_state, all_data
     else:
       return metrics  # pytype: disable=bad-return-type  # jax-ndarray
