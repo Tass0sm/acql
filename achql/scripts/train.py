@@ -242,6 +242,7 @@ def crm_train(run, task, seed, spec, reward_shaping=False):
             "options": options,
             "specification": spec,
             "state_var": task.obs_var,
+            "eval_environment": make_reward_machine_mdp(task, reward_shaping=False),
         }
     )
 
@@ -511,11 +512,33 @@ def main():
     # train_for_all(["SimpleMaze3D"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
     # train_for_all(["AntMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
 
-    # train_for_all(["SimpleMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 1))
-    # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 1))
-    # train_for_all(["AntMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 1))
+    crm_rs_train = functools.partial(crm_train, reward_shaping=True)
+
+    # train_for_all(["SimpleMaze"], ["Until1"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["LoopWithObs"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["Until2"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["Branching1"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["ObligationConstraint1"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["ObligationConstraint2"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+
+    train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["Branching1"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["ObligationConstraint1"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["Until2"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
+
+    # TODO:
+    # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], crm_rs_train, "CRM_RS", seed_range=(0, 5))
 
 
+    # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["Until2"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["ObligationConstraint1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["ObligationConstraint2"], achql_train, "ACHQL", seed_range=(0, 5))
 
     # train_for_all(["SimpleMaze"], ["TwoSubgoals"], crm_train, "CRM", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["TwoSubgoals"], qrm_train, "QRM", seed_range=(0, 1))
@@ -560,22 +583,41 @@ def main():
     # train_for_all(["UR5ePushHard"], ["TwoSubgoals"], acddpg_train, "ACDDPG", seed_range=(0, 1), margin=0.05)
     # train_for_all(["UR5ePushHard"], ["Branching1"], acddpg_train, "ACDDPG", seed_range=(0, 1), margin=0.05)
 
+    # train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["Until2"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 5))
+
     # train_for_all(["UR5ePushHard"], ["TwoSubgoals"], acddpg_train, "ACDDPG", seed_range=(1, 3), margin=0.05)
     # train_for_all(["UR5ePushHard"], ["ObligationConstraint"], acddpg_train, "ACDDPG", seed_range=(1, 3), margin=0.05)
     # train_for_all(["UR5ePushHard"], ["Branching1"], acddpg_train, "ACDDPG", seed_range=(1, 3), margin=0.05)
 
-    # train_for_all(["SimpleMaze"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))
-    # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
-    # train_for_all(["ArmEEF"], ["BinpickEasyTask"], sac_her_train, "SAC_HER")
-    # train_for_all(["Panda"], ["PushEasyTask"], sac_her_train, "SAC_HER", seed_range=(0, 1))
-    # train_for_all(["ArmEEF"], ["BinpickEasyTask"], sac_her_train, "SAC_HER", seed_range=(0, 1))
-    # train_for_all(["ArmEEF"], ["BinpickEasyTask"], crl_train, "CRL", seed_range=(0, 1))
-    # train_for_all(["ArmEEF"], ["BinpickEasyTask"], crl_train, "CRL")
+    # train_for_all(["AntMaze"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["ObligationConstraint1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 5))
+
+    train_for_all(["SimpleMaze"], ["Until1"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["LoopWithObs"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["Until2"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["TwoSubgoals"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["Branching1"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["ObligationConstraint2"], crm_train, "CRM", seed_range=(0, 5))
+
+    train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["Branching1"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["ObligationConstraint1"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["Until2"], crm_train, "CRM", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], crm_train, "CRM", seed_range=(0, 5))
+
 
 
 if __name__ == "__main__":
     mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
-    mlflow.set_experiment("proj2-batch-training")
-    # mlflow.set_experiment("proj2-final-experiments")
+    # mlflow.set_experiment("proj2-batch-training")
+    mlflow.set_experiment("proj2-final-experiments")
 
     main()
