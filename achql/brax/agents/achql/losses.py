@@ -194,7 +194,9 @@ def make_losses(
 
     return cq_loss, {
       "target_cq": target_cq,
+      "max_cost": transitions.extras["state_extras"]["cost"].max(),
       "mean_cost": transitions.extras["state_extras"]["cost"].mean(),
+      "min_cost": transitions.extras["state_extras"]["cost"].min(),
     }
 
   return critic_loss, cost_critic_loss

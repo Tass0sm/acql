@@ -102,7 +102,7 @@ def train(
     tau: float = 0.005,
     min_replay_size: int = 0,
     max_replay_size: Optional[int] = 10_0000,
-    grad_updates_per_step: int = 1,
+    multiplier_num_sgd_steps: int = 1,
     deterministic_eval: bool = True,
     tensorboard_flag = True,
     logdir = './logs',
@@ -209,7 +209,7 @@ def train(
   replay_buffer = replay_buffers.UniformSamplingQueue(
       max_replay_size=max_replay_size // device_count,
       dummy_data_sample=dummy_transition,
-      sample_batch_size=batch_size * grad_updates_per_step // device_count)
+      sample_batch_size=batch_size * multiplier_num_sgd_steps // device_count)
 
   critic_loss = hdqn_losses.make_critic_loss(
       hdq_network=hdq_network,
@@ -375,8 +375,8 @@ def train(
 
     buffer_state, transitions = replay_buffer.sample(buffer_state)
     # Change the front dimension of transitions so 'update_step' is called
-    # grad_updates_per_step times by the scan.
-    transitions = jax.tree_map(lambda x: jnp.reshape(x, (grad_updates_per_step, -1) + x.shape[1:]), transitions)
+    # multiplier_num_sgd_steps times by the scan.
+    transitions = jax.tree_map(lambda x: jnp.reshape(x, (multiplier_num_sgd_steps, -1) + x.shape[1:]), transitions)
     (training_state, _), metrics = jax.lax.scan(sgd_step, (training_state, training_key), transitions)
 
     metrics['buffer_current_size'] = replay_buffer.size(buffer_state)

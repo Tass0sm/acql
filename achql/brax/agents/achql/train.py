@@ -126,6 +126,7 @@ def train(
         # num_sampling_per_update: int = 50,
         num_eval_envs: int = 16,
         learning_rate: float = 1e-4,
+        qc_learning_rate: Optional[float] = None,
         discounting: float = 0.9,
         seed: int = 0,
         batch_size: int = 256,
@@ -260,9 +261,11 @@ def train(
     make_policy = achql_networks.make_option_inference_fn(achql_network, env, safety_threshold, actor_type=actor_type)
     make_flat_policy = achql_networks.make_inference_fn(achql_network, env, safety_threshold, actor_type=actor_type)
 
-    # policy_optimizer = optax.adam(learning_rate=learning_rate)
+    if qc_learning_rate is None:
+        qc_learning_rate = learning_rate
+
     option_q_optimizer = optax.adam(learning_rate=learning_rate)
-    cost_q_optimizer = optax.adam(learning_rate=learning_rate)
+    cost_q_optimizer = optax.adam(learning_rate=qc_learning_rate)
 
     obs_size = env.observation_size
     dummy_obs = jnp.zeros((obs_size,))

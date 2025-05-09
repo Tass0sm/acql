@@ -52,7 +52,6 @@ from .simple_maze_3d import (
     SimpleMaze3DUntil2,
     SimpleMaze3DLoop,
     SimpleMaze3DLoopWithObs,
-    SimpleMaze3DLoopWithObs2,
 )
 from .ur5e import (
     UR5eReachTrue,

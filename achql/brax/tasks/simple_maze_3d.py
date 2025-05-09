@@ -161,6 +161,10 @@ class SimpleMaze3DUntil1(Until1Mixin, SimpleMaze3DTaskBase):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
 
     @property
+    def crm_hps(self):
+        return super().achql_hps | { "episode_length": 100 }
+
+    @property
     def achql_hps(self):
         return super().achql_hps | { "episode_length": 100 }
 
@@ -179,6 +183,10 @@ class SimpleMaze3DUntil2(Until1Mixin, SimpleMaze3DTaskBase):
 
     def get_hard_coded_options(self):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
+
+    @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 100 }
 
     @property
     def achql_hps(self):
@@ -206,35 +214,6 @@ class SimpleMaze3DLoopWithObs(LoopWithObsMixin, SimpleMaze3DTaskBase):
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
-
-    def get_hard_coded_options(self):
-        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
-
-    @property
-    def achql_hps(self):
-        return super().achql_hps | { "num_timesteps": 10_000_000,
-                                     "episode_length": 100 }
-
-
-class SimpleMaze3DLoopWithObs2(LoopWithObsMixin, SimpleMaze3DTaskBase):
-    def __init__(self, backend="mjx"):
-        self.obs1_location = jnp.array([8.0, 8.0, 2.0])
-        self.obs1_radius = 3.0
-
-        self.goal1_location = jnp.array([12.0, 8.0, 2.0])
-        self.goal1_radius = 2.0
-        self.goal2_location = jnp.array([4.0, 8.0, 2.0])
-        self.goal2_radius = 2.0
-
-        super().__init__(None, 1000, backend=backend)
-
-    @property
-    def achql_hps(self):
-        return super().achql_hps | { "multiplier_num_sgd_steps": 4,
-                                     "cost_scaling": 30.0,
-                                     "gamma_init_value": 0.4,
-                                     "hidden_cost_layer_sizes": (256, 256, 256, 64),
-                                    }
 
 
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):
