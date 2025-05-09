@@ -39,8 +39,7 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
     @property
     def crm_hps(self):
         return super().crm_hps | { "episode_length": 200,
-                                   "multiplier_num_sgd_steps": 4,
-                                   "cost_scaling": 5.0 }
+                                   "multiplier_num_sgd_steps": 4 }
     @property
     def achql_hps(self):
         return super().achql_hps | { "episode_length": 200,
@@ -162,7 +161,7 @@ class SimpleMaze3DUntil1(Until1Mixin, SimpleMaze3DTaskBase):
 
     @property
     def crm_hps(self):
-        return super().achql_hps | { "episode_length": 100 }
+        return super().crm_hps | { "episode_length": 100 }
 
     @property
     def achql_hps(self):

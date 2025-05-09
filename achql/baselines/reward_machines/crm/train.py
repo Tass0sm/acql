@@ -113,6 +113,7 @@ def train(
     randomization_fn: Optional[
       Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
     ] = None,
+    eval_environment: Optional[envs.Env] = None,
 ):
 
   process_id = jax.process_index()
@@ -487,8 +488,31 @@ def train(
   # Replay buffer init
   buffer_state = jax.pmap(replay_buffer.init)(jax.random.split(rb_key, local_devices_to_use))
 
+  if not eval_environment:
+    eval_environment = environment
+    eval_env = env
+  else:
+    if wrap_env:
+      eval_environment = OptionsWrapper(
+        eval_environment,
+        options,
+        discounting=discounting,
+      )
+
+      if isinstance(eval_environment, envs.Env):
+        wrap_for_training = envs.training.wrap
+      else:
+        wrap_for_training = envs_v1.wrappers.wrap_for_training
+
+      eval_env = wrap_for_training(
+        eval_environment,
+        episode_length=episode_length,
+        action_repeat=action_repeat,
+        randomization_fn=v_randomization_fn,
+      )
+
   evaluator = HierarchicalEvaluatorWithSpecification(
-    env,
+    eval_env,
     functools.partial(make_policy, deterministic=deterministic_eval),
     options,
     specification=specification,
