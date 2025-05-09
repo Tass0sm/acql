@@ -27,7 +27,7 @@ from achql.baselines.reward_machines.crm import train as crm
 from achql.tasks import get_task
 from achql.brax.utils import make_aut_goal_cmdp, make_reward_machine_mdp
 
-from achql.visualization.plots import make_plots_for_achql
+from achql.visualization.plots import make_plots_for_achql, make_plots_for_3d_achql
 
 
 def progress_fn(num_steps, metrics, *args, **kwargs):
@@ -46,12 +46,12 @@ def progress_fn_with_figs(num_steps, metrics, *args, **kwargs):
     network = kwargs["network"]
     params = kwargs["params"]
 
-    plots_1 = make_plots_for_achql(env, make_policy, network, params,
-                                   grid_size=50)
+    plots_1 = make_plots_for_3d_achql(env, make_policy, network, params,
+                                      grid_size=50)
 
     # plots_2 = make_plots_for_achql(env, make_policy, network, params,
     #                                grid_size=50,
-    #                                tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-5:].set(jnp.array([4., 12., 0., 0., 1.]))))
+    #                                tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-6:].set(jnp.array([4., 4., 0., 0., 1., 0.]))))
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         path = Path(tmp_dir, f"value_function_state1_{num_steps:09}.png")
@@ -65,10 +65,17 @@ def progress_fn_with_figs(num_steps, metrics, *args, **kwargs):
     #     path = Path(tmp_dir, f"value_function_state2_{num_steps:09}.png")
     #     plots_2[0][0].savefig(path)
     #     mlflow.log_artifact(path)
+    #     path = Path(tmp_dir, f"safety_function_state2_{num_steps:09}.png")
+    #     plots_2[1][0].savefig(path)
+    #     mlflow.log_artifact(path)
 
     for plot in plots_1:
         plt.close(plot[0])
         del plot
+
+    # for plot in plots_2:
+    #     plt.close(plot[0])
+    #     del plot
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         path = Path(tmp_dir, f"policy_params_{num_steps:09}")
@@ -247,7 +254,7 @@ def achql_train(run, task, seed, spec, margin=1.0):
         make_aut_goal_cmdp(task, margin=margin, randomize_goals=task.achql_hps["use_her"]),
         seed,
         train_fn=achql.train,
-        progress_fn=progress_fn_with_figs,
+        # progress_fn=progress_fn_with_figs,
         hyperparameters=task.achql_hps | { "network_type": "old_multihead" },
         extras={
             "options": options,
@@ -484,7 +491,23 @@ def crl_train(run, task, seed, spec):
 
 
 def main():
-    # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 3))
+    # train_for_all(["SimpleMaze"], ["Until2"], achql_train, "ACHQL", seed_range=(0, 3))
+
+    # train_for_all(["SimpleMaze3D"], ["LoopWithObs2"], achql_train, "ACHQL", seed_range=(2, 3))
+
+
+    # train_for_all(["AntMaze"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["ObligationConstraint3"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 5))
+
+    train_for_all(["AntMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, 5))
+
+
+
+    # train_for_all(["SimpleMaze"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, 1))
     # train_for_all(["SimpleMaze3D"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
     # train_for_all(["AntMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
 
@@ -533,8 +556,13 @@ def main():
     # train_for_all(["UR5eReach"], ["True"], ddpg_her_train, "DDPG_HER", seed_range=(0, 1))
     # train_for_all(["UR5eReach"], ["SingleSubgoal"], acddpg_train, "ACDDPG", seed_range=(0, 1))
 
-    train_for_all(["UR5ePushHard"], ["ObligationConstraint"], acddpg_train, "ACDDPG", seed_range=(0, 1), margin=0.05)
+    # train_for_all(["UR5ePushHard"], ["ObligationConstraint"], acddpg_train, "ACDDPG", seed_range=(0, 1), margin=0.05)
+    # train_for_all(["UR5ePushHard"], ["TwoSubgoals"], acddpg_train, "ACDDPG", seed_range=(0, 1), margin=0.05)
+    # train_for_all(["UR5ePushHard"], ["Branching1"], acddpg_train, "ACDDPG", seed_range=(0, 1), margin=0.05)
 
+    # train_for_all(["UR5ePushHard"], ["TwoSubgoals"], acddpg_train, "ACDDPG", seed_range=(1, 3), margin=0.05)
+    # train_for_all(["UR5ePushHard"], ["ObligationConstraint"], acddpg_train, "ACDDPG", seed_range=(1, 3), margin=0.05)
+    # train_for_all(["UR5ePushHard"], ["Branching1"], acddpg_train, "ACDDPG", seed_range=(1, 3), margin=0.05)
 
     # train_for_all(["SimpleMaze"], ["SingleSubgoal"], achql_train, "ACHQL", seed_range=(0, 1))
     # train_for_all(["SimpleMaze"], ["Until1"], achql_train, "ACHQL", seed_range=(0, 1))
@@ -548,5 +576,6 @@ def main():
 if __name__ == "__main__":
     mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
     mlflow.set_experiment("proj2-batch-training")
+    # mlflow.set_experiment("proj2-final-experiments")
 
     main()
