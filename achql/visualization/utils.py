@@ -256,6 +256,8 @@ def get_mdp_network_policy_and_params(training_run_id):
                 return get_sac_mdp_network_policy_and_params(task, run, params)
             case "CRM":
                 return get_rm_mdp_network_policy_and_params(task, run, params)
+            case "CRM_RS":
+                return get_rm_mdp_network_policy_and_params(task, run, params)
             case "CRM_WITH_MULTIHEAD":
                 return get_rm_with_multihead_mdp_network_policy_and_params(task, run, params)
             case "QRM":

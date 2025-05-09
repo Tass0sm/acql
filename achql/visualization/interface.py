@@ -38,6 +38,8 @@ def make_plots(training_run_id, **kwargs):
                 return make_plots_for_hdqn(mdp, network, params, **kwargs)
             case "CRM":
                 return make_plots_for_hdqn(mdp, network, params, **kwargs)
+            case "CRM_RS":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
             case "CRM_WITH_MULTIHEAD":
                 return make_plots_for_hdqn(mdp, network, params, **kwargs)
             case "DDPG":
