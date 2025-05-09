@@ -37,7 +37,7 @@ class OptionsWrapper(Wrapper):
         elif recursive_is_instance(env, AutomatonGoalConditionedWrapper):
             self.extra_adapter = lambda x: x[..., :env.no_goal_obs_dim]
         elif recursive_is_instance(env, AutomatonRewardMachineWrapper):
-            self.extra_adapter = lambda x: x[..., :env.no_goal_obs_dim]
+            self.extra_adapter = lambda x: x[..., :env.state_dim]
         # elif hasattr(env, "automaton") and hasattr(env, "strip_goal_obs") and env.strip_goal_obs and env.augment_obs:
         #     self.extra_adapter = env.original_obs
         # elif hasattr(env, "automaton") and env.augment_obs:
