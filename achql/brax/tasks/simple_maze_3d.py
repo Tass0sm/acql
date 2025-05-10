@@ -34,17 +34,17 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
         return self.get_hard_coded_options()
 
     def get_hard_coded_options(self):
-        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
 
     @property
     def crm_hps(self):
-        return super().crm_hps | { "episode_length": 200,
+        return super().crm_hps | { "episode_length": 100,
                                    "multiplier_num_sgd_steps": 4 }
     @property
     def achql_hps(self):
-        return super().achql_hps | { "episode_length": 200,
+        return super().achql_hps | { "episode_length": 100,
                                      "multiplier_num_sgd_steps": 4,
-                                     "cost_scaling": 5.0 }
+                                     "cost_scaling": 10.0 }
 
 
 
@@ -156,17 +156,6 @@ class SimpleMaze3DUntil1(Until1Mixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    def get_hard_coded_options(self):
-        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
-
-    @property
-    def crm_hps(self):
-        return super().crm_hps | { "episode_length": 100 }
-
-    @property
-    def achql_hps(self):
-        return super().achql_hps | { "episode_length": 100 }
-
 
 class SimpleMaze3DUntil2(Until1Mixin, SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
@@ -179,17 +168,6 @@ class SimpleMaze3DUntil2(Until1Mixin, SimpleMaze3DTaskBase):
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
-
-    def get_hard_coded_options(self):
-        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
-
-    @property
-    def crm_hps(self):
-        return super().crm_hps | { "episode_length": 100 }
-
-    @property
-    def achql_hps(self):
-        return super().achql_hps | { "episode_length": 100 }
 
 
 class SimpleMaze3DLoop(LoopMixin, SimpleMaze3DTaskBase):

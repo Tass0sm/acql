@@ -301,6 +301,14 @@ class AntMazeLoop(LoopMixin, AntMazeTaskBase):
 
 
 class AntMazeLoopWithObs(LoopWithObsMixin, AntMazeTaskBase):
+    def _build_env(self, backend: str) -> GoalConditionedEnv:
+        env = AntMaze(
+            terminate_when_unhealthy=True,
+            maze_layout_name="open_maze",
+            backend=backend
+        )
+        return env
+
     def __init__(self, backend="mjx"):
         self.obs1_location = jnp.array([8.0, 8.0])
         self.obs1_radius = 2.0
@@ -311,3 +319,11 @@ class AntMazeLoopWithObs(LoopWithObsMixin, AntMazeTaskBase):
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
+    @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 1000 }
+
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "episode_length": 1000 }
