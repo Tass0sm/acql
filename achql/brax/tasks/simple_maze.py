@@ -38,6 +38,10 @@ class SimpleMazeTaskBase(BraxTaskBase):
         return load_hard_coded_xy_point_options(termination_policy=FixedLengthTerminationPolicy(5))
 
     @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 200 }
+
+    @property
     def crm_hps(self):
         return super().crm_hps | { "episode_length": 200 }
 

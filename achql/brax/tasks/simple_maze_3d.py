@@ -37,6 +37,10 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
 
     @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 100,
+                                    "multiplier_num_sgd_steps": 4 }
+    @property
     def crm_hps(self):
         return super().crm_hps | { "episode_length": 100,
                                    "multiplier_num_sgd_steps": 4 }
@@ -45,7 +49,6 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
         return super().achql_hps | { "episode_length": 100,
                                      "multiplier_num_sgd_steps": 4,
                                      "cost_scaling": 10.0 }
-
 
 
 class SimpleMaze3DNav(SimpleMaze3DTaskBase):

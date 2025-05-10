@@ -157,17 +157,18 @@ class BraxTaskBase(TaskBase):
     @property
     def hdqn_hps(self):
         return {
-            "num_timesteps": 10_000_000,
-            "reward_scaling": 1,
+            "num_timesteps": 5_000_000,
+            "reward_scaling": 10.0,
             "num_evals": 50,
             "episode_length": 1000,
             "normalize_observations": True,
             "action_repeat": 1,
-            "discounting": 0.97,
+            "discounting": 0.99,
             "learning_rate": 1e-4,
-            "num_envs": 128,
+            "num_envs": 256,
             "batch_size": 256,
-            "grad_updates_per_step": 1,
+            "unroll_length": 62,
+            "multiplier_num_sgd_steps": 1,
         }
 
     @property
