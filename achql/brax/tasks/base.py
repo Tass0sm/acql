@@ -167,7 +167,6 @@ class BraxTaskBase(TaskBase):
             "learning_rate": 1e-4,
             "num_envs": 256,
             "batch_size": 256,
-            "unroll_length": 62,
             "multiplier_num_sgd_steps": 1,
         }
 

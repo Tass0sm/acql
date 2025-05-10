@@ -24,6 +24,7 @@ from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
 from achql.brax.utils import recursive_is_instance
 from achql.brax.envs.wrappers.automaton_multi_goal_conditioned_wrapper import AutomatonMultiGoalConditionedWrapper
 from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
+from achql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
 
 
 def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, seed=0):
@@ -34,6 +35,8 @@ def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, 
         extra_adapter = lambda x: x[..., :env.no_goal_obs_dim]
     elif recursive_is_instance(env, AutomatonGoalConditionedWrapper):
         extra_adapter = lambda x: x[..., :env.no_goal_obs_dim]
+    elif recursive_is_instance(env, AutomatonRewardMachineWrapper):
+        extra_adapter = lambda x: x[..., :env.state_dim]
     else:
         extra_adapter = lambda x: x
 

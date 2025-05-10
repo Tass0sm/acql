@@ -19,6 +19,8 @@ from achql.brax.agents.acddpg import networks as acddpg_networks
 from achql.brax.agents.sac_her import networks as sac_networks
 from achql.brax.agents.ddpg import networks as ddpg_networks
 
+from achql.baselines.logical_options_framework.visualization import get_lof_option_mdp_network_policy_and_params
+
 from achql.scripts.multihead_exp_train import make_network_factory as make_rm_multihead_network_factory
 
 from achql.tasks.utils import get_task_by_name
@@ -121,6 +123,8 @@ def get_hdqn_her_for_aut_mdp_network_policy_and_params(task, run, params):
     make_policy = hdq_networks.make_inference_fn(hdq_network)
 
     return mdp, options, hdq_network, make_option_policy, make_policy, params
+
+
 
 
 def get_ddpg_mdp_network_policy_and_params(task, run, params):
@@ -238,6 +242,10 @@ def get_mdp_network_policy_and_params(training_run_id):
 
     # %%
     run = mlflow.get_run(run_id=training_run_id)
+
+    if (task_name := run.data.tags.get("task_name", None)) is not None:
+        task = get_task_by_name(task_name)
+        return get_lof_option_mdp_network_policy_and_params(task, run, params)
 
     alg_name = run.data.tags["alg"]
     task_name = run.data.tags["spec"]

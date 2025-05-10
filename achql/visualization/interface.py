@@ -15,7 +15,11 @@ def make_plots(training_run_id, **kwargs):
     mdp, options, network, make_option_policy, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
 
     run = mlflow.get_run(run_id=training_run_id)
-    alg_name = run.data.tags["alg"]
+
+    if (task_name := run.data.tags.get("task_name", None)) is not None:
+        alg_name = "HDQN"
+    else:
+        alg_name = run.data.tags["alg"]
 
     match alg_name:
             case "ACHQL":
@@ -30,6 +34,8 @@ def make_plots(training_run_id, **kwargs):
                 return make_plots_for_acddpg(mdp, make_policy, network, params, **kwargs)
             case "HDCQN_AUTOMATON_HER":
                 return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+            case "HDQN":
+                return make_plots_for_hdqn(mdp, network, params, **kwargs)
             case "HDQN_HER_FOR_AUT":
                 return make_plots_for_hdqn(mdp, network, params, **kwargs)
             case "QRM":

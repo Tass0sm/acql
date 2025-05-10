@@ -1,0 +1,66 @@
+from brax.training import types
+from brax.training.acme import running_statistics
+import jax.numpy as jnp
+
+from achql.brax.agents.hdqn import networks as hdq_networks
+from achql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton
+from achql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
+from achql.baselines.logical_options_framework.train import partition
+
+
+Metrics = types.Metrics
+
+
+
+
+def get_lof_option_mdp_network_policy_and_params(task, run, params):
+    options = task.get_options()
+
+    if run.data.params["normalize_observations"] == "True":
+        normalize_fn = running_statistics.normalize
+    else:
+        normalize_fn = lambda x, y: x
+
+    full_automaton = JaxAutomaton(task.lo_spec, task.obs_var)
+
+    no_goal_aps, goal_aps = partition(lambda _, v: "goal" in v.info, full_automaton.aps)
+
+    max_param_dim = max([ap.info["goal"].size for ap in goal_aps.values()])
+    automaton_ap_params = jnp.zeros((full_automaton.n_aps, max_param_dim))
+    for k, ap in full_automaton.aps.items():
+        if k in goal_aps:
+            dim = ap.info["goal"].size
+            automaton_ap_params = automaton_ap_params.at[k, :dim].set(ap.info["goal"])
+        elif ap.default_params is not None:
+            dim = ap.default_params.size
+            automaton_ap_params = automaton_ap_params.at[k, :dim].set(ap.default_params)
+
+    reward_safety_violation = -1000
+    reward_safety_matrix = jnp.zeros((2**full_automaton.n_aps,))
+    for k in no_goal_aps:
+        for i in range(2**full_automaton.n_aps):
+            if jnp.bitwise_and(i, k) > 0:
+                reward_safety_matrix = reward_safety_matrix.at[i].set(reward_safety_violation)
+
+    def safety_reward_function(action, nobs):
+        labels = full_automaton.eval_aps(action, nobs, automaton_ap_params)
+        return reward_safety_matrix[labels]
+
+    ap_for_option = next(filter(lambda x: x.info["name"] == run.data.tags["ap_name"], goal_aps.values()))
+
+    mdp = LOFWrapper(task.env,
+                     task.obs_var,
+                     ap_for_option,
+                     safety_reward_function,
+                     distance_cost=True)
+
+    hdq_network = hdq_networks.make_hdq_networks(
+          mdp.observation_size,
+          mdp.action_size,
+          options=options,
+          preprocess_observations_fn=normalize_fn,
+    )
+    make_option_policy = hdq_networks.make_option_inference_fn(hdq_network)
+    make_policy = hdq_networks.make_inference_fn(hdq_network)
+
+    return mdp, options, hdq_network, make_option_policy, make_policy, params

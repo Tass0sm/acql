@@ -745,7 +745,7 @@ def make_inference_fn1(env, logical_options, options, start_states):
 
                 # at lower level, the automaton obs isn't important.
                 # ignore info for now
-                lower_options, _ = jax.lax.switch(o_t, [o.inference for o in logical_options], env.original_obs(s_t), high_key)
+                lower_options, _ = jax.lax.switch(o_t, [o.inference for o in logical_options], env._original_obs(s_t), high_key)
                 
                 return lower_options, {}
       

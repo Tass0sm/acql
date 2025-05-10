@@ -53,6 +53,8 @@ def get_logical_option_run_ids(task_name, seed):
         ("SimpleMazeTwoSubgoals", 1): ["d9cfefe273744f12aa371265d1e2944d", "c570bf3774694dc2a7e9627aec81231a"],
         ("SimpleMazeTwoSubgoals", 2): ["b37c26d8bc2645b9a710e18f735d8b25", "36055cb35c3b4966992a627f7aeb5dda"],
 
+        ("SimpleMazeUntil2", 0): ["50a47e077f8d435d8aa90404d68f4bed", "2161a861f62d4439b4f439466617534c"],
+
         ("SimpleMaze3DTwoSubgoals", 0): ["def0481071e1485e942a37eb6ae3d123", "496bc0f8e01b47c39602b77837946d0b"],
         ("SimpleMaze3DTwoSubgoals", 1): ["c15732b4d5444f91b7c97d38b70f95a8", "8168d6f1a1af404594bd4df0f843529d"],
         ("SimpleMaze3DTwoSubgoals", 2): ["7a2825234a2d4b2c8ecf10db3734c449", "1998df693fe84e329891edf347c2009e"],
@@ -75,7 +77,7 @@ def get_logical_option_run_ids(task_name, seed):
         ("AntMazeObligationConstraint3", 2): ["e4184c8092a84fe697519675b3c1539b"],
     }
 
-    return lo_run_ids_dict[(task_name, seed)]
+    return lo_run_ids_dict.get((task_name, seed), None)
 
 
 def get_logical_options(
