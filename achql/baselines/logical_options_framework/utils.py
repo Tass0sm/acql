@@ -34,7 +34,7 @@ from achql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWr
 from achql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
 
 from achql.stl import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
-from achql.stl as stl
+import achql.stl as stl
 
 from achql.baselines.logical_options_framework.train import partition, load_logical_options
 
