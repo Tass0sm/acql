@@ -45,6 +45,10 @@ class AntMazeTaskBase(BraxTaskBase):
         raise NotImplementedError()
 
     @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 250 }
+
+    @property
     def crm_hps(self):
         return super().crm_hps | { "episode_length": 250 }
 
