@@ -19,7 +19,10 @@ from achql.brax.agents.acddpg import networks as acddpg_networks
 from achql.brax.agents.sac_her import networks as sac_networks
 from achql.brax.agents.ddpg import networks as ddpg_networks
 
-from achql.baselines.logical_options_framework.visualization import get_lof_option_mdp_network_policy_and_params
+from achql.baselines.logical_options_framework.visualization import (
+    get_lof_option_mdp_network_policy_and_params,
+    get_lof_mdp_network_policy_and_params
+)
 
 from achql.scripts.multihead_exp_train import make_network_factory as make_rm_multihead_network_factory
 
@@ -278,6 +281,8 @@ def get_mdp_network_policy_and_params(training_run_id):
                 return get_ddpg_mdp_network_policy_and_params(task, run, params)
             case "PPO":
                 return get_ppo_mdp_network_policy_and_params(task, run, params)
+            case "LOF":
+                return get_lof_mdp_network_policy_and_params(task, run, params)
             case _:
                 raise NotImplementedError(f"{alg_name} not supported")
 

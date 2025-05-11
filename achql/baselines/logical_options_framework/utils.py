@@ -53,6 +53,12 @@ def get_logical_option_run_ids(task_name, seed):
         # ("SimpleMazeTwoSubgoals", 1): ["d9cfefe273744f12aa371265d1e2944d", "c570bf3774694dc2a7e9627aec81231a"],
         # ("SimpleMazeTwoSubgoals", 2): ["b37c26d8bc2645b9a710e18f735d8b25", "36055cb35c3b4966992a627f7aeb5dda"],
         # ("SimpleMazeUntil2", 0): ["50a47e077f8d435d8aa90404d68f4bed", "2161a861f62d4439b4f439466617534c"],
+        ("SimpleMazeLoopWithObs", 0): ["0307b27d6d5241abb0bdeda7d277e3d8", "7a20996353484f7aaab22fe9464941f9"],
+        ("SimpleMazeLoopWithObs", 1): ["aa33459fd44941ada12e681e0617b1f3", "d1bb96c20e9c43aa8be4a2eae734ff3d"],
+        ("SimpleMazeLoopWithObs", 2): ["ce73a3d09e09482fba19a1e4ee63498b", "5e50dbf13d9e42558ee921b51be0a8b1"],
+        ("SimpleMazeLoopWithObs", 3): ["1f8be0fa1dff44debf8e37ab01ff8664", "3c8dc5a023f24832b9540bc4a00634e6"],
+        ("SimpleMazeLoopWithObs", 4): ["56530129fc1c4c49a703be53bcd53605", "3f54899feaf64caf8f1772a44d1393ac"],
+
 
         # ("SimpleMaze3DTwoSubgoals", 0): ["def0481071e1485e942a37eb6ae3d123", "496bc0f8e01b47c39602b77837946d0b"],
         # ("SimpleMaze3DTwoSubgoals", 1): ["c15732b4d5444f91b7c97d38b70f95a8", "8168d6f1a1af404594bd4df0f843529d"],
@@ -64,6 +70,12 @@ def get_logical_option_run_ids(task_name, seed):
         # ("SimpleMaze3DObligationConstraint2", 1): ["db42593655be47fbae570418bda2ebe4"],
         # ("SimpleMaze3DObligationConstraint2", 2): ["dc9cb40588dd4596b02d59a533745ad7"],
         # ("SimpleMaze3DObligationConstraint3", 0): ["7699e861c6544772882c7c2ec806b577"],
+        ("SimpleMaze3DLoopWithObs", 0): ["7927312a1ca149bf914f941754351bdf", "9ce829843de646a594833b0b43b77897"],
+        ("SimpleMaze3DLoopWithObs", 1): ["bc2a4c1282e34e5ea42467d7336a23fd", "43b6823cc52a495cb48fc1c34985e9d4"],
+        ("SimpleMaze3DLoopWithObs", 2): ["fb93d90eec37495d99e37f21ea18300c", "3e8f190e0ce545cdb0fbfb83788e1f79"],
+        ("SimpleMaze3DLoopWithObs", 3): ["e24dc28a756f49eaa148d6e320ccfb46", "486424d7f91645b291cfd18c06e2d6e9"],
+        ("SimpleMaze3DLoopWithObs", 4): ["a62708127f0e4828916463ca78413d17", "ba29e952fc6e41e0bbc4697bdc9d400e"],
+
 
         # ("AntMazeTwoSubgoals", 0): ["731ee5b9391249cd98add1b8049cab4c", "90739cab34244620b6fc70bbabc504de"],
         # ("AntMazeTwoSubgoals", 1): ["2d5ee614fde54ae2adb69bb5e6a53c83", "7db38d2d1afe49b880e45f35e84b1add"],
@@ -74,6 +86,15 @@ def get_logical_option_run_ids(task_name, seed):
         # ("AntMazeObligationConstraint3", 0): ["ceadd5cc14da408c86bf0e2f4fa2c179"],
         # ("AntMazeObligationConstraint3", 1): ["3046f9b8b8154a55b80a27dda8383836"],
         # ("AntMazeObligationConstraint3", 2): ["e4184c8092a84fe697519675b3c1539b"],
+
+        ("AntMazeLoopWithObs", 0): ["875fda3294a74904b40435136861c136", "8ee9569ec2f847898775b28a86ac1211"],
+        ("AntMazeLoopWithObs", 1): ["49a762fab7db4b4f97b374b084202234", "6bfc406bcde64c24b2fcf5219b083d91"],
+        ("AntMazeLoopWithObs", 2): ["c2ab45f7a60741b1b706641321388100", "d4886c5223734cf9b5f0e24d05cf759a"],
+        ("AntMazeLoopWithObs", 3): ["d4886c5223734cf9b5f0e24d05cf759a", "189cbcf29d87468d8d14b1522807afc7"],
+        ("AntMazeLoopWithObs", 4): ["32b38fee2a7049658e3c0759ab99934f", "c8121ffe4cf741319bf44ca51f399342"],
+
+
+
     }
 
     return lo_run_ids_dict.get((task_name, seed), None)

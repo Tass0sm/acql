@@ -17,25 +17,91 @@ from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecif
 
 from achql.hierarchy.envs.options_wrapper import OptionsWrapper
 from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from achql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
 from achql.visualization.utils import get_mdp_network_policy_and_params
 from achql.visualization import hierarchy, flat
 
 
-def main():
+def get_group(env, spec, alg):
+    runs = mlflow.search_runs(
+        filter_string=f"tags.env = '{env}' and tags.spec = '{spec}' and tags.alg = '{alg}'"
+    )
 
-    # SimpleMaze:
+    return runs
+
+
+def main():
+    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    
+    for env, spec in [("SimpleMaze", "SimpleMazeLoopWithObs"),
+                      ("SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
+                      # ("AntMaze", "AntMazeLoopWithObs")
+                      ]:
+        for alg in ["LOF", "CRM_RS", "ACHQL"]:
+
+            if alg == "LOF":
+                mlflow.set_experiment("proj2-lof-final-experiments")
+
+                group = get_group(env, spec, alg)
+
+                # use the five most recent (tentative)
+                group = group.iloc[:5]
+
+                run_ids = group["run_id"].tolist()
+
+                print(spec, alg)
+                print(group)
+
+                loop_eval_for_lof_training_run_ids(run_ids)
+
+            else:
+                mlflow.set_experiment("proj2-final-experiments")
+                group = get_group(env, spec, alg)
+    
+                # use the five most recent (tentative)
+                group = group.iloc[:5]
+    
+                run_ids = group["run_id"].tolist()
+    
+                print(spec, alg)
+                print(group)
+    
+                loop_eval_for_training_run_ids(run_ids)
+    
+
+def loop_eval_for_lof_training_run_ids(training_run_ids):
+    rs = []
+    srs = []
+    for seed, training_run_id in enumerate(training_run_ids):
+        num_loops, success_rate = lof_evaluate_for_run_and_seed(training_run_id, seed)
+        print(f"{seed} - {num_loops} - {success_rate}")
+
+        rs.append(num_loops)
+        srs.append(success_rate)
+
+    rs = jnp.array(rs)
+    srs = jnp.array(srs)
+
+    print(f"Num Loops: {rs.mean()} +- {rs.std()}")
+    print(f"Success Rate: {srs.mean()} +- {srs.std()}")
+
+    return rs, srs
+
+
+def loop_eval_for_training_run_ids(training_run_ids):
+
+    # # SimpleMaze:
     # training_run_ids = ["60381ad329ce430b89b42c77735ddb58",
     #                     "3283f5d0c5ca4ccaa117e6b392a6eea0",
     #                     "2b7114b0e259452a9cc8c8c20b43061f",
     #                     "837be13827d9485fa3ade7441040db48",
     #                     "2173dddaebf4450ca8daceb9bb745a20"]
 
-    # SimpleMaze3D:
-    training_run_ids = ["53632e8fafb34899b35238f0caa1481d",
-                        "9751a09445c944cd9930820b67609b43",
-                        "230b8f32ec0c41eb98cdd9641ac69597",
-                        "a3b14cd0a16644d58364749841ca1f6d",
-                        "e6d8daa8ab99461d940132234de4634e"]
+    # # SimpleMaze3D:
+    # training_run_ids = ["d4b21617668c435fad73dad337419876"]
+
+    # # SimpleMaze3D:
+    # training_run_ids = ["d4b21617668c435fad73dad337419876"]
 
     rs = []
     srs = []
@@ -53,6 +119,23 @@ def main():
     print(f"Success Rate: {srs.mean()} +- {srs.std()}")
 
     return rs, srs
+
+
+def lof_evaluate_for_run_and_seed(training_run_id, seed):
+    # process_id = jax.process_index()
+    global_key, local_key = jax.random.split(jax.random.PRNGKey(seed))
+    # local_key = jax.random.fold_in(local_key, process_id)
+    _, _, _, eval_key = jax.random.split(local_key, 4)
+
+    run = mlflow.get_run(run_id=training_run_id)
+
+    task = get_task_by_name(run.data.tags["spec"])
+
+    assert "Loop" in run.data.tags["spec"], "Expecting a training run for a loop task"
+
+    mdp, logical_options, _, network, _, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
+
+    return lof_evaluate(task, mdp, run, training_run_id, make_policy, logical_options, eval_key)
 
 
 def evaluate_for_run_and_seed(training_run_id, seed):
@@ -85,13 +168,13 @@ def hierarchical_evaluate(task, mdp, run, training_run_id, make_option_policy, o
 
     eval_env = wrap_for_training(
             eval_environment,
-            episode_length=200,
+            episode_length=1000,
             action_repeat=1,
     )
 
     safety_phi = task.lo_spec.children[1]
 
-    evaluator = HierarchicalEvaluatorWithSpecification(
+    evaluator = LOFEvaluatorWithSpecification(
             eval_env,
             functools.partial(make_option_policy, deterministic=True),
             options,
@@ -157,6 +240,84 @@ def hierarchical_evaluate(task, mdp, run, training_run_id, make_option_policy, o
 
     return run_final_eval(evaluator, loop_counter, training_run_id, mdp)
 
+
+def lof_evaluate(task, mdp, run, training_run_id, make_option_policy, logical_options, eval_key):
+
+    wrap_for_training = envs.training.wrap
+
+    eval_env = wrap_for_training(
+        mdp,
+        episode_length=1000,
+        action_repeat=1,
+    )
+
+    safety_phi = task.lo_spec.children[1]
+
+    evaluator = LOFEvaluatorWithSpecification(
+            eval_env,
+            functools.partial(make_option_policy, deterministic=True),
+            logical_options,
+            specification=safety_phi,
+            state_var=task.obs_var,
+            num_eval_envs=16,
+            episode_length=200,
+            action_repeat=1,
+            key=eval_key,
+            return_states=True
+    )
+
+    def loop_counter(transitions):
+        transitions = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), transitions)
+        obs = transitions.observation[..., :mdp.original_obs_dim]
+
+        # goal_aps, assuming that goal_ap[0] is the first point the robot reaches
+        _, goal_aps = partition(lambda _, v: "goal" in v.info, mdp.automaton.aps)
+        made_loop_phi = stl.STLAnd(goal_aps[0],
+                                   stl.STLNext(stl.STLUntimedEventually(
+                                       stl.STLAnd(goal_aps[1],
+                                                  stl.STLNext(stl.STLUntimedEventually(
+                                                      goal_aps[0]))))))
+
+        ap_param_fields = {}
+        if hasattr(mdp, "randomize_goals") and getattr(mdp, "randomize_goals", False):
+            for _, ap in mdp.automaton.aps.items():
+                i = 32 + ap.info["ap_i"]
+                ap_param_fields[i] = eval_state.info["ap_params"][:, 0]
+
+        robustness_traces = jax.vmap(made_loop_phi)({ task.obs_var.idx: obs,
+                                                      # "action": data.action
+                                                    } | ap_param_fields)
+
+        def count_continuous_subsequences(xs):
+            def f(carry, x):
+                dist_since_positive, count = carry
+
+                def increment_and_reset():
+                    return (0, count + 1)
+
+                def reset():
+                    return (0, count)
+
+                def move_on():
+                    return (dist_since_positive + 1, count)
+
+                return jax.lax.cond(
+                    x > 0,
+                    lambda: jax.lax.cond(dist_since_positive > 4,
+                                         increment_and_reset,
+                                         reset),
+                    move_on), None
+
+            (_, count), _ = jax.lax.scan(f, (10, 0), xs)
+
+            return count
+
+        num_loops = jax.vmap(count_continuous_subsequences)(robustness_traces)
+
+        return num_loops
+
+
+    return run_final_eval(evaluator, loop_counter, training_run_id, mdp)
 
 
 

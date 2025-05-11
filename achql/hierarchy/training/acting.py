@@ -91,7 +91,8 @@ def generate_unroll(
     options: Sequence[Option],
     key: PRNGKey,
     unroll_length: int,
-    extra_fields: Sequence[str] = ()
+    extra_fields: Sequence[str] = (),
+    return_states: bool = False,
 ) -> Tuple[State, HierarchicalTransition]:
   """Collect trajectories of given unroll_length."""
 
@@ -102,7 +103,10 @@ def generate_unroll(
     nstate, next_option_state, transition = actor_step(
         env, state, option_state, policy, options, current_key, extra_fields=extra_fields
     )
-    return (nstate, next_option_state, next_key), transition
+    if return_states:
+      return (nstate, next_option_state, next_key), (state, transition)
+    else:
+      return (nstate, next_option_state, next_key), transition
 
   (final_state, final_option_state, _), data = jax.lax.scan(
       f, (env_state, option_state, key), (), length=unroll_length)

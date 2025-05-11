@@ -39,6 +39,7 @@ class LOFEvaluatorWithSpecification(Evaluator):
           action_repeat: int,
           key: PRNGKey,
           low_step_limit: Optional[int] = None,
+          return_states: bool = False,
   ):
       self._key = key
       self._eval_walltime = 0.
@@ -66,10 +67,13 @@ class LOFEvaluatorWithSpecification(Evaluator):
               options,
               key,
               unroll_length=episode_length // action_repeat,
+              return_states=return_states,
           )
 
       self._generate_eval_unroll = jax.jit(generate_eval_unroll)
       self._steps_per_unroll = episode_length * num_eval_envs
+
+      self._return_states = return_states
 
       self.specification = specification
       self.state_var = state_var
@@ -79,13 +83,19 @@ class LOFEvaluatorWithSpecification(Evaluator):
   def run_evaluation(self,
                      policy_params: PolicyParams,
                      training_metrics: Metrics,
-                     aggregate_episodes: bool = True) -> Metrics:
+                     aggregate_episodes: bool = True,
+                     return_data: bool = False) -> Metrics:
     """Run one epoch of evaluation."""
     self._key, unroll_key = jax.random.split(self._key)
 
     t = time.time()
 
-    eval_state, eval_option_state, data = self._generate_eval_unroll(policy_params, unroll_key)
+    eval_state, eval_option_state, all_data = self._generate_eval_unroll(policy_params, unroll_key)
+
+    if self._return_states:
+      states, data = all_data
+    else:
+      data = all_data
 
     # put the batch dim first
     data = jax.tree_util.tree_map(lambda x: jnp.swapaxes(x, 0, 1), data)
@@ -140,4 +150,8 @@ class LOFEvaluatorWithSpecification(Evaluator):
         **metrics
     }
 
-    return metrics  # pytype: disable=bad-return-type  # jax-ndarray
+    if return_data:
+      eval_state.info.update(eval_metrics=eval_metrics)
+      return metrics, eval_state, all_data
+    else:
+      return metrics  # pytype: disable=bad-return-type  # jax-ndarray
