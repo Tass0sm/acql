@@ -38,17 +38,21 @@ def lof_train(run, task, seed, spec, reward_shaping=False):
 
 
 def main():
-    # train_for_all(["SimpleMaze"], ["Until2"], lof_train, "LOF", seed_range=(0, 1))
-    # train_for_all(["SimpleMaze"], ["Until1"], lof_train, "LOF", seed_range=(0, 1))
-    # train_for_all(["SimpleMaze"], ["LoopWithObs"], lof_train, "LOF", seed_range=(0, 1))
+    # train_for_all(["SimpleMaze"], ["Until1"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["Until2"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["LoopWithObs"], lof_train, "LOF", seed_range=(0, 5))
 
-    train_for_all(["SimpleMaze"], ["Until1"], lof_train, "LOF", seed_range=(1, 5))
-    train_for_all(["SimpleMaze"], ["Until2"], lof_train, "LOF", seed_range=(1, 5))
-    train_for_all(["SimpleMaze"], ["LoopWithObs"], lof_train, "LOF", seed_range=(1, 5))
+    # train_for_all(["SimpleMaze3D"], ["Until1"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["Until2"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], lof_train, "LOF", seed_range=(0, 5))
 
-    train_for_all(["SimpleMaze3D"], ["Until1"], lof_train, "LOF", seed_range=(1, 5))
-    train_for_all(["SimpleMaze3D"], ["Until2"], lof_train, "LOF", seed_range=(1, 5))
-    train_for_all(["SimpleMaze3D"], ["LoopWithObs"], lof_train, "LOF", seed_range=(1, 5))
+    train_for_all(["SimpleMaze"], ["TwoSubgoals"], lof_train, "LOF", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["Branching1"], lof_train, "LOF", seed_range=(0, 5))
+    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], lof_train, "LOF", seed_range=(0, 5))
+
+    train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], lof_train, "LOF", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["Branching1"], lof_train, "LOF", seed_range=(0, 5))
+    train_for_all(["SimpleMaze3D"], ["ObligationConstraint1"], lof_train, "LOF", seed_range=(0, 5))
 
 
 
