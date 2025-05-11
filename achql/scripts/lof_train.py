@@ -17,6 +17,19 @@ def lof_train(run, task, seed, spec, reward_shaping=False):
     options = task.get_options()
     spec_tag = type(task).__name__
 
+    if "AntMaze" in spec_tag:
+
+        # The lof wrapper already gets rid of the goal. For the other two envs, an
+        # adapter is unnecessary
+
+        def override_adapter(option):
+            new_adapter = lambda x: x[2:]
+            option.obs_adapter = new_adapter
+
+        for o in options:
+            override_adapter(o)
+
+
     return training_run(
         run.info.run_id,
         task.env,
@@ -46,13 +59,21 @@ def main():
     # train_for_all(["SimpleMaze3D"], ["Until2"], lof_train, "LOF", seed_range=(0, 5))
     # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], lof_train, "LOF", seed_range=(0, 5))
 
-    train_for_all(["SimpleMaze"], ["TwoSubgoals"], lof_train, "LOF", seed_range=(0, 5))
-    train_for_all(["SimpleMaze"], ["Branching1"], lof_train, "LOF", seed_range=(0, 5))
-    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["Branching1"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze"], ["ObligationConstraint1"], lof_train, "LOF", seed_range=(0, 5))
 
-    train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], lof_train, "LOF", seed_range=(0, 5))
-    train_for_all(["SimpleMaze3D"], ["Branching1"], lof_train, "LOF", seed_range=(0, 5))
-    train_for_all(["SimpleMaze3D"], ["ObligationConstraint1"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["Branching1"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["SimpleMaze3D"], ["ObligationConstraint1"], lof_train, "LOF", seed_range=(0, 5))
+
+    # train_for_all(["AntMaze"], ["Until1"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["Until2"], lof_train, "LOF", seed_range=(0, 5))
+    # train_for_all(["AntMaze"], ["LoopWithObs"], lof_train, "LOF", seed_range=(0, 5))
+
+    train_for_all(["AntMaze"], ["TwoSubgoals"], lof_train, "LOF", seed_range=(0, 5))
+    train_for_all(["AntMaze"], ["Branching1"], lof_train, "LOF", seed_range=(0, 5))
+    train_for_all(["AntMaze"], ["ObligationConstraint1"], lof_train, "LOF", seed_range=(0, 5))
 
 
 
