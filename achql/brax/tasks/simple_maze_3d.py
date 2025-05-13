@@ -30,11 +30,11 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
         self.wp_var = Var("wp", idx=0, dim=3)
         self.obs_var = Var("obs", idx=0, dim=self.env.state_dim, position=(0, 3))
 
-    def get_options(self):
-        return self.get_hard_coded_options()
+    def get_options(self, length=5):
+        return self.get_hard_coded_options(length=length)
 
-    def get_hard_coded_options(self):
-        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
+    def get_hard_coded_options(self, length=5):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(length))
 
     @property
     def hdqn_hps(self):
@@ -44,11 +44,12 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
     def crm_hps(self):
         return super().crm_hps | { "episode_length": 100,
                                    "multiplier_num_sgd_steps": 4 }
-    @property
-    def achql_hps(self):
-        return super().achql_hps | { "episode_length": 100,
-                                     "multiplier_num_sgd_steps": 4,
-                                     "cost_scaling": 10.0 }
+
+    # @property
+    # def achql_hps(self):
+    #     return super().achql_hps | { # "episode_length": 100,
+    #                                  "multiplier_num_sgd_steps": 4,
+    #                                  "cost_scaling": 10.0 }
 
 
 class SimpleMaze3DNav(SimpleMaze3DTaskBase):
@@ -113,6 +114,14 @@ class SimpleMaze3DBranching1(Branching1Mixin, SimpleMaze3DTaskBase):
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
+    def get_hard_coded_options(self, length=None):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+
+    @property
+    def achql_hps(self):
+        return super().achql_hps | { "episode_length": 200,
+                                     "multiplier_num_sgd_steps": 1 }
 
 
 class SimpleMaze3DObligationConstraint1(ObligationConstraint1Mixin, SimpleMaze3DTaskBase):

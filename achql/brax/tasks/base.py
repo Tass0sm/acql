@@ -199,7 +199,7 @@ class BraxTaskBase(TaskBase):
             "min_replay_size": 1000,
             "use_her": True,
             "actor_type": "argmax_safest",
-            "network_type": "default",
+            "network_type": "old_multihead",
         }
 
     @property
