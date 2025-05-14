@@ -163,6 +163,14 @@ def make_plots_for_achql(
     #     fig1.savefig(f"figures/value_function_{label}.svg", format="svg", bbox_inches='tight', pad_inches=0)
     #     plt.close(fig1)
 
+    if use_sum_cost_critic:
+        bound_kwargs = {}
+    else:
+        bound_kwargs = {
+            "vmin": -1.0,
+            "vmax": 1.0,
+        }
+
     fig2, ax2 = plot_function_grid(
         X, Y,
         x_min, x_max,
@@ -171,8 +179,7 @@ def make_plots_for_achql(
         start_position, goal_position,
         f"Cost - {label}",
         with_dressing=with_dressing,
-        vmin=-1.0,
-        vmax=1.0,
+        **bound_kwargs
     )
 
     plot_simple_maze_option_arrows([ax2], X, Y, options, grid_size)

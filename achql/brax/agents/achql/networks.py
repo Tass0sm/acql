@@ -825,8 +825,8 @@ def make_achql_networks(
             obs = preprocess_cost_observations_fn(state_and_goal, processor_params)
             return obs
 
-        def qc_preprocess_cond_fn(state_and_aut_obs: jax.Array) -> int:
-            aut_obs = state_and_aut_obs[..., -env.automaton.n_states:]
+        def qc_preprocess_cond_fn(state_and_goal_aut_obs: jax.Array) -> int:
+            aut_obs = state_and_goal_aut_obs[..., -env.automaton.n_states:]
             aut_state = env.automaton.one_hot_decode(aut_obs)
             return env.state_to_unique_safety_cond_idx_arr[aut_state]
 
@@ -844,6 +844,57 @@ def make_achql_networks(
         )
 
         cost_q_network = make_algebraic_cost_q_network_for_active_goal_obs(single_gc_cost_q_network, env)
+
+    elif network_type == "old_multihead_no_goal_qc":
+        def qr_preprocess_obs_fn(state_and_goal_and_aut_state: jax.Array, processor_params) -> int:
+            state_and_goal = state_and_goal_and_aut_state[..., :-env.automaton.n_states]
+            obs = preprocess_observations_fn(state_and_goal, processor_params)
+            return obs
+
+        def qr_preprocess_cond_fn(state_and_goal_and_aut_state: jax.Array) -> int:
+            aut_obs = state_and_goal_and_aut_state[..., -env.automaton.n_states:]
+            aut_state = env.automaton.one_hot_decode(aut_obs)
+            return env.state_to_unique_safety_cond_idx_arr[aut_state]
+
+        single_gc_network = h_networks.make_multi_headed_option_q_network(
+                observation_size,
+                num_unique_safety_conditions,
+                len(options),
+                env,
+                preprocess_observations_fn=qr_preprocess_obs_fn,
+                preprocess_cond_fn=qr_preprocess_cond_fn,
+                shared_hidden_layer_sizes=hidden_layer_sizes[:1],
+                head_hidden_layer_sizes=hidden_layer_sizes[1:],
+                activation=activation
+        )
+
+        option_q_network = make_algebraic_option_q_network_for_active_goal_obs(single_gc_network, env)
+
+        def qc_preprocess_obs_fn(state_and_goals_and_aut_obs: jax.Array, processor_params) -> jax.Array:
+            # assumes first no_goal_obs_dim features are the state without goal
+            state_obs = state_and_goals_and_aut_obs[..., :env.no_goal_obs_dim]
+            obs = preprocess_cost_observations_fn(state_obs, processor_params)
+            return obs
+
+        def qc_preprocess_cond_fn(state_and_goals_and_aut_obs: jax.Array) -> int:
+            aut_obs = state_and_goals_and_aut_obs[..., -env.automaton.n_states:]
+            aut_state = env.automaton.one_hot_decode(aut_obs)
+            return env.state_to_unique_safety_cond_idx_arr[aut_state]
+
+        cost_observation_size = env.no_goal_obs_dim
+
+        cost_q_network = h_networks.make_multi_headed_option_q_network(
+                cost_observation_size,
+                num_unique_safety_conditions,
+                len(options),
+                env,
+                preprocess_observations_fn=qc_preprocess_obs_fn,
+                preprocess_cond_fn=qc_preprocess_cond_fn,
+                shared_hidden_layer_sizes=hidden_cost_layer_sizes[:2],
+                head_hidden_layer_sizes=hidden_cost_layer_sizes[2:],
+                activation=activation,
+                final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
+        )
 
     elif network_type == "default":
         raise NotImplementedError()

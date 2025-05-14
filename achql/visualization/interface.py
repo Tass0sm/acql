@@ -30,6 +30,14 @@ def make_plots(training_run_id, **kwargs):
                     return make_plots_for_3d_achql(mdp, make_option_policy, network, params, **kwargs)
                 else:
                     raise NotImplementedError(f"Visualizing ACHQL with {env_name} not supported")
+            case "ACHQL_ABLATION_TWO":
+                env_name = run.data.tags["env"]
+                if env_name in ["SimpleMaze", "AntMaze"]:
+                    return make_plots_for_achql(mdp, make_option_policy, network, params, use_sum_cost_critic=True, **kwargs)
+                elif env_name in ["SimpleMaze3D"]:
+                    return make_plots_for_3d_achql(mdp, make_option_policy, network, params, **kwargs)
+                else:
+                    raise NotImplementedError(f"Visualizing ACHQL with {env_name} not supported")
             case "ACDDPG":
                 return make_plots_for_acddpg(mdp, make_policy, network, params, **kwargs)
             case "HDCQN_AUTOMATON_HER":

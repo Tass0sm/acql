@@ -29,7 +29,7 @@ from achql.scripts.multihead_exp_train import make_network_factory as make_rm_mu
 from achql.tasks.utils import get_task_by_name
 
 
-def get_achql_mdp_network_policy_and_params(task, run, params):
+def get_achql_mdp_network_policy_and_params(task, run, params, use_sum_cost_critic=False):
     options = task.get_options()
 
     if run.data.params["normalize_observations"] == "True":
@@ -42,7 +42,7 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
     h_dim = int(run.data.params.get("h_dim", 256))
     n_hidden = int(run.data.params.get("n_hidden", 2))
 
-    aut_goal_cmdp = make_aut_goal_cmdp(task, randomize_goals=False)
+    aut_goal_cmdp = make_aut_goal_cmdp(task, randomize_goals=False, relu_cost=use_sum_cost_critic)
     achql_network = achql_networks.make_achql_networks(
         aut_goal_cmdp.qr_nn_input_size,
         aut_goal_cmdp.qc_nn_input_size,
@@ -56,10 +56,18 @@ def get_achql_mdp_network_policy_and_params(task, run, params):
         preprocess_cost_observations_fn=cost_normalize_fn,
         hidden_layer_sizes=[h_dim] * n_hidden,
         # hidden_cost_layer_sizes=(128, 128, 128, 64),
-        use_sum_cost_critic=(run.data.tags["alg"] == "ABLATION_FOUR"),
+        use_sum_cost_critic=use_sum_cost_critic,
     )
-    make_option_policy = achql_networks.make_option_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], actor_type=run.data.params.get("actor_type", "safest"))
-    make_policy = achql_networks.make_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_threshold"], actor_type=run.data.params.get("actor_type", "safest"))    
+    make_option_policy = achql_networks.make_option_inference_fn(achql_network, 
+                                                                 aut_goal_cmdp,
+                                                                 task.hdcqn_her_hps["safety_threshold"],
+                                                                 actor_type=run.data.params.get("actor_type", "safest"),
+                                                                 use_sum_cost_critic=use_sum_cost_critic)
+    make_policy = achql_networks.make_inference_fn(achql_network, 
+                                                   aut_goal_cmdp,
+                                                   task.hdcqn_her_hps["safety_threshold"],
+                                                   actor_type=run.data.params.get("actor_type", "safest"),
+                                                   use_sum_cost_critic=use_sum_cost_critic)
 
     return aut_goal_cmdp, options, achql_network, make_option_policy, make_policy, params
 
@@ -257,6 +265,8 @@ def get_mdp_network_policy_and_params(training_run_id):
     match alg_name:
             case "ACHQL":
                 return get_achql_mdp_network_policy_and_params(task, run, params)
+            case "ACHQL_ABLATION_TWO":
+                return get_achql_mdp_network_policy_and_params(task, run, params, use_sum_cost_critic=True)
             case "ACDDPG":
                 return get_acddpg_mdp_network_policy_and_params(task, run, params)
             case "HDCQN_AUTOMATON_HER":

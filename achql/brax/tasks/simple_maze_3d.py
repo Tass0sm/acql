@@ -95,6 +95,14 @@ class SimpleMaze3DTwoSubgoals(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
+    # def get_hard_coded_options(self, length=None):
+    #     return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+
+    # @property
+    # def achql_hps(self):
+    #     return super().achql_hps | { "episode_length": 200,
+    #                                  "multiplier_num_sgd_steps": 1 }
+
 
 class SimpleMaze3DTwoSubgoals2(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
@@ -120,6 +128,7 @@ class SimpleMaze3DBranching1(Branching1Mixin, SimpleMaze3DTaskBase):
 
     @property
     def achql_hps(self):
+        # Validated with a sweep
         return super().achql_hps | { "episode_length": 200,
                                      "multiplier_num_sgd_steps": 1 }
 
@@ -143,6 +152,15 @@ class SimpleMaze3DObligationConstraint2(ObligationConstraint2Mixin, SimpleMaze3D
         self.goal1_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
+    def get_hard_coded_options(self, length=None):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+
+    @property
+    def achql_hps(self):
+        # Validated with a sweep
+        return super().achql_hps | { "episode_length": 200,
+                                     "multiplier_num_sgd_steps": 1 }
 
 
 class SimpleMaze3DObligationConstraint3(ObligationConstraint3Mixin, SimpleMaze3DTaskBase):
@@ -181,6 +199,15 @@ class SimpleMaze3DUntil2(Until1Mixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
+    def get_hard_coded_options(self, length=None):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
+
+    @property
+    def achql_hps(self):
+        # Validated with a sweep
+        return super().achql_hps | { "episode_length": 100,
+                                     "multiplier_num_sgd_steps": 1 }
+
 
 class SimpleMaze3DLoop(LoopMixin, SimpleMaze3DTaskBase):
     def __init__(self, backend="mjx"):
@@ -203,6 +230,15 @@ class SimpleMaze3DLoopWithObs(LoopWithObsMixin, SimpleMaze3DTaskBase):
         self.goal2_radius = 2.0
 
         super().__init__(None, 1000, backend=backend)
+
+    def get_hard_coded_options(self, length=None):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+
+    @property
+    def achql_hps(self):
+        # Validated with a sweep
+        return super().achql_hps | { "episode_length": 200,
+                                     "multiplier_num_sgd_steps": 1 }
 
 
 # class SimpleMazeCenterConstraint(SimpleMazeTaskBase):
