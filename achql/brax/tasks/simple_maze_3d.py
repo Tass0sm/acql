@@ -36,14 +36,6 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
     def get_hard_coded_options(self, length=5):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(length))
 
-    @property
-    def hdqn_hps(self):
-        return super().hdqn_hps | { "episode_length": 100,
-                                    "multiplier_num_sgd_steps": 4 }
-    @property
-    def crm_hps(self):
-        return super().crm_hps | { "episode_length": 100,
-                                   "multiplier_num_sgd_steps": 4 }
 
     # @property
     # def achql_hps(self):
@@ -95,13 +87,23 @@ class SimpleMaze3DTwoSubgoals(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
 
         super().__init__(None, 1000, backend=backend)
 
-    # def get_hard_coded_options(self, length=None):
-    #     return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+    def get_hard_coded_options(self, length=None):
+        return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
 
-    # @property
-    # def achql_hps(self):
-    #     return super().achql_hps | { "episode_length": 200,
-    #                                  "multiplier_num_sgd_steps": 1 }
+    @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 100,
+                                    "multiplier_num_sgd_steps": 1 }
+    @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 100,
+                                   "multiplier_num_sgd_steps": 1 }
+
+    @property
+    def achql_hps(self):
+        # verified by sweep
+        return super().achql_hps | { "episode_length": 100,
+                                     "multiplier_num_sgd_steps": 1 }
 
 
 class SimpleMaze3DTwoSubgoals2(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
@@ -125,6 +127,15 @@ class SimpleMaze3DBranching1(Branching1Mixin, SimpleMaze3DTaskBase):
 
     def get_hard_coded_options(self, length=None):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+
+    @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 200,
+                                    "multiplier_num_sgd_steps": 1 }
+    @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 200,
+                                   "multiplier_num_sgd_steps": 1 }
 
     @property
     def achql_hps(self):
@@ -155,6 +166,15 @@ class SimpleMaze3DObligationConstraint2(ObligationConstraint2Mixin, SimpleMaze3D
 
     def get_hard_coded_options(self, length=None):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+
+    @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 200,
+                                    "multiplier_num_sgd_steps": 1 }
+    @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 200,
+                                   "multiplier_num_sgd_steps": 1 }
 
     @property
     def achql_hps(self):
@@ -203,6 +223,15 @@ class SimpleMaze3DUntil2(Until1Mixin, SimpleMaze3DTaskBase):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(10))
 
     @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 100,
+                                    "multiplier_num_sgd_steps": 1 }
+    @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 100,
+                                   "multiplier_num_sgd_steps": 1 }
+
+    @property
     def achql_hps(self):
         # Validated with a sweep
         return super().achql_hps | { "episode_length": 100,
@@ -233,6 +262,15 @@ class SimpleMaze3DLoopWithObs(LoopWithObsMixin, SimpleMaze3DTaskBase):
 
     def get_hard_coded_options(self, length=None):
         return load_hard_coded_xyz_point_options(termination_policy=FixedLengthTerminationPolicy(5))
+
+    @property
+    def hdqn_hps(self):
+        return super().hdqn_hps | { "episode_length": 200,
+                                    "multiplier_num_sgd_steps": 1 }
+    @property
+    def crm_hps(self):
+        return super().crm_hps | { "episode_length": 200,
+                                   "multiplier_num_sgd_steps": 1 }
 
     @property
     def achql_hps(self):
