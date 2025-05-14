@@ -174,7 +174,7 @@ def hierarchical_evaluate(task, mdp, run, training_run_id, make_option_policy, o
 
     safety_phi = task.lo_spec.children[1]
 
-    evaluator = LOFEvaluatorWithSpecification(
+    evaluator = HierarchicalEvaluatorWithSpecification(
             eval_env,
             functools.partial(make_option_policy, deterministic=True),
             options,
