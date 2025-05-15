@@ -542,6 +542,7 @@ def train_logical_option_metapolicy(
         specification,
         state_var,
         strip_goal_obs = True,
+        overwrite_reward = True,
     )
 
     make_policy = make_option_inference_fn(prod_mdp, logical_options, start_states_array)

@@ -110,6 +110,7 @@ def get_lof_mdp_network_policy_and_params(task, run, params):
         task.lo_spec,
         task.obs_var,
         strip_goal_obs = True,
+        overwrite_reward = True,
     )
 
     mdp = OptionsWrapper(

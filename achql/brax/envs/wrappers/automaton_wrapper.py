@@ -47,6 +47,7 @@ class AutomatonWrapper(Wrapper):
             augment_obs: bool = True,
             strip_goal_obs: bool = False,
             # treat_aut_state_as_goal: bool = False,
+            overwrite_reward: bool = False,
     ):
         super().__init__(env)
 
@@ -112,6 +113,8 @@ class AutomatonWrapper(Wrapper):
         #     aut_indices = jnp.arange(obs_dim - self.automaton.n_states, obs_dim)
         #     self.goal_indices = jnp.concatenate((env.goal_indices, aut_indices))
         #     self.full_non_goal_indices = self.full_non_goal_indices.at[aut_indices].set(False)
+
+        self._overwrite_reward = overwrite_reward
 
         self.normalization_mask = normalization_mask
 
@@ -239,7 +242,8 @@ class AutomatonWrapper(Wrapper):
             automaton_success=automaton_success,
         )
 
-        # nstate = nstate.replace(reward=reward)
+        if self._overwrite_reward:
+            nstate = nstate.replace(reward=automaton_success)
 
         return nstate
 
