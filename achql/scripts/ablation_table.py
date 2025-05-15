@@ -17,29 +17,9 @@ from brax import envs
 from brax.io import model
 from brax.io import json
 from brax.io import html
-from jaxgcrl.src import train as crl
-
-from achql.brax.agents.ppo import train as ppo
-from achql.brax.agents.tasc import train as tasc
-from achql.brax.agents.dscrl import train as dscrl
-from achql.brax.agents.sac_her import train as sac_her
-from achql.brax.agents.ppo_with_spec_rewards import train as ppo_spec
-from achql.brax.agents.ppo_option_critic import train as ppo_option_critic
-from achql.brax.agents.hsac import train as soac
-from achql.brax.agents.hdqn import train as hdqn
-from achql.brax.agents.hdqn_her import train as hdqn_her
-from achql.brax.agents.hdqn_automaton_her import train as hdqn_automaton_her
-from achql.brax.agents.hdcqn_her import train as hdcqn_her
-from achql.brax.agents.hdcqn_automaton_her import train as hdcqn_automaton_her
-from brax.training.agents.apg import train as apg
-
-from achql.baselines.reward_machines.crm import train as crm
-# from achql.baselines.reward_machines.qrm import train as qrm
-from achql.baselines.reward_machines.hrm import train as hrm
-from achql.baselines.reward_machines.reward_shaping import train as rm_reward_shaping
 
 # tasks
-from achql.brax.tasks import get_task
+from achql.tasks.utils import get_task_by_name
 
 
 
@@ -171,9 +151,75 @@ import pandas as pd
 
 
 def ablation_table_first_row():
-    mlflow.set_experiment("proj2-ablation-experiments")
 
-    for alg in ["ACHQL", "ACHQL_ABLATION_ONE"]:
+    # , "ACHQL_ABLATION_ONE"
+
+    for alg in ["ACHQL"]:
+
+        groups = []
+        for spec in ["SimpleMazeTwoSubgoals",
+                     "SimpleMazeBranching1",
+                     "SimpleMazeObligationConstraint1",
+                     "SimpleMazeUntil2",
+                     # "SimpleMaze3DTwoSubgoals",
+                     # "SimpleMaze3DBranching1",
+                     # "SimpleMaze3DObligationConstraint2",
+                     # "SimpleMaze3DUntil2",
+                     # "AntMazeTwoSubgoals",
+                     # "AntMazeBranching1",
+                     # "AntMazeObligationConstraint3",
+                     # "AntMazeUntil1"
+                     ]:
+
+            if alg == "ACHQL_ABLATION_ONE":
+                mlflow.set_experiment("proj2-ablation-experiments")
+            else:
+                if "SimpleMaze3D" in spec:
+                    task = get_task_by_name(spec)
+                    mlflow.set_experiment("proj2-reproducible-experiments")
+                    episode_length = task.achql_hps["episode_length"]
+                    mult = task.achql_hps["multiplier_num_sgd_steps"]
+                    extra_kwargs = {
+                        "extra_str": f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
+                    }
+                else:
+                    extra_kwargs = {}
+                    mlflow.set_experiment("proj2-final-experiments")
+
+            runs = mlflow.search_runs(
+                filter_string=f"tags.alg = '{alg}' and tags.spec = '{spec}'"
+            ).iloc[:5]
+            groups.append(runs)
+    
+        group = pd.concat(groups)
+    
+        print("reward", group["metrics.eval/episode_reward"])
+
+        try:
+            success_mean = group["metrics.eval/episode_reward"].mean().round(decimals=1)
+            success_std = group["metrics.eval/episode_reward"].std().round(decimals=1)
+            print(alg, "success", f"{success_mean} +- {success_std}")
+        except:
+            print(alg, "success ERROR")
+
+        print("s.r.", group["metrics.eval/proportion_robustness_over_zero"])
+
+        try:
+            good_rho_prop_mean = (group["metrics.eval/proportion_robustness_over_zero"].mean() * 100).round(decimals=1)
+            good_rho_std_mean = (group["metrics.eval/proportion_robustness_over_zero"].std() * 100).round(decimals=1)
+            print(alg, "good_rho", f"{good_rho_prop_mean} +- {good_rho_std_mean}")
+        except:
+            print(alg, "good_rho ERROR")
+
+
+def ablation_table_second_row():
+
+    for alg in ["ACHQL", "ACHQL_ABLATION_TWO"]:
+
+        if alg == "ACHQL_ABLATION_TWO":
+            mlflow.set_experiment("proj2-ablation-experiments")
+
+
         groups = []
         for spec in ["SimpleMazeTwoSubgoals",
                      "SimpleMazeBranching1",
@@ -191,26 +237,22 @@ def ablation_table_first_row():
                 filter_string=f"tags.alg = '{alg}' and tags.spec = '{spec}'"
             ).iloc[:5]
             groups.append(runs)
-    
+
         group = pd.concat(groups)
-    
+
         try:
             success_mean = group["metrics.eval/episode_reward"].mean().round(decimals=1)
             success_std = group["metrics.eval/episode_reward"].std().round(decimals=1)
             print(alg, "success", f"{success_mean} +- {success_std}")
         except:
             print(alg, "success ERROR")
-    
+
         try:
             good_rho_prop_mean = (group["metrics.eval/proportion_robustness_over_zero"].mean() * 100).round(decimals=1)
             good_rho_std_mean = (group["metrics.eval/proportion_robustness_over_zero"].std() * 100).round(decimals=1)
             print(alg, "good_rho", f"{good_rho_prop_mean} +- {good_rho_std_mean}")
         except:
             print(alg, "good_rho ERROR")
-
-
-def ablation_table_second_row():
-    pass
 
 
 def main():
