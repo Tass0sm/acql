@@ -16,7 +16,7 @@ import buddy
 
 from achql.stl import Expression
 from achql.automaton import JaxAutomaton
-from achql.stl import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions
+from achql.stl import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions, get_func_from_spot_formula
 
 
 def partition(pred, d):
@@ -48,6 +48,7 @@ class AutomatonWrapper(Wrapper):
             strip_goal_obs: bool = False,
             # treat_aut_state_as_goal: bool = False,
             overwrite_reward: bool = False,
+            use_incoming_conditions_for_final_state: bool = False,
     ):
         super().__init__(env)
 
@@ -113,6 +114,31 @@ class AutomatonWrapper(Wrapper):
         #     aut_indices = jnp.arange(obs_dim - self.automaton.n_states, obs_dim)
         #     self.goal_indices = jnp.concatenate((env.goal_indices, aut_indices))
         #     self.full_non_goal_indices = self.full_non_goal_indices.at[aut_indices].set(False)
+
+        # By default, we interpret the final accepting state as a persistence
+        # constraint. Instead of assuming that the episode terminates once
+        # reaching the final state, we attempt to continue satisfying the
+        # condition that brought us to the state for the remainder of the
+        # episode. We use the same interpretation for our baselines.
+
+        self.liveness_automaton = make_just_liveness_automaton(self.automaton.automaton)
+        plain_out_conditions = get_outgoing_conditions(self.liveness_automaton)
+
+        self._use_incoming_conditions_for_final_state = use_incoming_conditions_for_final_state
+        if use_incoming_conditions_for_final_state:
+            incoming_conds = []
+
+            for edge in self.liveness_automaton.edges():
+                if edge.src != self.accepting_state and edge.dst == self.accepting_state:
+                    incoming_conds.append(edge.cond)
+
+            incoming_cond_bdd = reduce(buddy.bdd_or, incoming_conds, buddy.bddfalse)
+            plain_out_conditions[self.accepting_state] = incoming_cond_bdd
+
+            incoming_cond_formula = spot.bdd_to_formula(incoming_cond_bdd, self.automaton.bdd_dict)
+            self._incoming_cond_func = get_func_from_spot_formula(incoming_cond_formula, len(self.automaton.aps))
+        else:
+            self._incoming_cond_func = None
 
         self._overwrite_reward = overwrite_reward
 
@@ -242,7 +268,11 @@ class AutomatonWrapper(Wrapper):
             automaton_success=automaton_success,
         )
 
-        if self._overwrite_reward:
+        if self._overwrite_reward and self._use_incoming_conditions_for_final_state:
+            final_cond_satisfied = jnp.array(self._incoming_cond_func(labels) > 0, dtype=float)
+            reward = automaton_success * final_cond_satisfied
+            nstate = nstate.replace(reward=reward)
+        elif self._overwrite_reward:
             nstate = nstate.replace(reward=automaton_success)
 
         return nstate

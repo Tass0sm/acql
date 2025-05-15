@@ -114,11 +114,11 @@ def get_logical_option_run_ids(task_name, seed):
         ("AntMazeObligationConstraint3", 3): ["fb2d5d60e342463ebe8fe4e1344129bd"],
         ("AntMazeObligationConstraint3", 4): ["0f59115d06534bf593f8c1a5fdac7827"],
 
-        # ("AntMazeUntil1", 0): [],
-        # ("AntMazeUntil1", 1): [],
-        # ("AntMazeUntil1", 2): [],
-        # ("AntMazeUntil1", 3): [],
-        # ("AntMazeUntil1", 4): [],
+        ("AntMazeUntil1", 0): ["d6284d3b9b184c559ab3238872689d23", "b61be1051c9e41af931607f932768622"],
+        ("AntMazeUntil1", 1): ["8fccd691a71941aaa2376a2837f10593", "59bab8c205ee4a2485631a385a935d64"],
+        ("AntMazeUntil1", 2): ["f1b804d332f14dfbb1e929e65cd6a480", "b1e63f02e8124a95a1edaddc4485e236"],
+        ("AntMazeUntil1", 3): ["7a5bbbeeabf648f98c66e56d66af3da0", "ab42d32fff20488081ee40caac3a397f"],
+        ("AntMazeUntil1", 4): ["3e0ed8cd0f6840828354ef8a6315256f", "5cca0460519145a5bb3e11bd91ed01a7"],
 
         # ("AntMazeLoopWithObs", 0): ["875fda3294a74904b40435136861c136", "8ee9569ec2f847898775b28a86ac1211"],
         # ("AntMazeLoopWithObs", 1): ["49a762fab7db4b4f97b374b084202234", "6bfc406bcde64c24b2fcf5219b083d91"],

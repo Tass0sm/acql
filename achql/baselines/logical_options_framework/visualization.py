@@ -77,6 +77,7 @@ def get_lof_mdp_network_policy_and_params(task, run, params):
     # second level
     spec = run.data.tags["spec"]
     seed = int(run.data.params["seed"])
+
     logical_option_run_ids = get_logical_option_run_ids(spec, seed)
 
     full_automaton = JaxAutomaton(task.lo_spec, task.obs_var)
@@ -111,6 +112,7 @@ def get_lof_mdp_network_policy_and_params(task, run, params):
         task.obs_var,
         strip_goal_obs = True,
         overwrite_reward = True,
+        use_incoming_conditions_for_final_state = True,
     )
 
     mdp = OptionsWrapper(
