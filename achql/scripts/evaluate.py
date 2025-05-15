@@ -2,6 +2,7 @@ import mlflow
 import functools
 
 import mediapy
+import pandas as pd
 
 import jax
 import jax.numpy as jnp
@@ -14,6 +15,7 @@ from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecif
 
 from achql.hierarchy.envs.options_wrapper import OptionsWrapper
 from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from achql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
 from achql.visualization.utils import get_mdp_network_policy_and_params
 from achql.visualization import hierarchy, flat
 
@@ -73,6 +75,35 @@ def flat_evaluate(task, mdp, training_run_id, make_policy, eval_key):
 
     return run_evals(evaluator, training_run_id, mdp)
     # return run_final_eval(evaluator, training_run_id, mdp)
+
+
+def lof_evaluate(task, mdp, run, training_run_id, make_option_policy, logical_options, eval_key):
+    eval_environment = mdp
+    wrap_for_training = envs.training.wrap
+
+    episode_length = task.achql_hps["episode_length"]
+
+    eval_env = wrap_for_training(
+            eval_environment,
+            episode_length=episode_length,
+            action_repeat=1,
+    )
+
+    evaluator = LOFEvaluatorWithSpecification(
+            eval_env,
+            functools.partial(make_option_policy, deterministic=True),
+            logical_options,
+            specification=task.lo_spec,
+            state_var=task.obs_var,
+            num_eval_envs=16,
+            episode_length=episode_length,
+            action_repeat=1,
+            key=eval_key,
+            return_states=True
+    )
+
+    return run_final_eval(evaluator, training_run_id, mdp)
+
 
 # def run_evals(evaluator, training_run_id):
 #     metrics = {}
@@ -230,27 +261,69 @@ def run_evals(evaluator, training_run_id, mdp):
     #                             mdp.render(rollout_states, camera='overview'),
     #                             fps=1.0 / mdp.dt)
 
-
-def main():
+def eval_for_training_run_id(training_run_id):
     process_id = jax.process_index()
     seed = 0
     global_key, local_key = jax.random.split(jax.random.PRNGKey(seed))
     local_key = jax.random.fold_in(local_key, process_id)
     _, _, _, eval_key = jax.random.split(local_key, 4)
 
-    training_run_id = "1d9eb97f787549ab9bb35690dad6644d"
     run = mlflow.get_run(run_id=training_run_id)
 
     task = get_task_by_name(run.data.tags["spec"])
 
-    mdp, options, network, make_option_policy, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
+    if (alg := run.data.tags.get("alg", None)) == "LOF":
+        mdp, logical_options, _, network, _, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
+        return lof_evaluate(task, mdp, run, training_run_id, make_policy, logical_options, eval_key)
+    else:
+        mdp, options, network, make_option_policy, make_policy, params = get_mdp_network_policy_and_params(training_run_id)
+        # return hierarchical_evaluate(task, mdp, training_run_id, make_option_policy, eval_key)
+        return flat_evaluate(task, mdp, training_run_id, make_policy, eval_key)
 
-    # return hierarchical_evaluate(task, mdp, training_run_id, make_option_policy, eval_key)
-    return flat_evaluate(task, mdp, training_run_id, make_policy, eval_key)
+
+def main():
+
+    simple_maze_3d = {
+        "SimpleMaze3DTwoSubgoals": ["cc278d824b614e95a5ef34a88a9f2842", "04c4dee753ad47649f9f4b472fab22b2", "2e71f57cdc2647768560fb7dfc72b057", "6ddccad9a7d24239bd8c43c60ca28bba", "83352e0a4a4743c5a9de1b6b64511658"],
+        "SimpleMaze3DBranching1": ["68d955389175492591f613ebdc318524", "13bef1a566804248a76413717bcbfb4e", "35d0e79f8da84235ae5417412e9b8474", "e6a9b750f9ed426b9baa913acc8a3af2", "dffa0a199e0c4b2083496a55422c35d2"],
+        "SimpleMaze3DObligationConstraint2": ["98ecb3ff52274d0d99c69242b672dd47", "7d05a67ad54b4b158b3403322e005d92", "86bbb4f1f6e14e6c96b29b88d3be4518", "11513461a8d44655b4a2ab43609702ea", "ab50ebac5e8b43bfbf4abe913796541c"]
+    }
+
+    ant_maze_ids = {
+        "AntMazeTwoSubgoals": ['b3af5d20b06146db8e4f0ced184cc1b5', '9c056fe4ce5f4cc5b1b9ce59dedc1d08', '7efbb24d8bf742d281dbe428b177c8f9', 'c1ef77710bdf49029ce20da05623268a', '5258b4f3cbdd4df8b5ad02cdb802939f'],
+        "AntMazeBranching1": ['8bb8f95f531348a1b6d2dd98b26b0bb7', '5f2a8c5e1c6247779ae77487c8e553df', 'd45e26d2aefc41c9b71f41789bfd8a82', '04d10a573a3740aa9d9a9abfa49a1245', 'e009c1b3494f432ea57f23e3702ffaf0'],
+        "AntMazeObligationConstraint3": ['3a838f3303ee4638ba6a380decb9ecbd', 'ec35adf6cf8746ad8e5c57f76273471a', '819df827e8044fee926fb2c80056c4e7', 'ebb27593f2064450921d45a472236fa3', 'baf955a49dee4a64803f800cd5680e3f'],
+        "AntMazeUntil1": ['0f6c37a7bb1144f29282b920dbdcae9a', 'f4838147c07341abb1b736beabee6f7c', 'e763864d78804d5b81a5d239a861586d', 'd8e8e4d53ad048bd9fa13d9f96166537', '498af3bb6fc04035a63d143badbf9039'],
+        "AntMazeLoopWithObs": ['b338cfc4065948eba2204f1899ec5e54', 'e318f0049d504984856b1b1ff342cd40', 'f647cff95248445283cb2dd0f6297955', '9dd40e5b8bda4a9fb016a90e6bfbb99a', '8be20d3c606e45958cd1ce9174615762'],
+    }
+
+    for spec, ids in ant_maze_ids.items():
+        reward_l = []
+        success_rate_l = []
+        for run_id in ids:
+            metrics = eval_for_training_run_id(run_id)
+            reward = metrics["eval/episode_reward"].item()
+            success_rate = metrics["eval/proportion_robustness_over_zero"].item()
+
+            reward_l.append(reward)
+            success_rate_l.append(success_rate)
+
+        print("reward_l", reward_l)
+        print("success_rate_l", success_rate_l)
+
+        reward_l = pd.Series(reward_l)
+        reward_mean = reward_l.mean().round(decimals=1)
+        reward_std = reward_l.std().round(decimals=1)
+        print(spec, "success", f"{reward_mean} +- {reward_std}")
+
+        success_rate_l = pd.Series(success_rate_l) * 100.0
+        success_rate_mean = success_rate_l.mean().round(decimals=1)
+        success_rate_std = success_rate_l.std().round(decimals=1)
+        print(spec, "good rho", f"{success_rate_mean} +- {success_rate_std}")
+            
 
 
 if __name__ == "__main__":
     mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
-    mlflow.set_experiment("proj2-notebook")
 
     results = main()
