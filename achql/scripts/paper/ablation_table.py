@@ -152,23 +152,24 @@ import pandas as pd
 
 def ablation_table_first_row():
 
+    # "ACHQL"
     # , "ACHQL_ABLATION_ONE"
 
-    for alg in ["ACHQL"]:
+    for alg in ["ACHQL_ABLATION_ONE"]:
 
         groups = []
-        for spec in ["SimpleMazeTwoSubgoals",
-                     "SimpleMazeBranching1",
-                     "SimpleMazeObligationConstraint1",
-                     "SimpleMazeUntil2",
-                     # "SimpleMaze3DTwoSubgoals",
-                     # "SimpleMaze3DBranching1",
-                     # "SimpleMaze3DObligationConstraint2",
-                     # "SimpleMaze3DUntil2",
-                     # "AntMazeTwoSubgoals",
-                     # "AntMazeBranching1",
-                     # "AntMazeObligationConstraint3",
-                     # "AntMazeUntil1"
+        for spec in [# "SimpleMazeTwoSubgoals",
+                     # "SimpleMazeBranching1",
+                     # "SimpleMazeObligationConstraint1",
+                     # "SimpleMazeUntil2",
+                     "SimpleMaze3DTwoSubgoals",
+                     "SimpleMaze3DBranching1",
+                     "SimpleMaze3DObligationConstraint2",
+                     "SimpleMaze3DUntil2",
+                     "AntMazeTwoSubgoals",
+                     "AntMazeBranching1",
+                     "AntMazeObligationConstraint3",
+                     "AntMazeUntil1"
                      ]:
 
             if alg == "ACHQL_ABLATION_ONE":
@@ -179,20 +180,21 @@ def ablation_table_first_row():
                     mlflow.set_experiment("proj2-reproducible-experiments")
                     episode_length = task.achql_hps["episode_length"]
                     mult = task.achql_hps["multiplier_num_sgd_steps"]
-                    extra_kwargs = {
-                        "extra_str": f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
-                    }
+                    extra_str = f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
                 else:
-                    extra_kwargs = {}
+                    extra_str = ""
                     mlflow.set_experiment("proj2-final-experiments")
 
             runs = mlflow.search_runs(
-                filter_string=f"tags.alg = '{alg}' and tags.spec = '{spec}'"
+                filter_string=f"tags.alg = '{alg}' and tags.spec = '{spec}'" + extra_str
             ).iloc[:5]
             groups.append(runs)
     
         group = pd.concat(groups)
     
+        print("names", group["tags.mlflow.runName"].tolist())
+        print("ids", group["run_id"].tolist())
+
         print("reward", group["metrics.eval/episode_reward"])
 
         try:
@@ -214,31 +216,51 @@ def ablation_table_first_row():
 
 def ablation_table_second_row():
 
-    for alg in ["ACHQL", "ACHQL_ABLATION_TWO"]:
+    # "ACHQL"
 
-        if alg == "ACHQL_ABLATION_TWO":
-            mlflow.set_experiment("proj2-ablation-experiments")
-
+    for alg in ["ACHQL_ABLATION_TWO"]:
 
         groups = []
-        for spec in ["SimpleMazeTwoSubgoals",
-                     "SimpleMazeBranching1",
-                     "SimpleMazeObligationConstraint1",
-                     "SimpleMazeUntil2",
-                     "SimpleMaze3DTwoSubgoals",
-                     "SimpleMaze3DBranching1",
-                     "SimpleMaze3DObligationConstraint2",
-                     "SimpleMaze3DUntil2",
-                     "AntMazeTwoSubgoals",
-                     "AntMazeBranching1",
+        for spec in [# "SimpleMazeObligationConstraint1",
+                     # "SimpleMazeUntil2",
+                     # "SimpleMaze3DObligationConstraint2",
+                     # "SimpleMaze3DUntil2",
                      "AntMazeObligationConstraint3",
-                     "AntMazeUntil1"]:
+                     "AntMazeUntil1"
+                     ]:
+
+            if alg == "ACHQL_ABLATION_TWO":
+                if spec == "AntMazeUntil1":
+                    mlflow.set_experiment("proj2-ablation-experiments")
+                    extra_str = f" and params.safety_threshold = '10'"
+                elif spec == "AntMazeObligationConstraint3":
+                    mlflow.set_experiment("proj2-ablation-two-sweep")
+                    extra_str = f" and params.safety_threshold = '10'"
+                else:
+                    mlflow.set_experiment("proj2-ablation-experiments")
+                    extra_str = f" and params.safety_threshold = '10'"
+            else:
+                if "SimpleMaze3D" in spec:
+                    task = get_task_by_name(spec)
+                    mlflow.set_experiment("proj2-reproducible-experiments")
+                    episode_length = task.achql_hps["episode_length"]
+                    mult = task.achql_hps["multiplier_num_sgd_steps"]
+                    extra_str = f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
+                else:
+                    extra_str = ""
+                    mlflow.set_experiment("proj2-final-experiments")
+
             runs = mlflow.search_runs(
-                filter_string=f"tags.alg = '{alg}' and tags.spec = '{spec}'"
+                filter_string=f"tags.alg = '{alg}' and tags.spec = '{spec}'" + extra_str
             ).iloc[:5]
             groups.append(runs)
 
         group = pd.concat(groups)
+
+        print("names", group["tags.mlflow.runName"].tolist())
+        print("ids", group["run_id"].tolist())
+        print("reward", group["metrics.eval/episode_reward"])
+        print("s.r.", group["metrics.eval/proportion_robustness_over_zero"])
 
         try:
             success_mean = group["metrics.eval/episode_reward"].mean().round(decimals=1)
@@ -258,7 +280,7 @@ def ablation_table_second_row():
 def main():
     mlflow.set_tracking_uri(f"file:///home/tassos/.local/share/mlflow")
 
-    ablation_table_first_row()
+    # ablation_table_first_row()
     ablation_table_second_row()
     
 

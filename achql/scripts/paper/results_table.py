@@ -1,9 +1,10 @@
 import mlflow
+from achql.tasks.utils import get_task_by_name
 
 
-def get_group(env, spec, alg):
+def get_group(env, spec, alg, extra_str=""):
     runs = mlflow.search_runs(
-        filter_string=f"tags.env = '{env}' and tags.spec = '{spec}' and tags.alg = '{alg}'"
+        filter_string=f"tags.env = '{env}' and tags.spec = '{spec}' and tags.alg = '{alg}'" + extra_str
     )
 
     return runs
@@ -13,34 +14,47 @@ def main():
     mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
     mlflow.set_experiment("proj2-final-experiments")
     
-    for env, spec in [# ("SimpleMaze", "SimpleMazeTwoSubgoals"),
-                      # ("SimpleMaze", "SimpleMazeBranching1"),
-                      # ("SimpleMaze", "SimpleMazeObligationConstraint1"),
-                      # ("SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
+    for env, spec in [# ("SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
                       # ("SimpleMaze3D", "SimpleMaze3DBranching1"),
                       # ("SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
+                      # ("SimpleMaze3D", "SimpleMaze3DUntil2"),
+                      # ("SimpleMaze3D", "SimpleMaze3DLoopWithObs")
                       ("AntMaze", "AntMazeTwoSubgoals"),
                       ("AntMaze", "AntMazeBranching1"),
-                      ("AntMaze", "AntMazeObligationConstraint1"),
+                      ("AntMaze", "AntMazeObligationConstraint3"),
                       ("AntMaze", "AntMazeUntil1"),
-                      ("AntMaze", "AntMazeLoopWithObs")]:
-        for alg in ["ACHQL"]:
-    
-            # , "LOF", "CRM_RS", "CRM"
-    
-            if alg == "LOF":
-                raise NotImplementedError()
-                # mlflow.set_experiment("proj2-batch-lof-option-training")
+                      ("AntMaze", "AntMazeLoopWithObs")
+                      ]:
+
+        for alg in ["LOF"]:
+
+            task = get_task_by_name(spec)
+
+            if alg == "ACHQL" and env == "SimpleMaze3D":
+                mlflow.set_experiment("proj2-reproducible-experiments")
+                episode_length = task.achql_hps["episode_length"]
+                mult = task.achql_hps["multiplier_num_sgd_steps"]
+                extra_kwargs = {
+                    "extra_str": f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
+                }
             else:
-                mlflow.set_experiment("proj2-final-experiments")
+                extra_kwargs = {}
+
+                if alg == "LOF":
+                    mlflow.set_experiment("proj2-lof-final-experiments")
+                else:
+                    mlflow.set_experiment("proj2-final-experiments")
+                
+            # "ACHQL", "LOF", "CRM_RS", "CRM"
     
-            group = get_group(env, spec, alg)
-    
-            
+
+            group = get_group(env, spec, alg, **extra_kwargs)
+
             # use the five most recent (tentative)
             group = group.iloc[:5]
-    
+
             print("names", group["tags.mlflow.runName"].tolist())
+            print("ids", group["run_id"].tolist())
     
             # assert group.shape[0] >= 3
     

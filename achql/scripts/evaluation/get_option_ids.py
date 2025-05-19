@@ -19,14 +19,14 @@ def main(spec, alg, experiment_id=None):
         output_format="list"
     )
 
-    for run in parent_runs:
+    for run in reversed(parent_runs):
         print(f"\nParent Run: {run.info.run_id}")
         print(f"  - Spec: {run.data.tags.get('spec')}")
         print(f"  - Alg:  {run.data.tags.get('alg')}")
         print(f"  - Seed: {run.data.params.get('seed')}")  # <- Added line
 
         child_runs = get_nested_runs(run.info.run_id, experiment_id)
-        for child in child_runs:
+        for child in reversed(child_runs):
             print(f"    Child Run: {child.info.run_id}")
             print(f"      - Status: {child.info.status}")
             print(f"      - Metrics: {child.data.metrics}")

@@ -283,21 +283,31 @@ def eval_for_training_run_id(training_run_id):
 
 def main():
 
-    simple_maze_3d = {
-        "SimpleMaze3DTwoSubgoals": ["cc278d824b614e95a5ef34a88a9f2842", "04c4dee753ad47649f9f4b472fab22b2", "2e71f57cdc2647768560fb7dfc72b057", "6ddccad9a7d24239bd8c43c60ca28bba", "83352e0a4a4743c5a9de1b6b64511658"],
-        "SimpleMaze3DBranching1": ["68d955389175492591f613ebdc318524", "13bef1a566804248a76413717bcbfb4e", "35d0e79f8da84235ae5417412e9b8474", "e6a9b750f9ed426b9baa913acc8a3af2", "dffa0a199e0c4b2083496a55422c35d2"],
-        "SimpleMaze3DObligationConstraint2": ["98ecb3ff52274d0d99c69242b672dd47", "7d05a67ad54b4b158b3403322e005d92", "86bbb4f1f6e14e6c96b29b88d3be4518", "11513461a8d44655b4a2ab43609702ea", "ab50ebac5e8b43bfbf4abe913796541c"]
+    # ON PHD SERVER
+    simple_maze_ids = {
+        "SimpleMazeTwoSubgoals": ["0e9d2bde157a42a0979089bf1ed7fe3a", "14b6332f04494a5d9968a862cd1f79f6", "3f9009c0aa76482291daa21639ad190e", "d5e61959a69f4a768de67786cc8e6466", "360e0e539674450086ead158bb9c6ea1"],
+        "SimpleMazeBranching1": ["c006030eee444d108b5ca6c440dcf447", "f0e64409b46744708e5e996fb912afd6", "64e37315c0c2429eb5625b5f7f1036bf", "d5eba9f245344df49cf5bcb153b42be0", "d624b16b63a741a3816fb7acb132d321"],
+        "SimpleMazeObligationConstraint1": ["9190ae76cfe843328fee576369040b6c", "8a179c3c62d741aa96732bf25922d4bf", "0db4e311cf6a4a41993fbc9ee4318b71", "d1083869acba4603ad398b414cac7e53", "ec1f7664f794485a91f7a7629c816366"],
+        "SimpleMazeUntil2": ["a03e7f5cd8534f6495ec603d20aa6f4d", "7770a415a9ef4adcb9b85fcc1d2f6366", "db92080d3c89487bb4a56837f9d98845", "ff69548efa5e460aa8c5daabd97179c4", "0a18b06caa8c49bc8a20aab4046b2b98"],
+        # "SimpleMazeLoopWithObs": ["475f219092384d8c9e2064971689f67a", "1c77351003e04161b1a25b8c8d78f9b9", "d8a540e2ecad4112a241fd8127ae1f73", "68f77e42b1d0459ba936dc871efe54a1", "dd7020c0bb9a453eb9a99aee0e93dd37"],
+    }
+
+    simple_maze_3d_ids = {
+        # "SimpleMaze3DTwoSubgoals": ["cc278d824b614e95a5ef34a88a9f2842", "04c4dee753ad47649f9f4b472fab22b2", "2e71f57cdc2647768560fb7dfc72b057", "6ddccad9a7d24239bd8c43c60ca28bba", "83352e0a4a4743c5a9de1b6b64511658"],
+        # "SimpleMaze3DBranching1": ["68d955389175492591f613ebdc318524", "13bef1a566804248a76413717bcbfb4e", "35d0e79f8da84235ae5417412e9b8474", "e6a9b750f9ed426b9baa913acc8a3af2", "dffa0a199e0c4b2083496a55422c35d2"],
+        # "SimpleMaze3DObligationConstraint2": ["98ecb3ff52274d0d99c69242b672dd47", "7d05a67ad54b4b158b3403322e005d92", "86bbb4f1f6e14e6c96b29b88d3be4518", "11513461a8d44655b4a2ab43609702ea", "ab50ebac5e8b43bfbf4abe913796541c"],
+        "SimpleMaze3DUntil2": ["397aa17251cf4be5bf2109e1de2f7317", "81ee73291a364821b917113f6e766273", "6fcc832366bc4443870ba84de3224e1a", "3b3694cf1d1d4e88b5f607610548210b", "edb6c222b2c2498dafa2919be5a6f034"],
     }
 
     ant_maze_ids = {
-        "AntMazeTwoSubgoals": ['b3af5d20b06146db8e4f0ced184cc1b5', '9c056fe4ce5f4cc5b1b9ce59dedc1d08', '7efbb24d8bf742d281dbe428b177c8f9', 'c1ef77710bdf49029ce20da05623268a', '5258b4f3cbdd4df8b5ad02cdb802939f'],
-        "AntMazeBranching1": ['8bb8f95f531348a1b6d2dd98b26b0bb7', '5f2a8c5e1c6247779ae77487c8e553df', 'd45e26d2aefc41c9b71f41789bfd8a82', '04d10a573a3740aa9d9a9abfa49a1245', 'e009c1b3494f432ea57f23e3702ffaf0'],
-        "AntMazeObligationConstraint3": ['3a838f3303ee4638ba6a380decb9ecbd', 'ec35adf6cf8746ad8e5c57f76273471a', '819df827e8044fee926fb2c80056c4e7', 'ebb27593f2064450921d45a472236fa3', 'baf955a49dee4a64803f800cd5680e3f'],
-        "AntMazeUntil1": ['0f6c37a7bb1144f29282b920dbdcae9a', 'f4838147c07341abb1b736beabee6f7c', 'e763864d78804d5b81a5d239a861586d', 'd8e8e4d53ad048bd9fa13d9f96166537', '498af3bb6fc04035a63d143badbf9039'],
-        "AntMazeLoopWithObs": ['b338cfc4065948eba2204f1899ec5e54', 'e318f0049d504984856b1b1ff342cd40', 'f647cff95248445283cb2dd0f6297955', '9dd40e5b8bda4a9fb016a90e6bfbb99a', '8be20d3c606e45958cd1ce9174615762'],
+        # "AntMazeTwoSubgoals": ['b3af5d20b06146db8e4f0ced184cc1b5', '9c056fe4ce5f4cc5b1b9ce59dedc1d08', '7efbb24d8bf742d281dbe428b177c8f9', 'c1ef77710bdf49029ce20da05623268a', '5258b4f3cbdd4df8b5ad02cdb802939f'],
+        # "AntMazeBranching1": ['8bb8f95f531348a1b6d2dd98b26b0bb7', '5f2a8c5e1c6247779ae77487c8e553df', 'd45e26d2aefc41c9b71f41789bfd8a82', '04d10a573a3740aa9d9a9abfa49a1245', 'e009c1b3494f432ea57f23e3702ffaf0'],
+        # "AntMazeObligationConstraint3": ['3a838f3303ee4638ba6a380decb9ecbd', 'ec35adf6cf8746ad8e5c57f76273471a', '819df827e8044fee926fb2c80056c4e7', 'ebb27593f2064450921d45a472236fa3', 'baf955a49dee4a64803f800cd5680e3f'],
+        "AntMazeUntil1": ["498af3bb6fc04035a63d143badbf9039", "d8e8e4d53ad048bd9fa13d9f96166537", "e763864d78804d5b81a5d239a861586d", "f4838147c07341abb1b736beabee6f7c", "0f6c37a7bb1144f29282b920dbdcae9a"]
+        # "AntMazeLoopWithObs": ['b338cfc4065948eba2204f1899ec5e54', 'e318f0049d504984856b1b1ff342cd40', 'f647cff95248445283cb2dd0f6297955', '9dd40e5b8bda4a9fb016a90e6bfbb99a', '8be20d3c606e45958cd1ce9174615762'],
     }
 
-    for spec, ids in ant_maze_ids.items():
+    for spec, ids in simple_maze_3d_ids.items():
         reward_l = []
         success_rate_l = []
         for run_id in ids:

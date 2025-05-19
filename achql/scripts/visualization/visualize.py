@@ -9,7 +9,7 @@ mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
 mlflow.set_experiment("proj2-notebook")
 
 def main():
-    training_run_id = "4b312b50b43849a78ee69ee96c026b2e"
+    training_run_id = "f1beb21813b64fc9b29329cadae54d9b"
 
     # goal_params = jnp.array([[8., 8., 4., 12.],
     #                          [8., 8., 8., 12.],
@@ -37,7 +37,7 @@ def main():
     # plots += make_plots(
     #     training_run_id,
     #     label="Second Stage",
-    #     tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-6:].set(jnp.array([4., 8., 0., 0., 1., 0.]))),
+    #     tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-8:].set(jnp.array([4., 12., 0., 0., 0., 1., 0., 0.]))),
     #     seed=0,
     #     # label="Initial",
     #     grid_size=50,

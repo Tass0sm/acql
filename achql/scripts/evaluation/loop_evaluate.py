@@ -22,9 +22,9 @@ from achql.visualization.utils import get_mdp_network_policy_and_params
 from achql.visualization import hierarchy, flat
 
 
-def get_group(env, spec, alg):
+def get_group(env, spec, alg, extra_str=""):
     runs = mlflow.search_runs(
-        filter_string=f"tags.env = '{env}' and tags.spec = '{spec}' and tags.alg = '{alg}'"
+        filter_string=f"tags.env = '{env}' and tags.spec = '{spec}' and tags.alg = '{alg}'" + extra_str
     )
 
     return runs
@@ -33,11 +33,13 @@ def get_group(env, spec, alg):
 def main():
     mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
     
-    for env, spec in [("SimpleMaze", "SimpleMazeLoopWithObs"),
+    for env, spec in [# ("SimpleMaze", "SimpleMazeLoopWithObs"),
                       ("SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
                       # ("AntMaze", "AntMazeLoopWithObs")
-                      ]:
-        for alg in ["LOF", "CRM_RS", "ACHQL"]:
+    ]:
+        for alg in ["ACHQL"]:
+
+            # , "LOF", "CRM_RS"
 
             if alg == "LOF":
                 mlflow.set_experiment("proj2-lof-final-experiments")
@@ -55,8 +57,21 @@ def main():
                 loop_eval_for_lof_training_run_ids(run_ids)
 
             else:
-                mlflow.set_experiment("proj2-final-experiments")
-                group = get_group(env, spec, alg)
+
+                task = get_task_by_name(spec)
+
+                if alg == "ACHQL" and env == "SimpleMaze3D":
+                    mlflow.set_experiment("proj2-reproducible-experiments")
+                    episode_length = task.achql_hps["episode_length"]
+                    mult = task.achql_hps["multiplier_num_sgd_steps"]
+                    extra_kwargs = {
+                        "extra_str": f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
+                    }
+                else:
+                    extra_kwargs = {}
+                    mlflow.set_experiment("proj2-final-experiments")
+
+                group = get_group(env, spec, alg, **extra_kwargs)
     
                 # use the five most recent (tentative)
                 group = group.iloc[:5]
