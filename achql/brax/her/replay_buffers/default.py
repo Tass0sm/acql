@@ -108,15 +108,6 @@ class TrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]):
     @functools.partial(jax.jit, static_argnames=["use_her", "env"])
     def flatten_crl_fn(use_her, env, transition: Transition, sample_key: PRNGKey) -> Transition:
         if use_her:
-
-            # # remove automaton state
-            # if hasattr(env, "automaton") and env.augment_obs:
-            #     obs, automaton_obs = env.split_aut_obs(transition.observation)
-            #     next_obs, next_automaton_obs = env.split_aut_obs(transition.next_observation)
-            # else:
-            #     obs = transition.observation
-            #     next_obs = transition.next_observation
-
             obs = transition.observation
             next_obs = transition.next_observation
 
@@ -137,10 +128,6 @@ class TrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]):
             new_goals_idx = jnp.where(non_zero_columns == 0, arrangement, non_zero_columns)
             binary_mask = jnp.logical_and(non_zero_columns, non_zero_columns)
 
-            # # also don't change anything when not in aut_state 0
-            # terminal_aut_state_mask = transition.extras["state_extras"]["automata_state"] == 0
-            # binary_mask = jnp.logical_and(binary_mask, terminal_aut_state_mask)
-
             new_goals = (
                 binary_mask[:, None] * obs[new_goals_idx][:, env.pos_indices] # use obs x/y position as new goal
                 + jnp.logical_not(binary_mask)[:, None] * obs[new_goals_idx][..., env.goal_indices] # use original goal in obs
@@ -154,11 +141,6 @@ class TrajectoryUniformSamplingQueue(QueueBase[Sample], Generic[Sample]):
 
             # Transform next observation
             new_next_obs = next_obs.at[..., env.goal_indices].set(new_goals)
-
-            # # add back automaton state
-            # if hasattr(env, "automaton") and env.augment_obs:
-            #     new_obs = jnp.concatenate([new_obs, automaton_obs], axis=1)
-            #     new_next_obs = jnp.concatenate([new_next_obs, next_automaton_obs], axis=1)
 
             return transition._replace(
                 observation=jnp.squeeze(new_obs),
