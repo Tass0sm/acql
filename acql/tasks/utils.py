@@ -1,5 +1,4 @@
 from acql.brax import tasks as brax_tasks
-from acql.navix import tasks as navix_tasks
 from acql.tasks.base import TaskBase
 
 
@@ -11,8 +10,6 @@ def get_task(env_name: str, task_name: str, **kwargs) -> TaskBase:
 def get_task_by_name(full_task_name, extra_tasks={}, **kwargs) -> TaskBase:
     if hasattr(brax_tasks, full_task_name):
         TaskClass = getattr(brax_tasks, full_task_name)
-    elif hasattr(navix_tasks, full_task_name):
-        TaskClass = getattr(navix_tasks, full_task_name)
     elif full_task_name in extra_tasks:
         TaskClass = extra_tasks[full_task_name]
     else:
