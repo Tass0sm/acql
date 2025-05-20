@@ -117,9 +117,9 @@ def get_compiled_q_function_branches_for_active_goal_obs(
         k = root.kind()
 
         if k == spot.op_ff:
-            return lambda params, obs: -987
+            return lambda params, obs, action: -987
         elif k == spot.op_tt:
-            return lambda params, obs: 987
+            return lambda params, obs, action: 987
         elif k == spot.op_ap:
             ap_id = int(root.ap_name()[3:])
             goal_idx = state_and_ap_to_goal_idx_dict[(aut_state, ap_id)]
@@ -142,14 +142,14 @@ def get_compiled_q_function_branches_for_active_goal_obs(
 
             return get_ap_q
         elif k == spot.op_Not:
-            return lambda params, obs: -children[0](params, obs)
+            return lambda params, obs, action: -children[0](params, obs, action)
         elif k == spot.op_And:
-            return lambda params, obs: jnp.min(jnp.stack(
-              (children[0](params, obs), children[1](params, obs)), axis=-1
+            return lambda params, obs, action: jnp.min(jnp.stack(
+              (children[0](params, obs, action), children[1](params, obs, action)), axis=-1
             ), axis=-1)
         elif k == spot.op_Or:
-            return lambda params, obs: jnp.max(jnp.stack(
-              (children[0](params, obs), children[1](params, obs)), axis=-1
+            return lambda params, obs, action: jnp.max(jnp.stack(
+              (children[0](params, obs, action), children[1](params, obs, action)), axis=-1
             ), axis=-1)
         else:
             raise NotImplementedError(f"Formula {root} with kind = {k}")
@@ -203,7 +203,6 @@ def get_compiled_q_function_branches_for_multi_goal_obs(
                 state_obs = obs[..., :env.no_goal_obs_dim]
                 goals = obs[..., env.no_goal_obs_dim:env.no_goal_obs_dim+env.all_goals_dim]
                 goal = goals[..., goal_idx*env.goal_dim:(goal_idx+1)*env.goal_dim]
-
                 aut_state_obs = obs[..., -env.automaton.n_states:]
 
                 nn_input = jnp.concatenate((state_obs, goal, aut_state_obs), axis=-1)
@@ -291,6 +290,96 @@ def make_algebraic_q_network_for_active_goal_obs(
     return FeedForwardNetwork(init=subnetwork.init, apply=apply)
 
 
+def get_compiled_cost_q_function_branches_for_active_goal_obs(
+    cost_q_network: FeedForwardNetwork,
+    env: envs.Env,
+):
+    out_conditions = env.out_conditions
+    bdd_dict = env.automaton.bdd_dict
+    state_and_ap_to_goal_idx_dict = env.state_and_ap_to_goal_idx_dict
+
+    preds = []
+
+    def to_q_func_helper(root, children, aut_state=0):
+        nonlocal state_and_ap_to_goal_idx_dict
+
+        children = list(children)
+
+        k = root.kind()
+
+        if k == spot.op_ff:
+            return lambda params, obs, action: -987
+        elif k == spot.op_tt:
+            return lambda params, obs, action: 987
+        elif k == spot.op_ap:
+            ap_id = int(root.ap_name()[3:])
+            goal_idx = state_and_ap_to_goal_idx_dict[(aut_state, ap_id)]
+
+            def get_ap_q(params, obs, action):
+                goalless_obs = obs[..., :env.no_goal_obs_dim]
+                goal = env.ith_goal(obs, goal_idx)
+                aut_state_obs = obs[..., -env.automaton.n_states:]
+                nn_input = jnp.concatenate((goalless_obs, goal, aut_state_obs), axis=-1)
+
+                if nn_input.ndim < 2:
+                    nn_input = jnp.atleast_2d(nn_input)
+                    action = jnp.atleast_2d(action)
+                    qs = cost_q_network.apply(*params, nn_input, action).squeeze()
+                else:
+                    qs = cost_q_network.apply(*params, nn_input, action)
+
+                return qs
+
+            return get_ap_q
+        elif k == spot.op_Not:
+            return lambda params, obs, action: -children[0](params, obs, action)
+        elif k == spot.op_And:
+            return lambda params, obs, action: jnp.min(jnp.stack(
+              (children[0](params, obs, action), children[1](params, obs, action)), axis=-1
+            ), axis=-1)
+        elif k == spot.op_Or:
+            return lambda params, obs, action: jnp.min(jnp.stack(
+              (children[0](params, obs, action), children[1](params, obs, action)), axis=-1
+            ), axis=-1)
+        else:
+            raise NotImplementedError(f"Formula {root} with kind = {k}")
+
+    for k, cond_bdd in sorted(out_conditions.items(), key=lambda x: x[0]):
+        if k == env.accepting_state and not env.use_incoming_conditions_for_final_state:
+            breakpoint()
+            def default_q(params, obs, action):
+                nn_input = jnp.concatenate((env.goalless_obs(obs),
+                                            env.ith_goal(obs, 0)), axis=-1)
+                qs = cost_q_network.apply(*params, nn_input, action)
+                return qs
+            preds.append(jax.jit(default_q))
+        else:
+            f_k = spot.bdd_to_formula(cond_bdd, bdd_dict)
+            q_func_k = fold_spot_formula(functools.partial(to_q_func_helper, aut_state=k),
+                                         f_k)
+            preds.append(jax.jit(q_func_k))
+
+    return preds
+
+
+def make_algebraic_cost_q_network_for_active_goal_obs(
+        subnetwork: FeedForwardNetwork,
+        env,
+) -> FeedForwardNetwork:
+
+    q_func_branches = get_compiled_cost_q_function_branches_for_active_goal_obs(subnetwork, env)
+
+    def apply(processor_params, q_params, obs, action):
+        _, _, aut_state = env.split_obs(obs)
+        # this algebraic q network still passes the full observation to the
+        # underlying network incase it still wants to do anything with the
+        # automaton state information
+        batched_q = jax.vmap(lambda a_s, o, a: jax.lax.switch(a_s, q_func_branches, (processor_params, q_params), o, a))
+        return batched_q(aut_state, obs, action)
+
+    return FeedForwardNetwork(init=subnetwork.init, apply=apply)
+
+
 def make_residual_option_q_network(
         obs_size,
         main_network: FeedForwardNetwork,
@@ -344,14 +433,17 @@ def make_acddpg_networks(
     # ALGEBRAIC VERSION IGNORING FUTURE GOALS
 
     if network_type == "old_default":
-        def policy_preprocess_obs_fn(state_and_goal_and_aut_state: jax.Array, processor_params) -> jax.Array:
-            state_and_goal = state_and_goal_and_aut_state[..., :-env.automaton.n_states]
-            obs = preprocess_observations_fn(state_and_goal, processor_params)
+        def policy_preprocess_obs_fn(state_and_goals_and_aut_state: jax.Array, processor_params) -> jax.Array:
+            padding = env.goal_width - 1
+            padded_processor_params = normalizer_params = jax.tree.map(lambda x: jnp.concatenate([x] + padding * [x[env.goal_indices]], axis=-1) if x.ndim >= 1 else x, processor_params)
+
+            state_and_goals = state_and_goals_and_aut_state[..., :-env.automaton.n_states]
+            obs = preprocess_observations_fn(state_and_goals, padded_processor_params)
             return obs
 
         policy_network = networks.make_policy_network(
             parametric_action_distribution.param_size,
-            observation_size,
+            observation_size + ((env.goal_width - 1) * env.goal_dim),
             preprocess_observations_fn=policy_preprocess_obs_fn,
             hidden_layer_sizes=hidden_layer_sizes,
             activation=activation,
@@ -379,7 +471,7 @@ def make_acddpg_networks(
             obs = preprocess_cost_observations_fn(state_and_goal, processor_params)
             return obs
 
-        cost_q_network = networks.make_q_network(
+        single_gc_cost_q_network = networks.make_q_network(
                 cost_observation_size,
                 action_size,
                 preprocess_observations_fn=qc_preprocess_obs_fn,
@@ -388,6 +480,9 @@ def make_acddpg_networks(
                 final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
                 layer_norm=layer_norm,
         )
+
+        cost_q_network = make_algebraic_cost_q_network_for_active_goal_obs(single_gc_cost_q_network, env)
+
     elif network_type == "old_multihead":
         raise NotImplementedError()
         # def qr_preprocess_obs_fn(state_and_goal_and_aut_state: jax.Array, processor_params) -> int:

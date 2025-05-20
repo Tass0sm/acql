@@ -19,9 +19,38 @@ Env = Union[envs.Env]
 
 from brax.training.acting import Evaluator
 
+import achql.stl as stl
+
+from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import partition
+
 from achql.hierarchy.training.acting import semimdp_generate_unroll
 from achql.hierarchy.state import OptionState
 from achql.hierarchy.option import Option
+
+
+def count_continuous_subsequences(xs):
+    def f(carry, x):
+        dist_since_positive, count = carry
+
+        def increment_and_reset():
+            return (0, count + 1)
+
+        def reset():
+            return (0, count)
+
+        def move_on():
+            return (dist_since_positive + 1, count)
+
+        return jax.lax.cond(
+            x > 0,
+            lambda: jax.lax.cond(dist_since_positive > 4,
+                                 increment_and_reset,
+                                 reset),
+            move_on), None
+
+    (_, count), _ = jax.lax.scan(f, (10, 0), xs)
+
+    return count
 
 
 class HierarchicalEvaluatorWithSpecification(Evaluator):
@@ -70,6 +99,33 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
 
       self.specification = specification
       self.state_var = state_var
+
+  def _get_loop_success_rate(self, obs, ap_param_fields):
+      # LOOP EVALUATION STUFF
+      safety_phi = self.specification.children[1]
+      # From data, calculate robustness
+      safety_robustness_traces = jax.vmap(safety_phi)({ self.state_var.idx: obs,
+                                                        # "action": data.action
+                                                       } | ap_param_fields)
+      safety_robustness = safety_robustness_traces[..., 0]
+
+      _, goal_aps = partition(lambda _, v: "goal" in v.info, self.env.automaton.aps)
+      made_loop_phi = stl.STLAnd(goal_aps[0],
+                                 stl.STLNext(stl.STLUntimedEventually(
+                                   stl.STLAnd(goal_aps[1],
+                                              stl.STLNext(stl.STLUntimedEventually(
+                                                goal_aps[0]))))))
+
+      made_loop_robustness_traces = jax.vmap(made_loop_phi)({ self.state_var.idx: obs,
+                                                              # "action": data.action
+                                                             } | ap_param_fields)
+
+      num_loops = jax.vmap(count_continuous_subsequences)(made_loop_robustness_traces)
+
+      loop_success_rate = jnp.logical_and(safety_robustness > 0, num_loops > 0).mean()
+
+      return loop_success_rate
+
 
   def run_evaluation(self,
                      policy_params: PolicyParams,
@@ -127,6 +183,9 @@ class HierarchicalEvaluatorWithSpecification(Evaluator):
               for name, value in eval_metrics.episode_metrics.items()
           }
       )
+
+    # loop_success_rate = self._get_loop_success_rate(obs, ap_param_fields)
+    # metrics['eval/loop_success_rate'] = jnp.mean(loop_success_rate)
 
     metrics['eval/proportion_robustness_over_zero'] = jnp.mean(jnp.where(robustness > 0, 1.0, 0.0))
     metrics['eval/min_episode_robustness'] = jnp.min(robustness)

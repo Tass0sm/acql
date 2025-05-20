@@ -960,8 +960,8 @@ packages:
   requires_python: '>=3.10'
 - pypi: /home/tassos/phd/research/corallab-stl
   name: corallab-stl
-  version: 0.1.0
-  sha256: 7e704b610eb7fe6f6d59c7806ef568dd370ad998ae25e77c8425bf4a5bb36fda
+  version: 0.5.1
+  sha256: f7dd0d37453ff7cca369d1b020b779dfdca5241c7080b04a57e9911b633d2e5f
   requires_python: '>=3.10,<4.0'
   editable: true
 - pypi: https://files.pythonhosted.org/packages/ef/82/72403624f197af0db6bac4e58153bc9ac0e6020e57234115db9596eee85d/cryptography-44.0.0-cp39-abi3-manylinux_2_28_x86_64.whl

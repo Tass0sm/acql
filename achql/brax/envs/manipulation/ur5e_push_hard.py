@@ -38,7 +38,7 @@ class UR5ePushHard(UR5eEnvs):
 
         self.arm_noise_scale = 0
         self.cube_noise_scale = jnp.array([0.15, 0.15])
-        self.goal_noise_scale = jnp.array([0.50, 0.25, 0.0])
+        self.goal_noise_scale = jnp.array([0.15, 0.15, 0.0])
         
     def _get_initial_state(self, rng):
         rng, subkey1, subkey2 = jax.random.split(rng, 3)
@@ -54,12 +54,12 @@ class UR5ePushHard(UR5eEnvs):
     
     def _get_initial_goal(self, pipeline_state: base.State, rng):
         rng, subkey = jax.random.split(rng)
-        cube_goal_pos = jnp.array([0.0, 0.4, 0.03]) + self.goal_noise_scale * jax.random.uniform(subkey, [3], minval=-1)
+        cube_goal_pos = jnp.array([0.25, 0.4, 0.03]) + self.goal_noise_scale * jax.random.uniform(subkey, [3], minval=-1)
         return cube_goal_pos
 
     def _random_target(self, rng):
         rng, subkey = jax.random.split(rng)
-        cube_goal_pos = jnp.array([0.0, 0.4, 0.03]) + self.goal_noise_scale * jax.random.uniform(subkey, [3], minval=-1)
+        cube_goal_pos = jnp.array([0.25, 0.4, 0.03]) + self.goal_noise_scale * jax.random.uniform(subkey, [3], minval=-1)
         return cube_goal_pos
         
     def _compute_goal_completion(self, obs, goal):

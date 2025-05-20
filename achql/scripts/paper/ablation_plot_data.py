@@ -21,38 +21,38 @@ def fetch_runs():
     groups = []
 
     for alg, env, spec in [# POINT MASS
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeTwoSubgoals"),
-                           ("ACHQL", "SimpleMaze", "SimpleMazeTwoSubgoals"),
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeBranching1"),
-                           ("ACHQL", "SimpleMaze", "SimpleMazeBranching1"),
-                           ("ACHQL_ABLATION_TWO", "SimpleMaze", "SimpleMazeObligationConstraint1"),
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeObligationConstraint1"),
-                           ("ACHQL", "SimpleMaze", "SimpleMazeObligationConstraint2"),
-                           ("ACHQL_ABLATION_TWO", "SimpleMaze", "SimpleMazeUntil2"),
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeUntil2"),
-                           ("ACHQL", "SimpleMaze", "SimpleMazeUntil2"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeTwoSubgoals"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeTwoSubgoals"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeBranching1"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeBranching1"),
+                           # ("ACHQL_ABLATION_TWO", "SimpleMaze", "SimpleMazeObligationConstraint1"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeObligationConstraint1"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeObligationConstraint1"),
+                           # ("ACHQL_ABLATION_TWO", "SimpleMaze", "SimpleMazeUntil2"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze", "SimpleMazeUntil2"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeUntil2"),
                            # QUADCOPTER
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
-                           # ("ACHQL", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DBranching1"),
-                           # ("ACHQL", "SimpleMaze3D", "SimpleMaze3DBranching1"),
-                           ("ACHQL_ABLATION_TWO", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
-                           # ("ACHQL", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
-                           ("ACHQL_ABLATION_TWO", "SimpleMaze3D", "SimpleMaze3DUntil2"),
-                           ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DUntil2"),
-                           # ("ACHQL", "SimpleMaze3D", "SimpleMaze3DUntil2"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
+                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DBranching1"),
+                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DBranching1"),
+                           # ("ACHQL_ABLATION_TWO", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
+                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
+                           # ("ACHQL_ABLATION_TWO", "SimpleMaze3D", "SimpleMaze3DUntil2"),
+                           # ("ACHQL_ABLATION_ONE", "SimpleMaze3D", "SimpleMaze3DUntil2"),
+                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DUntil2"),
                            # ANT MAZE
-                           # ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeTwoSubgoals"),
-                           # ("ACHQL", "AntMaze", "AntMazeTwoSubgoals"),
-                           # ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeBranching1"),
-                           # ("ACHQL", "AntMaze", "AntMazeBranching1"),
-                           # ("ACHQL_ABLATION_TWO", "AntMaze", "AntMazeObligationConstraint3"),
-                           # ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeObligationConstraint3"),
-                           # ("ACHQL", "AntMaze", "AntMazeObligationConstraint3"),
-                           # ("ACHQL_ABLATION_TWO", "AntMaze", "AntMazeUntil1"),
-                           # ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeUntil1"),
-                           # ("ACHQL", "AntMaze", "AntMazeUntil1")
+                           ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeTwoSubgoals"),
+                           ("ACHQL", "AntMaze", "AntMazeTwoSubgoals"),
+                           ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeBranching1"),
+                           ("ACHQL", "AntMaze", "AntMazeBranching1"),
+                           ("ACHQL_ABLATION_TWO", "AntMaze", "AntMazeObligationConstraint3"),
+                           ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeObligationConstraint3"),
+                           ("ACHQL", "AntMaze", "AntMazeObligationConstraint3"),
+                           ("ACHQL_ABLATION_TWO", "AntMaze", "AntMazeUntil1"),
+                           ("ACHQL_ABLATION_ONE", "AntMaze", "AntMazeUntil1"),
+                           ("ACHQL", "AntMaze", "AntMazeUntil1")
     ]:
         task = get_task_by_name(spec)
 
@@ -147,4 +147,4 @@ if __name__ == "__main__":
 
     runs = fetch_runs()
     df = process_runs(runs)
-    df.to_csv("./phd-server-ablation-data.csv")
+    df.to_csv("./lab-pc-ablation-data.csv")

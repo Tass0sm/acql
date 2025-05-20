@@ -2,7 +2,7 @@ import mlflow
 
 from achql.brax.agents.achql import train as achql
 
-from achql.scripts.train import train_for_all, training_run
+from achql.scripts.training.train import train_for_all, training_run
 
 # tasks
 from achql.brax.utils import (
@@ -56,15 +56,15 @@ def all_achql_ablation_one_runs(max_seed=5):
     # train_for_all(["SimpleMaze"], ["LoopWithObs"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
 
     # train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["Branching1"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["Until2"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["LoopWithObs"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["Branching1"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["Until2"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
 
     # train_for_all(["AntMaze"], ["TwoSubgoals"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
     # train_for_all(["AntMaze"], ["Branching1"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
     # train_for_all(["AntMaze"], ["ObligationConstraint3"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
-    # train_for_all(["AntMaze"], ["Until2"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
+    train_for_all(["AntMaze"], ["Until1"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
     # train_for_all(["AntMaze"], ["LoopWithObs"], achql_ablation_one_train, "ACHQL_ABLATION_ONE", seed_range=(0, max_seed))
 
 
@@ -96,8 +96,8 @@ def all_achql_ablation_two_runs(max_seed=5):
 
 
 def main():
-    # all_achql_ablation_one_runs()
-    all_achql_ablation_two_runs()
+    all_achql_ablation_one_runs()
+    # all_achql_ablation_two_runs()
 
 
 if __name__ == "__main__":

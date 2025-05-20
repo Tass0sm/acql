@@ -1,5 +1,5 @@
-# ACHQL
-Official implementation of Automaton Constrained Hierarchical Q-Learning (ACHQL) for Safety-Critical Robot Control
+# ACQL
+Official implementation of Automaton Constrained Q-Learning (ACQL)
 
 ### Installation
 
@@ -11,15 +11,20 @@ dependencies with one command, you may use the pixi package management tool
 pixi install
 ```
 
-### Running ACHQL
+### Running ACQL
 
-To train an agent with Automaton Constrained Hierarchical Q-Learning, you can
-run the `main.py` script. By default, the script instantiates an AntMaze
-two-subgoal sequence navigation task.
+To run all the experiments included in our paper, you can
+run the following scripts.
 
 ```shell
-python main.py
+python -m achql.scripts.training.train
+python -m achql.scripts.training.ablation_train
 ```
+
+### Hyperparameters
+
+Hyperparameters are summarized for each experiment by dictionaries included with
+the definition of each task in the "achql/brax/tasks" subdirectory.
 
 ### Acknowledgement
 

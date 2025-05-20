@@ -60,6 +60,30 @@ def get_logical_option_run_ids(task_name, seed):
         # ("SimpleMazeLoopWithObs", 3): ["1f8be0fa1dff44debf8e37ab01ff8664", "3c8dc5a023f24832b9540bc4a00634e6"],
         # ("SimpleMazeLoopWithObs", 4): ["56530129fc1c4c49a703be53bcd53605", "3f54899feaf64caf8f1772a44d1393ac"],
 
+        ("SimpleMaze3DTwoSubgoals", 0): ["da4a8293ee952eb49fa88b", "2bd8801324e04f5fb7e45737a2c0229e"],
+        ("SimpleMaze3DTwoSubgoals", 1): ["5045ec9f4ed6a8150f8395", "4fd36e121cc448a7bbdf8811263f67c6"],
+        ("SimpleMaze3DTwoSubgoals", 2): ["314f34bdc87c424f8de757", "f4e8f14327b84491b84162b86afa5f20"],
+        ("SimpleMaze3DTwoSubgoals", 3): ["1c4e8ab835c9a1ccf0cdae", "d91501b6de0f41c18009c444d416d9c9"],
+        ("SimpleMaze3DTwoSubgoals", 4): ["1d4dbe89dc5c6b5a3733eb", "461f9ea00be54f108f8d21fbcccf8af4"],
+
+        ("SimpleMaze3DBranching1", 0): ["1244e32a027e47d2885cbca", "cec61ba8c18d4b3fb92abccb4461779b"],
+        ("SimpleMaze3DBranching1", 1): ["c474a0da539c1de4c7c8566", "d7d622abff134a3eabc2ea714ef44ddc"],
+        ("SimpleMaze3DBranching1", 2): ["18442a8a6c385ea63034400", "36653217238d4632bb87d664458bb8dc"],
+        ("SimpleMaze3DBranching1", 3): ["13d4757aa44ece18f44f222", "dd2214da609c451987bce1d50df5ec8b"],
+        ("SimpleMaze3DBranching1", 4): ["e2e463f8b9401e391e7ac42", "bc70d482cf9948718b4cef8a89213435"],
+
+        ("SimpleMaze3DObligationConstraint2", 0): ["e81556962e474392b691ce3cc8250a50"],
+        ("SimpleMaze3DObligationConstraint2", 1): ["f7c31bbb524f4e42b369351620783278"],
+        ("SimpleMaze3DObligationConstraint2", 2): ["a387b811301b4f21a89181b38d13e4a2"],
+        ("SimpleMaze3DObligationConstraint2", 3): ["7dd1298b45ed472986c99f42b6033fb5"],
+        ("SimpleMaze3DObligationConstraint2", 4): ["e3173c889c2d41e4a4c2de53ace92866"],
+
+        ("SimpleMaze3DUntil2", 0): ["79e7d4d52c6d4b95a7b66199156379bf", "731bf0f33f2a408aacc6f6c249cc0ec6"],
+        ("SimpleMaze3DUntil2", 1): ["28ac7a7afd704944b5a056d6986d3c20", "f56fd9aeb3e24e30a871879c78ef391a"],
+        ("SimpleMaze3DUntil2", 2): ["ffd68e5ee8464e19825292b209752e0e", "35f13eb87248442c87f47afe4cda1b57"],
+        ("SimpleMaze3DUntil2", 3): ["4cbd862b5c4740fbb37d13828bbea5e8", "669a826c8c78452fb59069221aac0cb0"],
+        ("SimpleMaze3DUntil2", 4): ["d107fef260c14f058c2444bf5433f3d5", "5c5bebb499a44498bc04afb4b36505e5"],
+
 
         ("SimpleMaze3DTwoSubgoals", 0): ["025cbdf778da4a8293ee952eb49fa88b", "2bd8801324e04f5fb7e45737a2c0229e"],
         ("SimpleMaze3DTwoSubgoals", 1): ["b432b1950a5045ec9f4ed6a8150f8395", "4fd36e121cc448a7bbdf8811263f67c6"],
