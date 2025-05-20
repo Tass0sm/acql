@@ -9,12 +9,12 @@ from flax import struct, nnx
 import jax
 from jax import numpy as jnp
 
-from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
-from achql.brax.envs.wrappers.automaton_multi_goal_conditioned_wrapper import AutomatonMultiGoalConditionedWrapper
-from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
-from achql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
-from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
-from achql.brax.utils import recursive_is_instance
+from acql.hierarchy.option import Option, FixedLengthTerminationPolicy
+from acql.brax.envs.wrappers.automaton_multi_goal_conditioned_wrapper import AutomatonMultiGoalConditionedWrapper
+from acql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
+from acql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
+from acql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
+from acql.brax.utils import recursive_is_instance
 
 
 class OptionsWrapper(Wrapper):

@@ -27,7 +27,7 @@ import flax
 import jax
 import jax.numpy as jnp
 
-from achql.hierarchy.option_critic import networks as oc_networks
+from acql.hierarchy.option_critic import networks as oc_networks
 
 
 @flax.struct.dataclass

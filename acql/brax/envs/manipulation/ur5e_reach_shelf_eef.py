@@ -6,7 +6,7 @@ import mujoco
 import jax
 from jax import numpy as jnp
 
-from achql.brax.envs.manipulation.ur5e_reach import UR5eReach
+from acql.brax.envs.manipulation.ur5e_reach import UR5eReach
 
 
 """

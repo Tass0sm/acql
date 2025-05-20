@@ -11,11 +11,11 @@ import mlflow
 
 from brax.io import model
 
-from achql.navix.agents.tabular_hql import train as tabular_hql
-from achql.navix.agents.tabular_achql import train as tabular_achql
+from acql.navix.agents.tabular_hql import train as tabular_hql
+from acql.navix.agents.tabular_achql import train as tabular_achql
 
-from achql.tasks.utils import get_task
-from achql.navix.utils import make_cmdp
+from acql.tasks.utils import get_task
+from acql.navix.utils import make_cmdp
 
 
 mlflow.set_tracking_uri(f"file:///home/tassos/.local/share/mlflow")

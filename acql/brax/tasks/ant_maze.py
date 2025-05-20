@@ -5,16 +5,16 @@ import jax.numpy as jnp
 
 from gymnasium.spaces.utils import flatdim
 
-from achql.brax.envs.ant_maze import AntMaze
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
-from achql.brax.tasks.mixins import *
-from achql.hierarchy.ant.load import load_ant_options
-from achql.hierarchy.option import FixedLengthTerminationPolicy
+from acql.brax.envs.ant_maze import AntMaze
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from acql.brax.tasks.mixins import *
+from acql.hierarchy.ant.load import load_ant_options
+from acql.hierarchy.option import FixedLengthTerminationPolicy
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class AntMazeTaskBase(BraxTaskBase):

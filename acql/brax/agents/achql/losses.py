@@ -9,7 +9,7 @@ from brax.training.types import PRNGKey
 import jax
 import jax.numpy as jnp
 
-from achql.brax.agents.achql import networks as achql_networks
+from acql.brax.agents.achql import networks as achql_networks
 
 from .argmaxes import *
 
@@ -27,7 +27,7 @@ def make_losses(
         use_sum_cost_critic: bool = False,
         actor_type: str = "argmax",
 ):
-  """Creates the ACHQL losses."""
+  """Creates the ACQL losses."""
 
   option_q_network = achql_network.option_q_network
   cost_q_network = achql_network.cost_q_network

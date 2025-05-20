@@ -14,10 +14,10 @@ from jax import numpy as jnp
 import spot
 import buddy
 
-from achql.stl import Expression
-from achql.automaton import JaxAutomaton
-from achql.stl import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions, get_func_from_spot_formula
-from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
+from acql.stl import Expression
+from acql.automaton import JaxAutomaton
+from acql.stl import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions, get_func_from_spot_formula
+from acql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
 
 
 def partition(pred, d):

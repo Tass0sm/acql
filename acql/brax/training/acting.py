@@ -25,7 +25,7 @@ from brax.training.types import PRNGKey
 import jax
 import numpy as np
 
-from achql.brax.training.types import MyTransition
+from acql.brax.training.types import MyTransition
 
 
 State = Union[envs.State]

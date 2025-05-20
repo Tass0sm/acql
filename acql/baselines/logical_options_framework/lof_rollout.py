@@ -19,8 +19,8 @@ from brax.io import model
 from brax.io import json
 from brax.io import html
 
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option, FixedLengthTerminationPolicy
 
 
 def get_rollout(env, hierarchical_policy, logical_options, n_steps=200, render_every=1, seed=0):

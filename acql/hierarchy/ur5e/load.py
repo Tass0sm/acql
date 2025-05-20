@@ -21,8 +21,8 @@ from brax.training.acme import running_statistics
 from brax.training import types
 from brax.training.types import PRNGKey
 
-from achql.hierarchy.ur5e import options
-from achql.hierarchy.option import Option, BernoulliTerminationPolicy
+from acql.hierarchy.ur5e import options
+from acql.hierarchy.option import Option, BernoulliTerminationPolicy
 
 
 def load_ur5e_options(

@@ -6,11 +6,11 @@ import jax.numpy as jnp
 from gymnasium.spaces.utils import flatdim
 
 from jaxgcrl.envs.ant_push import AntPush
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class AntPushTaskBase(BraxTaskBase):

@@ -1,8 +1,8 @@
 import mlflow
 
-from achql.visualization.utils import get_mdp_network_policy_and_params
+from acql.visualization.utils import get_mdp_network_policy_and_params
 
-from achql.visualization.plots import (
+from acql.visualization.plots import (
     make_plots_for_achql,
     make_plots_for_3d_achql,
     make_plots_for_acddpg,

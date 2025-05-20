@@ -17,7 +17,7 @@ from brax.io import json
 from brax.io import html
 from brax.training.agents.ppo import train as ppo
 
-from achql.brax.envs.ant import Ant
+from acql.brax.envs.ant import Ant
 
 from . import options as options_module
 

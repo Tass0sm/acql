@@ -8,7 +8,7 @@ from flax import struct
 import jax
 from jax import numpy as jnp
 
-from achql.stl import Expression
+from acql.stl import Expression
 
 
 def reward_machine_value_iteration(num_states, terminal_states, delta_u, delta_r, n_aps, gamma):

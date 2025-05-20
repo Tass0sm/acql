@@ -14,12 +14,12 @@ from brax.training.types import PRNGKey
 import flax
 from flax import linen
 
-from achql.brax.training.acme import running_statistics
-from achql.hierarchy.training import networks as h_networks
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
+from acql.brax.training.acme import running_statistics
+from acql.hierarchy.training import networks as h_networks
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
 
-from achql.stl import fold_spot_formula
+from acql.stl import fold_spot_formula
 
 
 @flax.struct.dataclass

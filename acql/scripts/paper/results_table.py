@@ -1,5 +1,5 @@
 import mlflow
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
 def get_group(env, spec, alg, extra_str=""):

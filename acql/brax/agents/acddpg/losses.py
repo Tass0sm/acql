@@ -9,7 +9,7 @@ from brax.training.types import PRNGKey
 import jax
 import jax.numpy as jnp
 
-from achql.brax.agents.acddpg import networks as acddpg_networks
+from acql.brax.agents.acddpg import networks as acddpg_networks
 
 
 Transition = types.Transition

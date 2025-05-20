@@ -26,10 +26,10 @@ from brax.training.types import Transition
 import jax
 import jax.numpy as jnp
 
-from achql.hierarchy.training.types import HierarchicalTransition
-from achql.hierarchy.types import HierarchicalPolicy
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
+from acql.hierarchy.training.types import HierarchicalTransition
+from acql.hierarchy.types import HierarchicalPolicy
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
 
 State = Union[envs.State]
 Env = Union[envs.Env]

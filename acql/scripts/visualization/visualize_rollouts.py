@@ -5,10 +5,10 @@ import mediapy
 
 from brax.io import model
 
-from achql.baselines.logical_options_framework import lof_rollout
+from acql.baselines.logical_options_framework import lof_rollout
 
-from achql.visualization.utils import get_mdp_network_policy_and_params
-from achql.visualization import hierarchy, flat
+from acql.visualization.utils import get_mdp_network_policy_and_params
+from acql.visualization import hierarchy, flat
 
 # tasks
 

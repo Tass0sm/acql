@@ -3,14 +3,14 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from achql.brax.envs.drone_maze import DroneMaze
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box
-from achql.hierarchy.drone.load import load_hard_coded_drone_options
+from acql.brax.envs.drone_maze import DroneMaze
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box
+from acql.hierarchy.drone.load import load_hard_coded_drone_options
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class DroneMazeTaskBase(BraxTaskBase):

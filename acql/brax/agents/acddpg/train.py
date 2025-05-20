@@ -39,10 +39,10 @@ from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
 from jaxgcrl.utils.evaluator import Evaluator
 from jaxgcrl.utils.replay_buffer import TrajectoryUniformSamplingQueue
 
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 
-from achql.brax.agents.acddpg import losses as acddpg_losses
-from achql.brax.agents.acddpg import networks
+from acql.brax.agents.acddpg import losses as acddpg_losses
+from acql.brax.agents.acddpg import networks
 
 
 # from absl import logging
@@ -66,11 +66,11 @@ from achql.brax.agents.acddpg import networks
 
 # from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
 
-# from achql.brax.training.acme import running_statistics
-# from achql.brax.her import replay_buffers
+# from acql.brax.training.acme import running_statistics
+# from acql.brax.her import replay_buffers
 
-# from achql.brax.agents.acddpg import losses as acddpg_losses
-# from achql.brax.agents.acddpg import networks as acddpg_networks
+# from acql.brax.agents.acddpg import losses as acddpg_losses
+# from acql.brax.agents.acddpg import networks as acddpg_networks
 
 
 

@@ -1,4 +1,4 @@
-from achql.tasks.base import TaskBase
+from acql.tasks.base import TaskBase
 
 
 class BraxTaskBase(TaskBase):

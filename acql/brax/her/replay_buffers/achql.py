@@ -31,7 +31,7 @@ import optax
 
 from .jaxgcrl_replay_buffer import QueueBase, Sample
 
-from achql.hierarchy.training.types import HierarchicalTransition
+from acql.hierarchy.training.types import HierarchicalTransition
 
 
 Metrics = types.Metrics

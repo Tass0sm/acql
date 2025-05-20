@@ -17,7 +17,7 @@ from brax.io import json
 from brax.io import html
 from brax.training.agents.ppo import train as ppo
 
-from achql.brax.envs.manipulation.ur5e_translate import UR5eTranslate
+from acql.brax.envs.manipulation.ur5e_translate import UR5eTranslate
 
 from . import options as options_module
 

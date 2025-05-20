@@ -8,18 +8,18 @@ import jax.numpy as jnp
 from brax.io import model
 from brax import envs
 
-import achql.stl as stl
+import acql.stl as stl
 
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
-from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import partition
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import partition
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
-from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
-from achql.visualization.utils import get_mdp_network_policy_and_params
-from achql.visualization import hierarchy, flat
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
+from acql.visualization.utils import get_mdp_network_policy_and_params
+from acql.visualization import hierarchy, flat
 
 
 def get_group(env, spec, alg, extra_str=""):

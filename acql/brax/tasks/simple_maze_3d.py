@@ -3,16 +3,16 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from achql.brax.envs.simple_maze_3d import SimpleMaze3D
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
-from achql.brax.tasks.mixins import *
-from achql.hierarchy.xyz_point.load import load_hard_coded_xyz_point_options
-from achql.hierarchy.option import FixedLengthTerminationPolicy
+from acql.brax.envs.simple_maze_3d import SimpleMaze3D
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from acql.brax.tasks.mixins import *
+from acql.hierarchy.xyz_point.load import load_hard_coded_xyz_point_options
+from acql.hierarchy.option import FixedLengthTerminationPolicy
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class SimpleMaze3DTaskBase(BraxTaskBase):

@@ -10,7 +10,7 @@ from jax import numpy as jnp
 import mujoco
 import xml.etree.ElementTree as ET
 
-from achql.brax.envs.simple_maze_3d import (
+from acql.brax.envs.simple_maze_3d import (
     RESET, R,
     GOAL, G,
     OPEN_MAZE,

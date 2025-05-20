@@ -1,11 +1,11 @@
 import mlflow
 
-from achql.brax.agents.achql import train as achql
+from acql.brax.agents.achql import train as achql
 
-from achql.scripts.training.train import train_for_all, training_run
+from acql.scripts.training.train import train_for_all, training_run
 
 # tasks
-from achql.brax.utils import (
+from acql.brax.utils import (
     make_aut_goal_cmdp,
 )
 

@@ -21,9 +21,9 @@ from brax.training.acme import running_statistics
 from brax.training import types
 from brax.training.types import PRNGKey
 
-from achql.brax.envs.xy_point import XYPoint
-from achql.hierarchy.xy_point import options
-from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
+from acql.brax.envs.xy_point import XYPoint
+from acql.hierarchy.xy_point import options
+from acql.hierarchy.option import Option, FixedLengthTerminationPolicy
 
 
 def load_hard_coded_x_point_options(k: int = 1):

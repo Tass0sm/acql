@@ -10,24 +10,23 @@ from brax.io import model
 
 from jaxgcrl.utils.config import RunConfig
 
-from achql.brax.agents.ppo import train as ppo
-from achql.brax.agents.achql import train as achql
-from achql.brax.agents.acddpg import train as acddpg
-from achql.brax.agents.sac_her import train as sac_her
-from achql.brax.agents.sac import train as sac
-from achql.brax.agents.crl import train as crl
-from achql.brax.agents.ddpg import train as ddpg
-from achql.brax.agents.ddpg_her import train as ddpg_her
-from achql.brax.agents.hdqn import train as hdqn
-from achql.brax.agents.hdqn_her import train as hdqn_her
-from achql.baselines.reward_machines.qrm import train as qrm
-from achql.baselines.reward_machines.qrm_ddpg import train as qrm_ddpg
-from achql.baselines.reward_machines.crm import train as crm
+from acql.brax.agents.ppo import train as ppo
+from acql.brax.agents.achql import train as achql
+from acql.brax.agents.acddpg import train as acddpg
+from acql.brax.agents.sac_her import train as sac_her
+from acql.brax.agents.sac import train as sac
+from acql.brax.agents.ddpg import train as ddpg
+from acql.brax.agents.ddpg_her import train as ddpg_her
+from acql.brax.agents.hdqn import train as hdqn
+from acql.brax.agents.hdqn_her import train as hdqn_her
+from acql.baselines.reward_machines.qrm import train as qrm
+from acql.baselines.reward_machines.qrm_ddpg import train as qrm_ddpg
+from acql.baselines.reward_machines.crm import train as crm
 
-from achql.tasks import get_task
-from achql.brax.utils import make_aut_goal_cmdp, make_reward_machine_mdp
+from acql.tasks import get_task
+from acql.brax.utils import make_aut_goal_cmdp, make_reward_machine_mdp
 
-from achql.visualization.plots import make_plots_for_achql, make_plots_for_3d_achql
+from acql.visualization.plots import make_plots_for_achql, make_plots_for_3d_achql
 
 
 def progress_fn(num_steps, metrics, *args, **kwargs):
@@ -431,58 +430,6 @@ def ddpg_her_train(run, task, seed, spec):
         seed,
         train_fn=train_fn,
         hyperparameters=task.ddpg_her_hps,
-        extras={
-            # "options": options,
-            # "specification": spec,
-            # "state_var": task.obs_var,
-        }
-    )
-
-
-    
-def crl_train(run, task, seed, spec):
-
-    def train_fn(environment, progress_fn, seed, **kwargs):
-        hyperparameters = { k: v for k, v in kwargs.items() if k in
-                            ["critic_lr", "alpha_lr", "batch_size",
-                             "discounting", "logsumexp_penalty_coeff",
-                             "train_step_multiplier", "disable_entropy_actor",
-                             "max_replay_size", "min_replay_size",
-                             "unroll_length", "h_dim", "n_hidden",
-                             "skip_connections", "use_relu", "repr_dim",
-                             "use_ln", "contrastive_loss_fn", "energy_fn",
-                             "policy_lr"] }
-
-        agent = crl.CRL(**hyperparameters)
-
-        run_params = { k: v for k, v in kwargs.items() \
-                       if k in ["total_env_steps",
-                                "episode_length",
-                                "num_envs",
-                                "num_eval_envs",
-                                "num_evals",
-                                "action_repeat",
-                                "max_devices_per_host"] }
-
-        run_config = RunConfig(
-            env=environment,
-            seed=seed,
-            **run_params
-        )
-
-        return agent.train_fn(
-            config=run_config,
-            train_env=environment,
-            # eval_env=eval_env,
-            progress_fn=progress_fn,
-        )
-
-    make_inference_fn, params = training_run(
-        run.info.run_id,
-        task.env,
-        seed,
-        train_fn=train_fn,
-        hyperparameters=task.crl_hps,
         extras={
             # "options": options,
             # "specification": spec,

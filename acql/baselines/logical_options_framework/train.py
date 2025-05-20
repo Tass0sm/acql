@@ -24,18 +24,18 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-# from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
-from achql.hierarchy.option import Option
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
-from achql.hierarchy.state import OptionState
+# from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
+from acql.hierarchy.option import Option
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.hierarchy.state import OptionState
 
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
-from achql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
+from acql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
 
-from achql.stl import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
-from achql.stl import expression_jax2 as stl
+from acql.stl import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
+from acql.stl import expression_jax2 as stl
 
 Metrics = types.Metrics
 

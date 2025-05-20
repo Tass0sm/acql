@@ -22,8 +22,8 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from achql.brax.agents.ddpg_lagrangian import losses as ddpg_lagrangian_losses
-from achql.brax.agents.ddpg_lagrangian import networks as ddpg_lagrangian_networks
+from acql.brax.agents.ddpg_lagrangian import losses as ddpg_lagrangian_losses
+from acql.brax.agents.ddpg_lagrangian import networks as ddpg_lagrangian_networks
 
 
 Metrics = types.Metrics

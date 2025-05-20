@@ -19,7 +19,7 @@ from brax.io import json
 from brax.io import html
 
 # tasks
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
 

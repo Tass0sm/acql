@@ -14,7 +14,7 @@ from jax import numpy as jnp
 import spot
 import buddy
 
-from achql.stl import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions
+from acql.stl import get_spot_formula_and_aps, eval_spot_formula, make_just_liveness_automaton, get_outgoing_conditions
 
 
 class JaxAutomaton:

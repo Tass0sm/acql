@@ -19,12 +19,12 @@ from brax.io import model
 from brax.io import json
 from brax.io import html
 
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
-from achql.brax.utils import recursive_is_instance
-from achql.brax.envs.wrappers.automaton_multi_goal_conditioned_wrapper import AutomatonMultiGoalConditionedWrapper
-from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
-from achql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option, FixedLengthTerminationPolicy
+from acql.brax.utils import recursive_is_instance
+from acql.brax.envs.wrappers.automaton_multi_goal_conditioned_wrapper import AutomatonMultiGoalConditionedWrapper
+from acql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
+from acql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
 
 
 def get_rollout(env, hierarchical_policy, options, n_steps=200, render_every=1, seed=0):

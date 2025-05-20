@@ -6,7 +6,7 @@ import seaborn as sns
 
 from scipy.ndimage.filters import gaussian_filter1d
 
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
 def get_group(env, spec, alg, extra_str=""):

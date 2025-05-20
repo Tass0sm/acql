@@ -9,9 +9,9 @@ from brax import envs
 from brax.training.types import Params
 from brax.training.types import PRNGKey
 
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.agents.hdcqn import networks as hdcq_networks
-from achql.brax.agents.achql import networks as achql_networks
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.agents.hdcqn import networks as hdcq_networks
+from acql.brax.agents.achql import networks as achql_networks
 
 
 def plot_simple_maze_option_arrows(axs, X, Y, options, grid_size):

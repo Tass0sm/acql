@@ -3,30 +3,30 @@ import mlflow
 from brax.io import model
 from brax.training.acme import running_statistics
 
-from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
-from achql.brax.envs.wrappers.automaton_goal_wrapper import AutomatonGoalWrapper
+from acql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
+from acql.brax.envs.wrappers.automaton_goal_wrapper import AutomatonGoalWrapper
 
-from achql.brax.utils import make_reward_machine_mdp
-# from achql.scripts.new_achql_testing import make_aut_goal_cmdp
-from achql.brax.utils import make_aut_goal_cmdp
+from acql.brax.utils import make_reward_machine_mdp
+# from acql.scripts.new_achql_testing import make_aut_goal_cmdp
+from acql.brax.utils import make_aut_goal_cmdp
 
 from brax.training.agents.ppo import networks as ppo_networks
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.agents.hdcqn import networks as hdcq_networks
-from achql.brax.agents.hdqn_automaton_her import networks as hdq_aut_networks
-from achql.brax.agents.achql import networks as achql_networks
-from achql.brax.agents.acddpg import networks as acddpg_networks
-from achql.brax.agents.sac_her import networks as sac_networks
-from achql.brax.agents.ddpg import networks as ddpg_networks
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.agents.hdcqn import networks as hdcq_networks
+from acql.brax.agents.hdqn_automaton_her import networks as hdq_aut_networks
+from acql.brax.agents.achql import networks as achql_networks
+from acql.brax.agents.acddpg import networks as acddpg_networks
+from acql.brax.agents.sac_her import networks as sac_networks
+from acql.brax.agents.ddpg import networks as ddpg_networks
 
-from achql.baselines.logical_options_framework.visualization import (
+from acql.baselines.logical_options_framework.visualization import (
     get_lof_option_mdp_network_policy_and_params,
     get_lof_mdp_network_policy_and_params
 )
 
-from achql.scripts.multihead_exp_train import make_network_factory as make_rm_multihead_network_factory
+from acql.scripts.multihead_exp_train import make_network_factory as make_rm_multihead_network_factory
 
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
 def get_achql_mdp_network_policy_and_params(task, run, params, use_sum_cost_critic=False):

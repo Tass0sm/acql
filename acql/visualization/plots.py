@@ -7,10 +7,10 @@ import jax.numpy as jnp
 # from brax import envs
 # from brax.training.types import Params
 # from brax.training.types import PRNGKey
-from achql.brax.agents.achql import networks as achql_networks
-from achql.brax.agents.acddpg import networks as acddpg_networks
+from acql.brax.agents.achql import networks as achql_networks
+from acql.brax.agents.acddpg import networks as acddpg_networks
 
-from achql.visualization.critic import (
+from acql.visualization.critic import (
     plot_function_grid,
     plot_simple_maze_option_arrows,
     plot_simple_maze_3d_option_arrows

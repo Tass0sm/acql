@@ -29,8 +29,8 @@ from orbax import checkpoint as ocp
 
 from brax.training.agents.ppo.train import *
 
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
-from achql.brax.envs.wrappers.specification_reward_wrapper import SpecificationRewardWrapper
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.envs.wrappers.specification_reward_wrapper import SpecificationRewardWrapper
 
 
 _PMAP_AXIS_NAME = 'i'

@@ -2,7 +2,7 @@ import mlflow
 
 import jax.numpy as jnp
 
-from achql.visualization.interface import make_plots
+from acql.visualization.interface import make_plots
 
 
 mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")

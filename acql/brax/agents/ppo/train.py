@@ -42,8 +42,8 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
-from achql.brax.training.acme import running_statistics
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.training.acme import running_statistics
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 
 
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]

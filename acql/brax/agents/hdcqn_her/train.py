@@ -23,17 +23,17 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from achql.brax.her.replay_buffers import TrajectoryUniformSamplingQueue
+from acql.brax.her.replay_buffers import TrajectoryUniformSamplingQueue
 
-from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.brax.agents.hdcqn import losses as hdcqn_losses
-from achql.brax.agents.hdcqn import networks as hdcq_networks
-from achql.hierarchy.training import acting as hierarchical_acting
-from achql.hierarchy.training import types as h_types
+from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.brax.agents.hdcqn import losses as hdcqn_losses
+from acql.brax.agents.hdcqn import networks as hdcq_networks
+from acql.hierarchy.training import acting as hierarchical_acting
+from acql.hierarchy.training import types as h_types
 
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
 
-from achql.visualization.critic import make_plots_for_hdcqn
+from acql.visualization.critic import make_plots_for_hdcqn
 
 
 Metrics = types.Metrics

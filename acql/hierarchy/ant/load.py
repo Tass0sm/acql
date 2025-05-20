@@ -21,9 +21,9 @@ from brax.training.acme import running_statistics
 from brax.training import types
 from brax.training.types import PRNGKey
 
-from achql.brax.envs.ant import Ant
-from achql.hierarchy.ant import options
-from achql.hierarchy.option import Option, BernoulliTerminationPolicy
+from acql.brax.envs.ant import Ant
+from acql.hierarchy.ant import options
+from acql.hierarchy.option import Option, BernoulliTerminationPolicy
 
 
 def load_ant_options(

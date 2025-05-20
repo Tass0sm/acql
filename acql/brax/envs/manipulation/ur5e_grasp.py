@@ -6,7 +6,7 @@ import mujoco
 import jax
 from jax import numpy as jnp
 
-from achql.brax.envs.manipulation.ur5e_envs import UR5eEnvs
+from acql.brax.envs.manipulation.ur5e_envs import UR5eEnvs
 
 """
 Grasp: Close fingers on opposite sides of a cube.

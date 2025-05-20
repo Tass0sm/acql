@@ -15,13 +15,13 @@ from brax.training.types import PRNGKey
 import flax
 from flax import linen
 
-from achql.stl import fold_spot_formula
-from achql.brax.training.acme import running_statistics
-from achql.hierarchy.training import networks as h_networks
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
-# from achql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
-from achql.brax.agents.achql.argmaxes import argmax_with_safest_tiebreak, argmax_with_random_tiebreak
+from acql.stl import fold_spot_formula
+from acql.brax.training.acme import running_statistics
+from acql.hierarchy.training import networks as h_networks
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
+# from acql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
+from acql.brax.agents.achql.argmaxes import argmax_with_safest_tiebreak, argmax_with_random_tiebreak
 
 
 

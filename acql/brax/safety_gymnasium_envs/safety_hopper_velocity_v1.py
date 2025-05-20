@@ -1,6 +1,6 @@
 """Hopper environment with a safety constraint on velocity."""
 
-from achql.brax.safety_gymnasium_envs.safety_hopper_velocity_v0 import (
+from acql.brax.safety_gymnasium_envs.safety_hopper_velocity_v0 import (
     SafetyHopperVelocityEnv as HopperEnv,
 )
 
