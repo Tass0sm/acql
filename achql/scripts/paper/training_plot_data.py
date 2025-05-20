@@ -20,11 +20,26 @@ def get_group(env, spec, alg, extra_str=""):
 def fetch_runs():
     groups = []
 
-    for alg, env, spec in [("ACHQL", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
+    for alg, env, spec in [# ("ACHQL", "SimpleMaze", "SimpleMazeTwoSubgoals"),
+                           # ("CRM_RS", "SimpleMaze", "SimpleMazeTwoSubgoals"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeBranching1"),
+                           # ("CRM_RS", "SimpleMaze", "SimpleMazeBranching1"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeObligationConstraint2"),
+                           # ("CRM_RS", "SimpleMaze", "SimpleMazeObligationConstraint2"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeUntil2"),
+                           # ("CRM_RS", "SimpleMaze", "SimpleMazeUntil2"),
+                           # ("ACHQL", "SimpleMaze", "SimpleMazeLoopWithObs"),
+                           # ("CRM_RS", "SimpleMaze", "SimpleMazeLoopWithObs"),
+                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
+                           # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
                            ("ACHQL", "SimpleMaze3D", "SimpleMaze3DBranching1"),
+                           # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DBranching1"),
                            ("ACHQL", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
+                           # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
                            ("ACHQL", "SimpleMaze3D", "SimpleMaze3DUntil2"),
+                           # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DUntil2"),
                            ("ACHQL", "SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
+                           # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
                            ("ACHQL", "AntMaze", "AntMazeTwoSubgoals"),
                            ("CRM_RS", "AntMaze", "AntMazeTwoSubgoals"),
                            ("ACHQL", "AntMaze", "AntMazeBranching1"),
@@ -37,7 +52,7 @@ def fetch_runs():
                            ("CRM_RS", "AntMaze", "AntMazeLoopWithObs")]:
         task = get_task_by_name(spec)
 
-        if alg == "ACHQL" and env == "SimpleMaze3D":
+        if alg == "ACHQL" and env == "SimpleMaze3D" and "LoopWithObs" not in spec:
             mlflow.set_experiment("proj2-reproducible-experiments")
             episode_length = task.achql_hps["episode_length"]
             mult = task.achql_hps["multiplier_num_sgd_steps"]
@@ -82,7 +97,8 @@ def process_runs(runs):
         # if all(tag in row for tag in ['algorithm', 'environment', 'task']):
         alg = row["tags.alg"]
         env = row["tags.env"]
-        if alg == "ACHQL" and env == "SimpleMaze3D":
+        spec = row["tags.spec"]
+        if alg == "ACHQL" and env == "SimpleMaze3D" and "LoopWithObs" not in spec:
             mlflow.set_experiment("proj2-reproducible-experiments")
         else:
             if alg == "LOF":
@@ -90,9 +106,13 @@ def process_runs(runs):
             else:
                 mlflow.set_experiment("proj2-final-experiments")
 
-        sr_values = get_metric_values(row['run_id'], 'eval/proportion_robustness_over_zero')
+        if "LoopWithObs" in spec:
+            sr_values = get_metric_values(row['run_id'], 'eval/loop_success_rate')
+        else:
+            sr_values = get_metric_values(row['run_id'], 'eval/proportion_robustness_over_zero')
+
         sr_df = pd.DataFrame(sr_values, columns=['step', 'sr']).set_index("step")
-        reward_values = get_metric_values(row['run_id'], 'eval/episode_automaton_success')
+        reward_values = get_metric_values(row['run_id'], 'eval/episode_reward')
         reward_df = pd.DataFrame(reward_values, columns=['step', 'reward']).set_index("step")
         metrics_df = pd.concat([sr_df, reward_df], axis=1).reset_index()
 
