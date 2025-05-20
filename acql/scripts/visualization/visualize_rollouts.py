@@ -13,7 +13,7 @@ from acql.visualization import hierarchy, flat
 # tasks
 
 def main():
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
     # mlflow.set_experiment("proj2-notebook")
 
     training_run_id = "cc278d824b614e95a5ef34a88a9f2842"

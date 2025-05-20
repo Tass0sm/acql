@@ -278,7 +278,7 @@ def ablation_table_second_row():
 
 
 def main():
-    mlflow.set_tracking_uri(f"file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri(f"REDACTED")
 
     # ablation_table_first_row()
     ablation_table_second_row()

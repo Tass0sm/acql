@@ -10,7 +10,7 @@ def get_nested_runs(parent_run_id, experiment_id=None):
     )
 
 def main(spec, alg, experiment_id=None):
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
 
     parent_filter = f"tags.spec = '{spec}' and tags.alg = '{alg}'"
     parent_runs = mlflow.search_runs(

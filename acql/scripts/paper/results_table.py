@@ -11,7 +11,7 @@ def get_group(env, spec, alg, extra_str=""):
 
 
 def main():
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
     mlflow.set_experiment("proj2-final-experiments")
     
     for env, spec in [# ("SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),

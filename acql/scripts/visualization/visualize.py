@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from acql.visualization.interface import make_plots
 
 
-mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+mlflow.set_tracking_uri("REDACTED")
 mlflow.set_experiment("proj2-notebook")
 
 def main():

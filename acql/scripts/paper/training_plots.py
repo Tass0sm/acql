@@ -207,7 +207,7 @@ def plot_grouped_reward_metrics(df):
 
 if __name__ == "__main__":
 
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
 
     lab_pc_df = pd.read_csv("./lab-pc-data.csv")
     phd_server_df = pd.read_csv("./phd-server-data.csv")

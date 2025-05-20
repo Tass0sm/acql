@@ -323,7 +323,7 @@ def main():
 
 
 if __name__ == "__main__":
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
     mlflow.set_experiment("proj2-final-experiments")
 
     main()

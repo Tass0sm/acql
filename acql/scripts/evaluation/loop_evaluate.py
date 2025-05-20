@@ -31,7 +31,7 @@ def get_group(env, spec, alg, extra_str=""):
 
 
 def main():
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
     
     for env, spec in [# ("SimpleMaze", "SimpleMazeLoopWithObs"),
                       ("SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
@@ -398,6 +398,6 @@ def run_final_eval(evaluator, loop_counter, training_run_id, mdp):
 
 
 if __name__ == "__main__":
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
 
     results = main()

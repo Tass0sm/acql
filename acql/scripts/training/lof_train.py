@@ -71,7 +71,7 @@ def main(max_seed=5):
 
     
 if __name__ == "__main__":
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
     # mlflow.set_experiment("proj2-lof-reproducible-experiments")
     mlflow.set_experiment("proj2-lof-final-experiments")
 

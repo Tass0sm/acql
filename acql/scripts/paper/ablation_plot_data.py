@@ -143,7 +143,7 @@ def process_runs(runs):
 
 
 if __name__ == "__main__":
-    mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
+    mlflow.set_tracking_uri("REDACTED")
 
     runs = fetch_runs()
     df = process_runs(runs)
