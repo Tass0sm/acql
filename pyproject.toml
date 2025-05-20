@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "achql"
+name = "acql"
 version = "0.1.0"
-description = "Automaton Constrained Hierarchical Q-Learning"
+description = "Automaton Constrained Q-Learning"
 authors = ["Anonymous"]
 readme = "README.md"
 
