@@ -24,7 +24,9 @@ python -m acql.scripts.training.ablation_train
 ### Hyperparameters
 
 Hyperparameters are summarized for each experiment by dictionaries included with
-the definition of each task in the "acql/brax/tasks" subdirectory.
+the definition of each task in the files "acql/brax/tasks/base.py",
+"acql/brax/tasks/simple_maze.py", "acql/brax/tasks/simple_maze_3d.py", and
+"acql/brax/tasks/ant_maze.py".
 
 ### Acknowledgement
 
