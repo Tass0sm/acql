@@ -17,7 +17,7 @@ State = Union[envs.State]
 Env = Union[envs.Env]
 
 
-from brax.training.acting import Evaluator, generate_unroll
+from acql.brax.training.acting import Evaluator, generate_unroll
 
 
 class EvaluatorWithSpecification(Evaluator):

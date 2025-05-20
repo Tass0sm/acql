@@ -21,8 +21,7 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
-
+from acql.brax.envs.wrappers.trajectory_id_wrapper import TrajectoryIdWrapper
 from acql.brax.training.acme import running_statistics
 from acql.brax.her import replay_buffers
 

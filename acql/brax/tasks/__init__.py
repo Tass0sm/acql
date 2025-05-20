@@ -78,18 +78,6 @@ from .ur5e import (
     # UR5eEEFComplexBranchingScalabilityTestTask,
     # UR5eEEFGraspTask,
 )
-from .panda import (
-    PandaPushEasyTrue,
-    PandaPushEasySingleSubgoal,
-    PandaReachTrue,
-    PandaReachSingleSubgoal,
-)
-from .arm_eef import (
-    ArmEEFBinpickEasyTrue,
-    ArmEEFBinpickEasySingleSubgoal,
-    ArmEEFPushEasyTrue,
-    ArmEEFPushEasySingleSubgoal,
-)
 from .x_point import (
     XPointFisacTask,
 )

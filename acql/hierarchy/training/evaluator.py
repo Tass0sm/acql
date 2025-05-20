@@ -17,7 +17,7 @@ State = Union[envs.State]
 Env = Union[envs.Env]
 
 
-from brax.training.acting import Evaluator
+from acql.brax.training.acting import Evaluator
 
 import acql.stl as stl
 

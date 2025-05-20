@@ -17,7 +17,7 @@ State = Union[envs.State]
 Env = Union[envs.Env]
 
 
-from brax.training.acting import Evaluator
+from acql.brax.training.acting import Evaluator
 
 from acql.hierarchy.training.acting import generate_unroll
 from acql.hierarchy.state import OptionState

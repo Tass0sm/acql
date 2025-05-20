@@ -35,7 +35,7 @@ from brax.training.types import Params, Policy, PRNGKey
 from brax.v1 import envs as envs_v1
 from flax.struct import dataclass
 
-from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
+from acql.brax.envs.wrappers.trajectory_id_wrapper import TrajectoryIdWrapper
 from jaxgcrl.utils.evaluator import Evaluator
 from jaxgcrl.utils.replay_buffer import TrajectoryUniformSamplingQueue
 
