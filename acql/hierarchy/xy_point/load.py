@@ -21,9 +21,9 @@ from brax.training.acme import running_statistics
 from brax.training import types
 from brax.training.types import PRNGKey
 
-from achql.brax.envs.xy_point import XYPoint
-from achql.hierarchy.xy_point import options
-from achql.hierarchy.option import Option, BernoulliTerminationPolicy
+from acql.brax.envs.xy_point import XYPoint
+from acql.hierarchy.xy_point import options
+from acql.hierarchy.option import Option, BernoulliTerminationPolicy
 
 
 def load_xy_point_options(adapter: Optional[Callable] = None):

@@ -3,14 +3,14 @@ import jax
 
 import mlflow
 
-from achql.brax.agents.hdqn import train as hdqn
+from acql.brax.agents.hdqn import train as hdqn
 
-from achql.baselines.logical_options_framework import train as lof
-from achql.baselines.logical_options_framework import get_logical_option_run_ids
+from acql.baselines.logical_options_framework import train as lof
+from acql.baselines.logical_options_framework import get_logical_option_run_ids
 
-from achql.brax.tasks import get_task
+from acql.brax.tasks import get_task
 
-from achql.scripts.train import train_for_all, training_run
+from acql.scripts.train import train_for_all, training_run
 
 
 def lof_train(run, task, seed, spec, reward_shaping=False):

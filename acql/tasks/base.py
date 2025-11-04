@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from achql.stl import Expression, Var
+from acql.stl import Expression, Var
 
 
 class TaskBase(ABC):

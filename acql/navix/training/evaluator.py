@@ -20,10 +20,10 @@ import numpy as np
 # from brax.training.acting import Evaluator
 from navix import Timestep
 
-from achql.navix.envs.wrappers.training import EvalWrapper
-from achql.navix.training.hierarchical_acting import semimdp_generate_unroll
-# from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
+from acql.navix.envs.wrappers.training import EvalWrapper
+from acql.navix.training.hierarchical_acting import semimdp_generate_unroll
+# from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
 
 
 class NavixEvaluator: # (Evaluator):

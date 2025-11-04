@@ -3,16 +3,16 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from achql.brax.envs.simple_maze_3d import SimpleMaze3D
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
-from achql.brax.tasks.mixins import *
-from achql.hierarchy.xyz_point.load import load_hard_coded_xyz_point_options
-from achql.hierarchy.option import FixedLengthTerminationPolicy
+from acql.brax.envs.simple_maze_3d import SimpleMaze3D
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from acql.brax.tasks.mixins import *
+from acql.hierarchy.xyz_point.load import load_hard_coded_xyz_point_options
+from acql.hierarchy.option import FixedLengthTerminationPolicy
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class SimpleMaze3DTaskBase(BraxTaskBase):
@@ -38,8 +38,8 @@ class SimpleMaze3DTaskBase(BraxTaskBase):
 
 
     # @property
-    # def achql_hps(self):
-    #     return super().achql_hps | { # "episode_length": 100,
+    # def acql_hps(self):
+    #     return super().acql_hps | { # "episode_length": 100,
     #                                  "multiplier_num_sgd_steps": 4,
     #                                  "cost_scaling": 10.0 }
 
@@ -100,9 +100,9 @@ class SimpleMaze3DTwoSubgoals(TwoSubgoalsMixin, SimpleMaze3DTaskBase):
                                    "multiplier_num_sgd_steps": 1 }
 
     @property
-    def achql_hps(self):
+    def acql_hps(self):
         # verified by sweep
-        return super().achql_hps | { "episode_length": 100,
+        return super().acql_hps | { "episode_length": 100,
                                      "multiplier_num_sgd_steps": 1 }
 
 
@@ -138,9 +138,9 @@ class SimpleMaze3DBranching1(Branching1Mixin, SimpleMaze3DTaskBase):
                                    "multiplier_num_sgd_steps": 1 }
 
     @property
-    def achql_hps(self):
+    def acql_hps(self):
         # Validated with a sweep
-        return super().achql_hps | { "episode_length": 200,
+        return super().acql_hps | { "episode_length": 200,
                                      "multiplier_num_sgd_steps": 1 }
 
 
@@ -177,9 +177,9 @@ class SimpleMaze3DObligationConstraint2(ObligationConstraint2Mixin, SimpleMaze3D
                                    "multiplier_num_sgd_steps": 1 }
 
     @property
-    def achql_hps(self):
+    def acql_hps(self):
         # Validated with a sweep
-        return super().achql_hps | { "episode_length": 200,
+        return super().acql_hps | { "episode_length": 200,
                                      "multiplier_num_sgd_steps": 1 }
 
 
@@ -232,9 +232,9 @@ class SimpleMaze3DUntil2(Until1Mixin, SimpleMaze3DTaskBase):
                                    "multiplier_num_sgd_steps": 1 }
 
     @property
-    def achql_hps(self):
+    def acql_hps(self):
         # Validated with a sweep
-        return super().achql_hps | { "episode_length": 100,
+        return super().acql_hps | { "episode_length": 100,
                                      "multiplier_num_sgd_steps": 1 }
 
 
@@ -273,9 +273,9 @@ class SimpleMaze3DLoopWithObs(LoopWithObsMixin, SimpleMaze3DTaskBase):
                                    "multiplier_num_sgd_steps": 1 }
 
     @property
-    def achql_hps(self):
+    def acql_hps(self):
         # Validated with a sweep
-        return super().achql_hps | { "episode_length": 200,
+        return super().acql_hps | { "episode_length": 200,
                                      "multiplier_num_sgd_steps": 1 }
 
 

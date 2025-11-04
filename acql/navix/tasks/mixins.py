@@ -2,10 +2,10 @@ import numpy as np
 import jax.numpy as jnp
 
 # , outside_circle, inside_box, true_exp
-from achql.navix.tasks.templates import true_exp, inside_circle, inside_box
+from acql.navix.tasks.templates import true_exp, inside_circle, inside_box
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class NoConstraintMixin:

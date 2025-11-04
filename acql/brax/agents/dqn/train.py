@@ -22,8 +22,8 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from achql.brax.agents.dqn import losses as dqn_losses
-from achql.brax.agents.dqn import networks as dq_networks
+from acql.brax.agents.dqn import losses as dqn_losses
+from acql.brax.agents.dqn import networks as dq_networks
 
 
 Metrics = types.Metrics

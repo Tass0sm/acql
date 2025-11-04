@@ -5,13 +5,13 @@ import jax.numpy as jnp
 
 from gymnasium.spaces.utils import flatdim
 
-from achql.brax.envs.xy_point import XYPoint
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle
+from acql.brax.envs.xy_point import XYPoint
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class XYPointTaskBase(BraxTaskBase):

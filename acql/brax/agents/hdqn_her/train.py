@@ -21,16 +21,16 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from achql.brax.training.acme import running_statistics
-from achql.brax.her import replay_buffers
+from acql.brax.training.acme import running_statistics
+from acql.brax.her import replay_buffers
 
-from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.brax.agents.hdqn import losses as hdqn_losses
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.hierarchy.training import acting as hierarchical_acting
-from achql.hierarchy.training import types as h_types
+from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.brax.agents.hdqn import losses as hdqn_losses
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.hierarchy.training import acting as hierarchical_acting
+from acql.hierarchy.training import types as h_types
 
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
 
 
 Metrics = types.Metrics

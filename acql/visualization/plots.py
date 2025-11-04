@@ -7,10 +7,10 @@ import jax.numpy as jnp
 # from brax import envs
 # from brax.training.types import Params
 # from brax.training.types import PRNGKey
-from achql.brax.agents.achql import networks as achql_networks
-from achql.brax.agents.acddpg import networks as acddpg_networks
+from acql.brax.agents.acql import networks as acql_networks
+from acql.brax.agents.acddpg import networks as acddpg_networks
 
-from achql.visualization.critic import (
+from acql.visualization.critic import (
     plot_function_grid,
     plot_simple_maze_option_arrows,
     plot_simple_maze_3d_option_arrows
@@ -85,7 +85,7 @@ def make_plots_for_hdqn(
     return [(fig, ax)]
 
 
-def make_plots_for_achql(
+def make_plots_for_acql(
         env,
         make_policy: Callable,
         network,
@@ -121,11 +121,11 @@ def make_plots_for_achql(
     obs_batch = obs_batch.at[:, 0:2].set(positions)
 
     # qr
-    make_qr = achql_networks.make_option_qr_fn(network, env, 0.0)
+    make_qr = acql_networks.make_option_qr_fn(network, env, 0.0)
     qr_fn = make_qr(params)
 
     # qc
-    make_qc = achql_networks.make_option_qc_fn(network, env, 0.0)
+    make_qc = acql_networks.make_option_qc_fn(network, env, 0.0)
     qc_fn = make_qc(params)
 
     # policy
@@ -193,7 +193,7 @@ def make_plots_for_achql(
     return [(fig1, ax1), (fig2, ax2)]
 
 
-def make_plots_for_3d_achql(
+def make_plots_for_3d_acql(
         env,
         make_policy: Callable,
         network,
@@ -229,11 +229,11 @@ def make_plots_for_3d_achql(
     obs_batch = obs_batch.at[:, 0:2].set(positions)
 
     # qr
-    make_qr = achql_networks.make_option_qr_fn(network, env, 0.0)
+    make_qr = acql_networks.make_option_qr_fn(network, env, 0.0)
     qr_fn = make_qr(params)
 
     # qc
-    make_qc = achql_networks.make_option_qc_fn(network, env, 0.0)
+    make_qc = acql_networks.make_option_qc_fn(network, env, 0.0)
     qc_fn = make_qc(params)
 
     # policy

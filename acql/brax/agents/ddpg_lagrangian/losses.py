@@ -7,7 +7,7 @@ from brax.training import distribution
 import jax
 import jax.numpy as jnp
 
-from achql.brax.agents.ddpg_lagrangian import networks as ddpg_lagrangian_networks
+from acql.brax.agents.ddpg_lagrangian import networks as ddpg_lagrangian_networks
 
 
 Transition = types.Transition

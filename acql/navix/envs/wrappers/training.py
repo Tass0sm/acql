@@ -8,7 +8,7 @@ from jax import numpy as jp
 
 from navix import Timestep
 
-from achql.navix.envs.wrappers.base import Wrapper
+from acql.navix.envs.wrappers.base import Wrapper
 
 
 def wrap_for_training(

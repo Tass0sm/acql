@@ -101,7 +101,7 @@ def make_maze(maze_layout_name, maze_size_scaling):
     else:
         raise ValueError(f"Unknown maze layout: {maze_layout_name}")
 
-    xml_path = epath.resource_path('achql') / 'brax/envs/assets/xy_point_maze.xml'
+    xml_path = epath.resource_path('acql') / 'brax/envs/assets/xy_point_maze.xml'
 
     possible_starts = find_starts(maze_layout, maze_size_scaling)
     possible_goals = find_goals(maze_layout, maze_size_scaling)

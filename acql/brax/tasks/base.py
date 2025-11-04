@@ -1,4 +1,4 @@
-from achql.tasks.base import TaskBase
+from acql.tasks.base import TaskBase
 
 
 class BraxTaskBase(TaskBase):
@@ -211,7 +211,7 @@ class BraxTaskBase(TaskBase):
         }
 
     @property
-    def achql_hps(self):
+    def acql_hps(self):
         return self.hdcqn_her_hps
 
     @property

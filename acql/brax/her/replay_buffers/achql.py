@@ -31,7 +31,7 @@ import optax
 
 from .jaxgcrl_replay_buffer import QueueBase, Sample
 
-from achql.hierarchy.training.types import HierarchicalTransition
+from acql.hierarchy.training.types import HierarchicalTransition
 
 
 Metrics = types.Metrics
@@ -43,7 +43,7 @@ ReplayBufferState = Any
 _PMAP_AXIS_NAME = "i"
 
 
-class TrajectoryACHQLSamplingQueue(QueueBase[Sample], Generic[Sample]):
+class TrajectoryACQLSamplingQueue(QueueBase[Sample], Generic[Sample]):
     """Implements an uniform sampling limited-size replay queue but with trajectories."""
 
     def __init__(
@@ -55,7 +55,7 @@ class TrajectoryACHQLSamplingQueue(QueueBase[Sample], Generic[Sample]):
             episode_length: int,
             **kwargs
     ):
-        super(TrajectoryACHQLSamplingQueue, self).__init__(
+        super(TrajectoryACQLSamplingQueue, self).__init__(
             max_replay_size,
             dummy_data_sample,
             sample_batch_size,

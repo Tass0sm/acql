@@ -4,7 +4,7 @@ import jax.numpy as jnp
 
 from navix.environments.environment import Environment
 
-from achql.tasks.base import TaskBase
+from acql.tasks.base import TaskBase
 
 
 class NavixTaskBase(TaskBase):
@@ -26,7 +26,7 @@ class NavixTaskBase(TaskBase):
         }
 
     @property
-    def tabular_achql_hps(self):
+    def tabular_acql_hps(self):
         return {
             **self.tabular_hql_hps,
             "cost_scaling": 1.0,

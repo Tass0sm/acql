@@ -1,5 +1,5 @@
 import mlflow
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
 def get_group(env, spec, alg, extra_str=""):
@@ -30,10 +30,10 @@ def main():
 
             task = get_task_by_name(spec)
 
-            if alg == "ACHQL" and env == "SimpleMaze3D":
+            if alg == "ACQL" and env == "SimpleMaze3D":
                 mlflow.set_experiment("proj2-reproducible-experiments")
-                episode_length = task.achql_hps["episode_length"]
-                mult = task.achql_hps["multiplier_num_sgd_steps"]
+                episode_length = task.acql_hps["episode_length"]
+                mult = task.acql_hps["multiplier_num_sgd_steps"]
                 extra_kwargs = {
                     "extra_str": f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
                 }
@@ -45,7 +45,7 @@ def main():
                 else:
                     mlflow.set_experiment("proj2-final-experiments")
                 
-            # "ACHQL", "LOF", "CRM_RS", "CRM"
+            # "ACQL", "LOF", "CRM_RS", "CRM"
     
 
             group = get_group(env, spec, alg, **extra_kwargs)

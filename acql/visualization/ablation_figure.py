@@ -9,9 +9,9 @@ from brax import envs
 from brax.training.types import Params
 from brax.training.types import PRNGKey
 
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.agents.hdcqn import networks as hdcq_networks
-from achql.brax.agents.hdcqn_automaton_her import networks as hdcq_aut_networks
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.agents.hdcqn import networks as hdcq_networks
+from acql.brax.agents.hdcqn_automaton_her import networks as hdcq_aut_networks
 
 
 def fill_ax_with_function_grid(

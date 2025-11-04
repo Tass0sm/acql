@@ -2,7 +2,7 @@ from typing import Protocol, Tuple
 
 from brax.training.types import Observation, PRNGKey, Extra, Action
 
-from achql.hierarchy.state import OptionState
+from acql.hierarchy.state import OptionState
 
 
 class HierarchicalPolicy(Protocol):

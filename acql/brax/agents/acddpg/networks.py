@@ -15,8 +15,8 @@ from brax.training.types import PRNGKey
 import flax
 from flax import linen
 
-from achql.stl import fold_spot_formula
-from achql.brax.training.acme import running_statistics
+from acql.stl import fold_spot_formula
+from acql.brax.training.acme import running_statistics
 
 
 @flax.struct.dataclass

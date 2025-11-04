@@ -36,7 +36,7 @@ class Doggo(PipelineEnv):
             backend='generalized',
             **kwargs,
     ):
-        path = epath.resource_path('achql') / 'brax/envs/assets/doggo.xml'
+        path = epath.resource_path('acql') / 'brax/envs/assets/doggo.xml'
         sys = mjcf.load(path)
 
         n_frames = 5

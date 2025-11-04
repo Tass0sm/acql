@@ -10,24 +10,24 @@ from brax.io import model
 
 from jaxgcrl.utils.config import RunConfig
 
-from achql.brax.agents.ppo import train as ppo
-from achql.brax.agents.achql import train as achql
-from achql.brax.agents.acddpg import train as acddpg
-from achql.brax.agents.sac_her import train as sac_her
-from achql.brax.agents.sac import train as sac
-from achql.brax.agents.crl import train as crl
-from achql.brax.agents.ddpg import train as ddpg
-from achql.brax.agents.ddpg_her import train as ddpg_her
-from achql.brax.agents.hdqn import train as hdqn
-from achql.brax.agents.hdqn_her import train as hdqn_her
-from achql.baselines.reward_machines.qrm import train as qrm
-from achql.baselines.reward_machines.qrm_ddpg import train as qrm_ddpg
-from achql.baselines.reward_machines.crm import train as crm
+from acql.brax.agents.ppo import train as ppo
+from acql.brax.agents.acql import train as acql
+from acql.brax.agents.acddpg import train as acddpg
+from acql.brax.agents.sac_her import train as sac_her
+from acql.brax.agents.sac import train as sac
+from acql.brax.agents.crl import train as crl
+from acql.brax.agents.ddpg import train as ddpg
+from acql.brax.agents.ddpg_her import train as ddpg_her
+from acql.brax.agents.hdqn import train as hdqn
+from acql.brax.agents.hdqn_her import train as hdqn_her
+from acql.baselines.reward_machines.qrm import train as qrm
+from acql.baselines.reward_machines.qrm_ddpg import train as qrm_ddpg
+from acql.baselines.reward_machines.crm import train as crm
 
-from achql.tasks import get_task
-from achql.brax.utils import make_aut_goal_cmdp, make_reward_machine_mdp
+from acql.tasks import get_task
+from acql.brax.utils import make_aut_goal_cmdp, make_reward_machine_mdp
 
-from achql.visualization.plots import make_plots_for_achql, make_plots_for_3d_achql
+from acql.visualization.plots import make_plots_for_acql, make_plots_for_3d_acql
 
 
 def progress_fn(num_steps, metrics, *args, **kwargs):
@@ -46,10 +46,10 @@ def progress_fn_with_figs(num_steps, metrics, *args, **kwargs):
     network = kwargs["network"]
     params = kwargs["params"]
 
-    plots_1 = make_plots_for_3d_achql(env, make_policy, network, params,
+    plots_1 = make_plots_for_3d_acql(env, make_policy, network, params,
                                       grid_size=50)
 
-    # plots_2 = make_plots_for_achql(env, make_policy, network, params,
+    # plots_2 = make_plots_for_acql(env, make_policy, network, params,
     #                                grid_size=50,
     #                                tmp_state_fn=lambda x: x.replace(obs=x.obs.at[-6:].set(jnp.array([4., 4., 0., 0., 1., 0.]))))
 
@@ -247,16 +247,16 @@ def crm_train(run, task, seed, spec, reward_shaping=False):
     )
 
 
-def achql_train(run, task, seed, spec, margin=1.0):
+def acql_train(run, task, seed, spec, margin=1.0):
     options = task.get_options()
 
     return training_run(
         run.info.run_id,
-        make_aut_goal_cmdp(task, margin=margin, randomize_goals=task.achql_hps["use_her"]),
+        make_aut_goal_cmdp(task, margin=margin, randomize_goals=task.acql_hps["use_her"]),
         seed,
-        train_fn=achql.train,
+        train_fn=acql.train,
         # progress_fn=progress_fn_with_figs,
-        hyperparameters=task.achql_hps | { "network_type": "old_multihead" },
+        hyperparameters=task.acql_hps | { "network_type": "old_multihead" },
         extras={
             "options": options,
             "specification": spec,
@@ -491,24 +491,24 @@ def crl_train(run, task, seed, spec):
     )
 
 
-def all_achql_runs(max_seed=5):
-    train_for_all(["SimpleMaze"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["Until2"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, max_seed))
+def all_acql_runs(max_seed=5):
+    train_for_all(["SimpleMaze"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
 
-    train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["Until2"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze3D"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze3D"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["SimpleMaze3D"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
 
-    train_for_all(["AntMaze"], ["TwoSubgoals"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["Branching1"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["ObligationConstraint3"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["Until2"], achql_train, "ACHQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["LoopWithObs"], achql_train, "ACHQL", seed_range=(0, max_seed))
+    train_for_all(["AntMaze"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["AntMaze"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["AntMaze"], ["ObligationConstraint3"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["AntMaze"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    train_for_all(["AntMaze"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
 
 
 def all_crm_rs_runs(max_seed=5):
@@ -534,8 +534,9 @@ def all_crm_rs_runs(max_seed=5):
 
 
 def main():
-    all_achql_runs(max_seed=5)
-    all_crm_rs_runs(max_seed=5)
+    print("hello")
+    # all_acql_runs(max_seed=5)
+    # all_crm_rs_runs(max_seed=5)
 
 
 if __name__ == "__main__":

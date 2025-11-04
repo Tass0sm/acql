@@ -21,7 +21,7 @@ from brax.training.acme import running_statistics
 from brax.training import types
 from brax.training.types import PRNGKey
 
-from achql.hierarchy.option import Option, BernoulliTerminationPolicy
+from acql.hierarchy.option import Option, BernoulliTerminationPolicy
 
 
 def load_hard_coded_drone_options(

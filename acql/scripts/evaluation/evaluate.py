@@ -9,15 +9,15 @@ import jax.numpy as jnp
 from brax.io import model
 from brax import envs
 
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
-from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
-from achql.visualization.utils import get_mdp_network_policy_and_params
-from achql.visualization import hierarchy, flat
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.hierarchy.training.lof_evaluator import LOFEvaluatorWithSpecification
+from acql.visualization.utils import get_mdp_network_policy_and_params
+from acql.visualization import hierarchy, flat
 
 
 def hierarchical_evaluate(task, mdp, training_run_id, make_option_policy, eval_key):
@@ -81,7 +81,7 @@ def lof_evaluate(task, mdp, run, training_run_id, make_option_policy, logical_op
     eval_environment = mdp
     wrap_for_training = envs.training.wrap
 
-    episode_length = task.achql_hps["episode_length"]
+    episode_length = task.acql_hps["episode_length"]
 
     eval_env = wrap_for_training(
             eval_environment,

@@ -1,9 +1,9 @@
-from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper, AutomatonGoalConditionedWrapper
-# from achql.brax.envs.wrappers.automaton_transition_rewards_wrapper import AutomatonTransitionRewardsWrapper
-# from achql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
-# from achql.brax.envs.wrappers.automaton_reward_wrapper import AutomatonRewardWrapper
-from achql.navix.envs.wrappers.automaton_wrapper import AutomatonWrapper
-from achql.navix.envs.wrappers.automaton_cost_wrapper import AutomatonCostWrapper
+from acql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper, AutomatonGoalConditionedWrapper
+# from acql.brax.envs.wrappers.automaton_transition_rewards_wrapper import AutomatonTransitionRewardsWrapper
+# from acql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
+# from acql.brax.envs.wrappers.automaton_reward_wrapper import AutomatonRewardWrapper
+from acql.navix.envs.wrappers.automaton_wrapper import AutomatonWrapper
+from acql.navix.envs.wrappers.automaton_cost_wrapper import AutomatonCostWrapper
 
 
 def make_cmdp(task, margin=1.0, relu_cost=False):

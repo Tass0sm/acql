@@ -24,16 +24,16 @@ import numpy as np
 from navix import Timestep
 
 
-from achql.brax.training.acme import running_statistics
-# from achql.brax.her import replay_buffers
-from achql.navix.envs.wrappers.training import wrap_for_training
+from acql.brax.training.acme import running_statistics
+# from acql.brax.her import replay_buffers
+from acql.navix.envs.wrappers.training import wrap_for_training
 
-from achql.navix.training.evaluator import NavixEvaluator
-from achql.navix.agents.tabular_achql import tables
-from achql.navix.training import hierarchical_acting
-from achql.hierarchy.training import types as h_types
+from acql.navix.training.evaluator import NavixEvaluator
+from acql.navix.agents.tabular_acql import tables
+from acql.navix.training import hierarchical_acting
+from acql.hierarchy.training import types as h_types
 
-from achql.navix.envs.wrappers.options_wrapper import OptionsWrapper
+from acql.navix.envs.wrappers.options_wrapper import OptionsWrapper
 
 
 Metrics = types.Metrics
@@ -62,12 +62,12 @@ def _init_training_state(
     key: PRNGKey,
     obs_size: int,
     local_devices_to_use: int,
-    achql_tables: tables.ACHQLTables,
+    acql_tables: tables.ACQLTables,
 ) -> TrainingState:
     """Inits the training state and replicates it over devices."""
     key_policy, key_q, key_cost_q = jax.random.split(key, 3)
-    option_q_params = achql_tables.option_q_table.init(key_q)
-    cost_q_params = achql_tables.cost_q_table.init(key_cost_q)
+    option_q_params = acql_tables.option_q_table.init(key_q)
+    cost_q_params = acql_tables.cost_q_table.init(key_cost_q)
   
     training_state = TrainingState(
         option_q_params=option_q_params,
@@ -121,7 +121,7 @@ def train(
         deterministic_eval: bool = True,
         tensorboard_flag = True,
         logdir = './logs',
-        table_factory = tables.make_achql_tables,
+        table_factory = tables.make_acql_tables,
         options=[],
         progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
         checkpoint_logdir: Optional[str] = None,
@@ -188,14 +188,14 @@ def train(
   
     obs_size = env.observation_space.shape[0]
     
-    achql_tables = table_factory(
+    acql_tables = table_factory(
         observation_space=env.observation_space,
         action_space=env.action_space,
         options=options,
         use_sum_cost_critic=use_sum_cost_critic,
     )
-    make_policy = tables.make_option_inference_fn(achql_tables, safety_threshold)
-    make_flat_policy = tables.make_inference_fn(achql_tables, safety_threshold)
+    make_policy = tables.make_option_inference_fn(acql_tables, safety_threshold)
+    make_flat_policy = tables.make_inference_fn(acql_tables, safety_threshold)
   
     dummy_transition = Transition(
         observation=0, # observation is a single integer with an environment compatible with tabular algorithms.
@@ -231,8 +231,8 @@ def train(
         gamma_goal_value,
     )
   
-    option_q_table = achql_tables.option_q_table
-    cost_q_table = achql_tables.cost_q_table
+    option_q_table = acql_tables.option_q_table
+    cost_q_table = acql_tables.cost_q_table
 
     def safe_greedy_policy(reward_qs, cost_qs):
         "Finds option with maximal value under cost constraint"
@@ -521,7 +521,7 @@ def train(
         key=global_key,
         obs_size=obs_size,
         local_devices_to_use=local_devices_to_use,
-        achql_tables=achql_tables,
+        acql_tables=acql_tables,
     )
     del global_key
   
@@ -576,7 +576,7 @@ def train(
             metrics,
             env=environment,
             make_policy=make_policy,
-            network=achql_tables,
+            network=acql_tables,
             params=_unpmap((training_state.option_q_params,
                             training_state.cost_q_params))
       )
@@ -622,7 +622,7 @@ def train(
                 metrics,
                 env=environment,
                 make_policy=make_policy,
-                tables=achql_tables,
+                tables=acql_tables,
                 params=_unpmap((training_state.option_q_params,
                                 training_state.cost_q_params)),
             )

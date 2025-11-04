@@ -13,7 +13,7 @@ from brax.io import mjcf
 from etils import epath
 import mujoco
 
-from achql.brax.envs.base import GoalConditionedEnv, load_and_configure_xml
+from acql.brax.envs.base import GoalConditionedEnv, load_and_configure_xml
 
 
 class Ant(GoalConditionedEnv):

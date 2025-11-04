@@ -27,8 +27,8 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
-from achql.brax.envs.wrappers.automaton_transition_rewards_wrapper import AutomatonTransitionRewardsWrapper
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.envs.wrappers.automaton_transition_rewards_wrapper import AutomatonTransitionRewardsWrapper
 
 
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]

@@ -19,7 +19,7 @@ from brax.io import json
 from brax.io import html
 
 # tasks
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
 
@@ -152,10 +152,10 @@ import pandas as pd
 
 def ablation_table_first_row():
 
-    # "ACHQL"
-    # , "ACHQL_ABLATION_ONE"
+    # "ACQL"
+    # , "ACQL_ABLATION_ONE"
 
-    for alg in ["ACHQL_ABLATION_ONE"]:
+    for alg in ["ACQL_ABLATION_ONE"]:
 
         groups = []
         for spec in [# "SimpleMazeTwoSubgoals",
@@ -172,14 +172,14 @@ def ablation_table_first_row():
                      "AntMazeUntil1"
                      ]:
 
-            if alg == "ACHQL_ABLATION_ONE":
+            if alg == "ACQL_ABLATION_ONE":
                 mlflow.set_experiment("proj2-ablation-experiments")
             else:
                 if "SimpleMaze3D" in spec:
                     task = get_task_by_name(spec)
                     mlflow.set_experiment("proj2-reproducible-experiments")
-                    episode_length = task.achql_hps["episode_length"]
-                    mult = task.achql_hps["multiplier_num_sgd_steps"]
+                    episode_length = task.acql_hps["episode_length"]
+                    mult = task.acql_hps["multiplier_num_sgd_steps"]
                     extra_str = f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
                 else:
                     extra_str = ""
@@ -216,9 +216,9 @@ def ablation_table_first_row():
 
 def ablation_table_second_row():
 
-    # "ACHQL"
+    # "ACQL"
 
-    for alg in ["ACHQL_ABLATION_TWO"]:
+    for alg in ["ACQL_ABLATION_TWO"]:
 
         groups = []
         for spec in [# "SimpleMazeObligationConstraint1",
@@ -229,7 +229,7 @@ def ablation_table_second_row():
                      "AntMazeUntil1"
                      ]:
 
-            if alg == "ACHQL_ABLATION_TWO":
+            if alg == "ACQL_ABLATION_TWO":
                 if spec == "AntMazeUntil1":
                     mlflow.set_experiment("proj2-ablation-experiments")
                     extra_str = f" and params.safety_threshold = '10'"
@@ -243,8 +243,8 @@ def ablation_table_second_row():
                 if "SimpleMaze3D" in spec:
                     task = get_task_by_name(spec)
                     mlflow.set_experiment("proj2-reproducible-experiments")
-                    episode_length = task.achql_hps["episode_length"]
-                    mult = task.achql_hps["multiplier_num_sgd_steps"]
+                    episode_length = task.acql_hps["episode_length"]
+                    mult = task.acql_hps["multiplier_num_sgd_steps"]
                     extra_str = f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
                 else:
                     extra_str = ""

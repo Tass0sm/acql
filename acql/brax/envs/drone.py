@@ -51,7 +51,7 @@ class Drone(PipelineEnv):
             backend='generalized',
             **kwargs,
     ):
-        path = epath.resource_path('achql') / 'brax/envs/assets/cf2/cf2_scene.xml'
+        path = epath.resource_path('acql') / 'brax/envs/assets/cf2/cf2_scene.xml'
         sys = mjcf.load(path)
 
         n_frames = 5

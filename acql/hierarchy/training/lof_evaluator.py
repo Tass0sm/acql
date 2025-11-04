@@ -19,9 +19,9 @@ Env = Union[envs.Env]
 
 from brax.training.acting import Evaluator
 
-from achql.hierarchy.training.acting import generate_unroll
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
+from acql.hierarchy.training.acting import generate_unroll
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
 
 
 class LOFEvaluatorWithSpecification(Evaluator):

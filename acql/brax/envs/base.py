@@ -12,7 +12,7 @@ from brax.envs.base import PipelineEnv, State
 
 import xml.etree.ElementTree as ET
 
-from achql.stl import Var
+from acql.stl import Var
 
 
 def load_and_configure_xml(path, wall_config=None):

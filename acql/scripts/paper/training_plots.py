@@ -30,7 +30,7 @@ spec_rename_map = {
 alg_rename_map = {
     "CRM": "CRM",
     "CRM_RS": "CRM-RS",
-    "ACHQL": "ACQL",
+    "ACQL": "ACQL",
 }
 
 def apply_smoothing(df, sigma=3):

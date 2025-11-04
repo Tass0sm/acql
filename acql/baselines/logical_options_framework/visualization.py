@@ -2,14 +2,14 @@ from brax.training import types
 from brax.training.acme import running_statistics
 import jax.numpy as jnp
 
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
-from achql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
-from achql.baselines.logical_options_framework.train import (
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
+from acql.baselines.logical_options_framework.train import (
     partition, load_logical_options, make_inference_fn1, make_option_inference_fn
 )
-from achql.baselines.logical_options_framework.utils import get_logical_option_run_ids
+from acql.baselines.logical_options_framework.utils import get_logical_option_run_ids
 
 
 Metrics = types.Metrics

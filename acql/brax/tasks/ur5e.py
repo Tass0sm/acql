@@ -3,22 +3,22 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from achql.brax.envs.manipulation.ur5e_grasp import UR5eGrasp
-from achql.brax.envs.manipulation.ur5e_reach import UR5eReach
-from achql.brax.envs.manipulation.ur5e_push_easy import UR5ePushEasy
-from achql.brax.envs.manipulation.ur5e_push_hard import UR5ePushHard
-from achql.brax.envs.manipulation.ur5e_reach_shelf import UR5eReachShelf
-from achql.brax.envs.manipulation.ur5e_reach_shelf_eef import UR5eReachShelfEEF
-from achql.brax.envs.manipulation.ur5e_translate import UR5eTranslate
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
-from achql.brax.tasks.mixins import *
-from achql.hierarchy.ur5e.load import load_ur5e_options, load_ur5e_eef_options
-from achql.hierarchy.option import FixedLengthTerminationPolicy
+from acql.brax.envs.manipulation.ur5e_grasp import UR5eGrasp
+from acql.brax.envs.manipulation.ur5e_reach import UR5eReach
+from acql.brax.envs.manipulation.ur5e_push_easy import UR5ePushEasy
+from acql.brax.envs.manipulation.ur5e_push_hard import UR5ePushHard
+from acql.brax.envs.manipulation.ur5e_reach_shelf import UR5eReachShelf
+from acql.brax.envs.manipulation.ur5e_reach_shelf_eef import UR5eReachShelfEEF
+from acql.brax.envs.manipulation.ur5e_translate import UR5eTranslate
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from acql.brax.tasks.mixins import *
+from acql.hierarchy.ur5e.load import load_ur5e_options, load_ur5e_eef_options
+from acql.hierarchy.option import FixedLengthTerminationPolicy
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class UR5eTaskBase(BraxTaskBase):

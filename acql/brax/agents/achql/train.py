@@ -23,16 +23,16 @@ import numpy as np
 
 from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
 
-from achql.brax.training.acme import running_statistics
-from achql.brax.her import replay_buffers
+from acql.brax.training.acme import running_statistics
+from acql.brax.her import replay_buffers
 
-from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.brax.agents.achql import losses as achql_losses
-from achql.brax.agents.achql import networks as achql_networks
-from achql.hierarchy.training import acting as hierarchical_acting
-from achql.hierarchy.training import types as h_types
+from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.brax.agents.acql import losses as acql_losses
+from acql.brax.agents.acql import networks as acql_networks
+from acql.hierarchy.training import acting as hierarchical_acting
+from acql.hierarchy.training import types as h_types
 
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
 
 from .argmaxes import *
 
@@ -68,17 +68,17 @@ def _init_training_state(
         key: PRNGKey,
         obs_size: int,
         local_devices_to_use: int,
-        achql_network: achql_networks.ACHQLNetworks,
+        acql_network: acql_networks.ACQLNetworks,
         # policy_optimizer: optax.GradientTransformation,
         option_q_optimizer: optax.GradientTransformation,
         cost_q_optimizer: optax.GradientTransformation,
 ) -> TrainingState:
     """Inits the training state and replicates it over devices."""
     key_policy, key_q, key_cost_q = jax.random.split(key, 3)
-    option_q_params = achql_network.option_q_network.init(key_q)
+    option_q_params = acql_network.option_q_network.init(key_q)
     option_q_optimizer_state = option_q_optimizer.init(option_q_params)
 
-    cost_q_params = achql_network.cost_q_network.init(key_cost_q)
+    cost_q_params = acql_network.cost_q_network.init(key_cost_q)
     cost_q_optimizer_state = cost_q_optimizer.init(cost_q_params)
 
     normalizer_params = running_statistics.init_state(
@@ -145,7 +145,7 @@ def train(
         deterministic_eval: bool = True,
         tensorboard_flag = True,
         logdir = './logs',
-        network_factory: types.NetworkFactory[achql_networks.ACHQLNetworks] = achql_networks.make_achql_networks,
+        network_factory: types.NetworkFactory[acql_networks.ACQLNetworks] = acql_networks.make_acql_networks,
         options=[],
         progress_fn: Callable[[int, Metrics], None] = lambda *args: None,
         checkpoint_logdir: Optional[str] = None,
@@ -153,7 +153,7 @@ def train(
             Callable[[base.System, jnp.ndarray], Tuple[base.System, base.System]]
         ] = None,
         eval_environment: Optional[envs.Env] = None,
-        # replay_buffer_class_name = "TrajectoryACHQLSamplingQueue",
+        # replay_buffer_class_name = "TrajectoryACQLSamplingQueue",
         replay_buffer_class_name = "TrajectoryUniformSamplingQueue",
         hidden_layer_sizes=(256, 256),
         hidden_cost_layer_sizes=(64, 64, 64, 32),
@@ -243,7 +243,7 @@ def train(
         normalize_fn = running_statistics.normalize
         cost_normalize_fn = running_statistics.normalize
 
-    achql_network = network_factory(
+    acql_network = network_factory(
         observation_size=qr_input_size,
         cost_observation_size=qc_input_size,
         num_aut_states=env.automaton.n_states,
@@ -258,8 +258,8 @@ def train(
         hidden_cost_layer_sizes=hidden_cost_layer_sizes,
         use_sum_cost_critic=use_sum_cost_critic,
     )
-    make_policy = achql_networks.make_option_inference_fn(achql_network, env, safety_threshold, actor_type=actor_type)
-    make_flat_policy = achql_networks.make_inference_fn(achql_network, env, safety_threshold, actor_type=actor_type)
+    make_policy = acql_networks.make_option_inference_fn(acql_network, env, safety_threshold, actor_type=actor_type)
+    make_flat_policy = acql_networks.make_inference_fn(acql_network, env, safety_threshold, actor_type=actor_type)
 
     if qc_learning_rate is None:
         qc_learning_rate = learning_rate
@@ -314,8 +314,8 @@ def train(
         gamma_goal_value,
     )
 
-    critic_loss, cost_critic_loss = achql_losses.make_losses(
-            achql_network=achql_network,
+    critic_loss, cost_critic_loss = acql_losses.make_losses(
+            acql_network=acql_network,
             env=env,
             reward_scaling=reward_scaling,
             cost_scaling=cost_scaling,
@@ -356,7 +356,7 @@ def train(
             key=global_key,
             obs_size=qr_input_size,
             local_devices_to_use=local_devices_to_use,
-            achql_network=achql_network,
+            acql_network=acql_network,
             # policy_optimizer=policy_optimizer,
             option_q_optimizer=option_q_optimizer,
             cost_q_optimizer=cost_q_optimizer,
@@ -420,7 +420,7 @@ def train(
             metrics,
             env=eval_environment,
             make_policy=make_policy,
-            network=achql_network,
+            network=acql_network,
             params=_unpmap((training_state.normalizer_params,
                                             training_state.option_q_params,
                                             training_state.cost_q_params))
@@ -535,7 +535,7 @@ def train(
                 metrics,
                 env=eval_environment,
                 make_policy=make_policy,
-                network=achql_network,
+                network=acql_network,
                 params=_unpmap((training_state.normalizer_params,
                                                 training_state.option_q_params,
                                                 training_state.cost_q_params)),

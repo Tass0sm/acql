@@ -9,9 +9,9 @@ from flax import struct, nnx
 import jax
 from jax import numpy as jnp
 
-from achql.navix.envs.wrappers.base import Wrapper
+from acql.navix.envs.wrappers.base import Wrapper
 
-from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
+from acql.hierarchy.option import Option, FixedLengthTerminationPolicy
 
 
 class OptionsWrapper(Wrapper):

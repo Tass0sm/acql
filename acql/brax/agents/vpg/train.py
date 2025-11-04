@@ -41,7 +41,7 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
-from achql.brax.agents.vpg import networks as vpg_networks
+from acql.brax.agents.vpg import networks as vpg_networks
 
 
 

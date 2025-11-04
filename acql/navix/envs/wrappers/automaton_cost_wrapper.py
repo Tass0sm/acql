@@ -13,10 +13,10 @@ from jax import numpy as jnp
 from navix.environments import Timestep
 from navix.rendering.cache import RenderingCache
 
-import achql.stl as stl
-from achql.stl import Expression
-from achql.stl import get_safety_conditions
-from achql.stl import fold_tree, fold_spot_formula
+import acql.stl as stl
+from acql.stl import Expression
+from acql.stl import get_safety_conditions
+from acql.stl import fold_tree, fold_spot_formula
 
 
 def get_compiled_conditions(

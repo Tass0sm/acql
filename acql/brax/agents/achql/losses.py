@@ -9,7 +9,7 @@ from brax.training.types import PRNGKey
 import jax
 import jax.numpy as jnp
 
-from achql.brax.agents.achql import networks as achql_networks
+from acql.brax.agents.acql import networks as acql_networks
 
 from .argmaxes import *
 
@@ -18,7 +18,7 @@ Transition = types.Transition
 
 
 def make_losses(
-        achql_network: achql_networks.ACHQLNetworks,
+        acql_network: acql_networks.ACQLNetworks,
         env: envs.Env,
         reward_scaling: float,
         cost_scaling: float,
@@ -27,10 +27,10 @@ def make_losses(
         use_sum_cost_critic: bool = False,
         actor_type: str = "argmax",
 ):
-  """Creates the ACHQL losses."""
+  """Creates the ACQL losses."""
 
-  option_q_network = achql_network.option_q_network
-  cost_q_network = achql_network.cost_q_network
+  option_q_network = acql_network.option_q_network
+  cost_q_network = acql_network.cost_q_network
 
   def safe_greedy_policy(reward_qs, cost_qs, option_key):
     "Finds option with maximal value under cost constraint"

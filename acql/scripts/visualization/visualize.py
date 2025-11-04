@@ -2,7 +2,7 @@ import mlflow
 
 import jax.numpy as jnp
 
-from achql.visualization.interface import make_plots
+from acql.visualization.interface import make_plots
 
 
 mlflow.set_tracking_uri("file:///home/tassos/.local/share/mlflow")
@@ -57,7 +57,7 @@ def main():
     # )
 
     
-    # plot1, plot2 = make_plots_for_achql(
+    # plot1, plot2 = make_plots_for_acql(
     #         mdp,
     #         make_option_policy,
     #         network,

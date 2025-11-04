@@ -1,2 +1,2 @@
 from .default import *
-from .achql import TrajectoryACHQLSamplingQueue
+from .acql import TrajectoryACQLSamplingQueue

@@ -6,7 +6,7 @@ import seaborn as sns
 
 from scipy.ndimage.filters import gaussian_filter1d
 
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
 def get_group(env, spec, alg, extra_str=""):
@@ -20,42 +20,42 @@ def get_group(env, spec, alg, extra_str=""):
 def fetch_runs():
     groups = []
 
-    for alg, env, spec in [# ("ACHQL", "SimpleMaze", "SimpleMazeTwoSubgoals"),
+    for alg, env, spec in [# ("ACQL", "SimpleMaze", "SimpleMazeTwoSubgoals"),
                            # ("CRM_RS", "SimpleMaze", "SimpleMazeTwoSubgoals"),
-                           # ("ACHQL", "SimpleMaze", "SimpleMazeBranching1"),
+                           # ("ACQL", "SimpleMaze", "SimpleMazeBranching1"),
                            # ("CRM_RS", "SimpleMaze", "SimpleMazeBranching1"),
-                           # ("ACHQL", "SimpleMaze", "SimpleMazeObligationConstraint2"),
+                           # ("ACQL", "SimpleMaze", "SimpleMazeObligationConstraint2"),
                            # ("CRM_RS", "SimpleMaze", "SimpleMazeObligationConstraint2"),
-                           # ("ACHQL", "SimpleMaze", "SimpleMazeUntil2"),
+                           # ("ACQL", "SimpleMaze", "SimpleMazeUntil2"),
                            # ("CRM_RS", "SimpleMaze", "SimpleMazeUntil2"),
-                           ("ACHQL", "SimpleMaze", "SimpleMazeLoopWithObs"),
+                           ("ACQL", "SimpleMaze", "SimpleMazeLoopWithObs"),
                            ("CRM_RS", "SimpleMaze", "SimpleMazeLoopWithObs"),
-                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
+                           ("ACQL", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
                            # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DTwoSubgoals"),
-                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DBranching1"),
+                           ("ACQL", "SimpleMaze3D", "SimpleMaze3DBranching1"),
                            # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DBranching1"),
-                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
+                           ("ACQL", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
                            # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DObligationConstraint2"),
-                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DUntil2"),
+                           ("ACQL", "SimpleMaze3D", "SimpleMaze3DUntil2"),
                            # ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DUntil2"),
-                           ("ACHQL", "SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
+                           ("ACQL", "SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
                            ("CRM_RS", "SimpleMaze3D", "SimpleMaze3DLoopWithObs"),
-                           ("ACHQL", "AntMaze", "AntMazeTwoSubgoals"),
+                           ("ACQL", "AntMaze", "AntMazeTwoSubgoals"),
                            ("CRM_RS", "AntMaze", "AntMazeTwoSubgoals"),
-                           ("ACHQL", "AntMaze", "AntMazeBranching1"),
+                           ("ACQL", "AntMaze", "AntMazeBranching1"),
                            ("CRM_RS", "AntMaze", "AntMazeBranching1"),
-                           ("ACHQL", "AntMaze", "AntMazeObligationConstraint3"),
+                           ("ACQL", "AntMaze", "AntMazeObligationConstraint3"),
                            ("CRM_RS", "AntMaze", "AntMazeObligationConstraint3"),
-                           ("ACHQL", "AntMaze", "AntMazeUntil1"),
+                           ("ACQL", "AntMaze", "AntMazeUntil1"),
                            ("CRM_RS", "AntMaze", "AntMazeUntil1"),
-                           ("ACHQL", "AntMaze", "AntMazeLoopWithObs"),
+                           ("ACQL", "AntMaze", "AntMazeLoopWithObs"),
                            ("CRM_RS", "AntMaze", "AntMazeLoopWithObs")]:
         task = get_task_by_name(spec)
 
-        if alg == "ACHQL" and env == "SimpleMaze3D" and "LoopWithObs" not in spec:
+        if alg == "ACQL" and env == "SimpleMaze3D" and "LoopWithObs" not in spec:
             mlflow.set_experiment("proj2-reproducible-experiments")
-            episode_length = task.achql_hps["episode_length"]
-            mult = task.achql_hps["multiplier_num_sgd_steps"]
+            episode_length = task.acql_hps["episode_length"]
+            mult = task.acql_hps["multiplier_num_sgd_steps"]
             extra_kwargs = {
                 "extra_str": f" and params.episode_length = '{episode_length}' and params.multiplier_num_sgd_steps = '{mult}'"
             }
@@ -98,7 +98,7 @@ def process_runs(runs):
         alg = row["tags.alg"]
         env = row["tags.env"]
         spec = row["tags.spec"]
-        if alg == "ACHQL" and env == "SimpleMaze3D" and "LoopWithObs" not in spec:
+        if alg == "ACQL" and env == "SimpleMaze3D" and "LoopWithObs" not in spec:
             mlflow.set_experiment("proj2-reproducible-experiments")
         else:
             if alg == "LOF":

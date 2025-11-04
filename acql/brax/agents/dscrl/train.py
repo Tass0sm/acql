@@ -42,9 +42,9 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
-from achql.brax.training import types as my_types
-from achql.brax.training import acting
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.training import types as my_types
+from acql.brax.training import acting
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 from . import losses as dscrl_losses
 
 

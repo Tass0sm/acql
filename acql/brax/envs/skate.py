@@ -14,7 +14,7 @@ import jax
 from jax import numpy as jp
 import mujoco
 
-from achql.brax.envs.base import GoalConditionedEnv, load_and_configure_xml
+from acql.brax.envs.base import GoalConditionedEnv, load_and_configure_xml
 
 class Skate(GoalConditionedEnv):
 
@@ -40,7 +40,7 @@ class Skate(GoalConditionedEnv):
             wall_config=None,
             **kwargs,
     ):
-        path = epath.resource_path('achql') / 'brax/envs/assets/skate.xml'
+        path = epath.resource_path('acql') / 'brax/envs/assets/skate.xml'
         xml = load_and_configure_xml(path, wall_config=wall_config)
         sys = mjcf.loads(xml)
 

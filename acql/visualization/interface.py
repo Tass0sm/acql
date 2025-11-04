@@ -1,10 +1,10 @@
 import mlflow
 
-from achql.visualization.utils import get_mdp_network_policy_and_params
+from acql.visualization.utils import get_mdp_network_policy_and_params
 
-from achql.visualization.plots import (
-    make_plots_for_achql,
-    make_plots_for_3d_achql,
+from acql.visualization.plots import (
+    make_plots_for_acql,
+    make_plots_for_3d_acql,
     make_plots_for_acddpg,
     make_plots_for_ddpg,
     make_plots_for_hdqn
@@ -22,26 +22,26 @@ def make_plots(training_run_id, **kwargs):
         alg_name = run.data.tags["alg"]
 
     match alg_name:
-            case "ACHQL":
+            case "ACQL":
                 env_name = run.data.tags["env"]
                 if env_name in ["SimpleMaze", "AntMaze"]:
-                    return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+                    return make_plots_for_acql(mdp, make_option_policy, network, params, **kwargs)
                 elif env_name in ["SimpleMaze3D"]:
-                    return make_plots_for_3d_achql(mdp, make_option_policy, network, params, **kwargs)
+                    return make_plots_for_3d_acql(mdp, make_option_policy, network, params, **kwargs)
                 else:
-                    raise NotImplementedError(f"Visualizing ACHQL with {env_name} not supported")
-            case "ACHQL_ABLATION_TWO":
+                    raise NotImplementedError(f"Visualizing ACQL with {env_name} not supported")
+            case "ACQL_ABLATION_TWO":
                 env_name = run.data.tags["env"]
                 if env_name in ["SimpleMaze", "AntMaze"]:
-                    return make_plots_for_achql(mdp, make_option_policy, network, params, use_sum_cost_critic=True, **kwargs)
+                    return make_plots_for_acql(mdp, make_option_policy, network, params, use_sum_cost_critic=True, **kwargs)
                 elif env_name in ["SimpleMaze3D"]:
-                    return make_plots_for_3d_achql(mdp, make_option_policy, network, params, **kwargs)
+                    return make_plots_for_3d_acql(mdp, make_option_policy, network, params, **kwargs)
                 else:
-                    raise NotImplementedError(f"Visualizing ACHQL with {env_name} not supported")
+                    raise NotImplementedError(f"Visualizing ACQL with {env_name} not supported")
             case "ACDDPG":
                 return make_plots_for_acddpg(mdp, make_policy, network, params, **kwargs)
             case "HDCQN_AUTOMATON_HER":
-                return make_plots_for_achql(mdp, make_option_policy, network, params, **kwargs)
+                return make_plots_for_acql(mdp, make_option_policy, network, params, **kwargs)
             case "HDQN":
                 return make_plots_for_hdqn(mdp, network, params, **kwargs)
             case "HDQN_HER_FOR_AUT":

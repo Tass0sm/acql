@@ -5,12 +5,12 @@ import jax.numpy as jnp
 
 from gymnasium.spaces.utils import flatdim
 
-from achql.brax.safety_gymnasium_envs.safety_hopper_velocity_v1 import SafetyHopperVelocityEnv as Hopper
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import inside_circle, outside_circle
+from acql.brax.safety_gymnasium_envs.safety_hopper_velocity_v1 import SafetyHopperVelocityEnv as Hopper
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import inside_circle, outside_circle
 
-from achql.stl import Expression, Var
-import achql.stl.expression_jax2 as stl
+from acql.stl import Expression, Var
+import acql.stl.expression_jax2 as stl
 
 
 class HopperTaskBase(BraxTaskBase):

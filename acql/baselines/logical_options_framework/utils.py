@@ -24,19 +24,19 @@ import jax.numpy as jnp
 import optax
 import numpy as np
 
-from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.hierarchy.option import Option
-from achql.hierarchy.envs.options_wrapper import OptionsWrapper
-from achql.hierarchy.state import OptionState
+from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.hierarchy.option import Option
+from acql.hierarchy.envs.options_wrapper import OptionsWrapper
+from acql.hierarchy.state import OptionState
 
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
-from achql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.envs.wrappers.automaton_wrapper import JaxAutomaton, AutomatonWrapper
+from acql.baselines.logical_options_framework.lof_wrapper import LOFWrapper
 
-from achql.stl import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
-import achql.stl as stl
+from acql.stl import get_spot_formula_and_aps, make_just_liveness_automaton, get_outgoing_conditions
+import acql.stl as stl
 
-from achql.baselines.logical_options_framework.train import partition, load_logical_options
+from acql.baselines.logical_options_framework.train import partition, load_logical_options
 
 
 def get_logical_option_run_ids(task_name, seed):

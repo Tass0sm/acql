@@ -3,33 +3,33 @@ import mlflow
 from brax.io import model
 from brax.training.acme import running_statistics
 
-from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
-from achql.brax.envs.wrappers.automaton_goal_wrapper import AutomatonGoalWrapper
+from acql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
+from acql.brax.envs.wrappers.automaton_goal_wrapper import AutomatonGoalWrapper
 
-from achql.brax.utils import make_reward_machine_mdp
-# from achql.scripts.new_achql_testing import make_aut_goal_cmdp
-from achql.brax.utils import make_aut_goal_cmdp
+from acql.brax.utils import make_reward_machine_mdp
+# from acql.scripts.new_acql_testing import make_aut_goal_cmdp
+from acql.brax.utils import make_aut_goal_cmdp
 
 from brax.training.agents.ppo import networks as ppo_networks
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.agents.hdcqn import networks as hdcq_networks
-from achql.brax.agents.hdqn_automaton_her import networks as hdq_aut_networks
-from achql.brax.agents.achql import networks as achql_networks
-from achql.brax.agents.acddpg import networks as acddpg_networks
-from achql.brax.agents.sac_her import networks as sac_networks
-from achql.brax.agents.ddpg import networks as ddpg_networks
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.agents.hdcqn import networks as hdcq_networks
+from acql.brax.agents.hdqn_automaton_her import networks as hdq_aut_networks
+from acql.brax.agents.acql import networks as acql_networks
+from acql.brax.agents.acddpg import networks as acddpg_networks
+from acql.brax.agents.sac_her import networks as sac_networks
+from acql.brax.agents.ddpg import networks as ddpg_networks
 
-from achql.baselines.logical_options_framework.visualization import (
+from acql.baselines.logical_options_framework.visualization import (
     get_lof_option_mdp_network_policy_and_params,
     get_lof_mdp_network_policy_and_params
 )
 
-from achql.scripts.multihead_exp_train import make_network_factory as make_rm_multihead_network_factory
+from acql.scripts.multihead_exp_train import make_network_factory as make_rm_multihead_network_factory
 
-from achql.tasks.utils import get_task_by_name
+from acql.tasks.utils import get_task_by_name
 
 
-def get_achql_mdp_network_policy_and_params(task, run, params, use_sum_cost_critic=False):
+def get_acql_mdp_network_policy_and_params(task, run, params, use_sum_cost_critic=False):
     options = task.get_options()
 
     if run.data.params["normalize_observations"] == "True":
@@ -43,7 +43,7 @@ def get_achql_mdp_network_policy_and_params(task, run, params, use_sum_cost_crit
     n_hidden = int(run.data.params.get("n_hidden", 2))
 
     aut_goal_cmdp = make_aut_goal_cmdp(task, randomize_goals=False, relu_cost=use_sum_cost_critic)
-    achql_network = achql_networks.make_achql_networks(
+    acql_network = acql_networks.make_acql_networks(
         aut_goal_cmdp.qr_nn_input_size,
         aut_goal_cmdp.qc_nn_input_size,
         aut_goal_cmdp.automaton.n_states,
@@ -58,18 +58,18 @@ def get_achql_mdp_network_policy_and_params(task, run, params, use_sum_cost_crit
         # hidden_cost_layer_sizes=(128, 128, 128, 64),
         use_sum_cost_critic=use_sum_cost_critic,
     )
-    make_option_policy = achql_networks.make_option_inference_fn(achql_network, 
+    make_option_policy = acql_networks.make_option_inference_fn(acql_network, 
                                                                  aut_goal_cmdp,
                                                                  task.hdcqn_her_hps["safety_threshold"],
                                                                  actor_type=run.data.params.get("actor_type", "safest"),
                                                                  use_sum_cost_critic=use_sum_cost_critic)
-    make_policy = achql_networks.make_inference_fn(achql_network, 
+    make_policy = acql_networks.make_inference_fn(acql_network, 
                                                    aut_goal_cmdp,
                                                    task.hdcqn_her_hps["safety_threshold"],
                                                    actor_type=run.data.params.get("actor_type", "safest"),
                                                    use_sum_cost_critic=use_sum_cost_critic)
 
-    return aut_goal_cmdp, options, achql_network, make_option_policy, make_policy, params
+    return aut_goal_cmdp, options, acql_network, make_option_policy, make_policy, params
 
 
 def get_acddpg_mdp_network_policy_and_params(task, run, params):
@@ -263,14 +263,14 @@ def get_mdp_network_policy_and_params(training_run_id):
     task = get_task_by_name(task_name)
 
     match alg_name:
-            case "ACHQL":
-                return get_achql_mdp_network_policy_and_params(task, run, params)
-            case "ACHQL_ABLATION_TWO":
-                return get_achql_mdp_network_policy_and_params(task, run, params, use_sum_cost_critic=True)
+            case "ACQL":
+                return get_acql_mdp_network_policy_and_params(task, run, params)
+            case "ACQL_ABLATION_TWO":
+                return get_acql_mdp_network_policy_and_params(task, run, params, use_sum_cost_critic=True)
             case "ACDDPG":
                 return get_acddpg_mdp_network_policy_and_params(task, run, params)
             case "HDCQN_AUTOMATON_HER":
-                return get_achql_mdp_network_policy_and_params(task, run, params)
+                return get_acql_mdp_network_policy_and_params(task, run, params)
             case "HDQN_HER_FOR_AUT":
                 return get_hdqn_her_for_aut_mdp_network_policy_and_params(task, run, params)
             case "SAC_HER":
@@ -297,7 +297,7 @@ def get_mdp_network_policy_and_params(training_run_id):
                 raise NotImplementedError(f"{alg_name} not supported")
 
     # aut_goal_cmdp = make_aut_goal_cmdp(task)
-    # achql_network = achql_networks.make_hdcq_networks(
+    # acql_network = acql_networks.make_hdcq_networks(
     #       aut_goal_cmdp.observation_size,
     #       aut_goal_cmdp.cost_observation_size,
     #       aut_goal_cmdp.automaton.n_states,
@@ -306,4 +306,4 @@ def get_mdp_network_policy_and_params(training_run_id):
     #       preprocess_observations_fn=normalize,
     #       preprocess_cost_observations_fn=cost_normalize_fn,
     # )
-    # make_option_policy = achql_networks.make_option_inference_fn(achql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_minimum"])
+    # make_option_policy = acql_networks.make_option_inference_fn(acql_network, aut_goal_cmdp, task.hdcqn_her_hps["safety_minimum"])

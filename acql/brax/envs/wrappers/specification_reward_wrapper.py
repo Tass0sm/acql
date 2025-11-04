@@ -8,7 +8,7 @@ from flax import struct
 import jax
 from jax import numpy as jnp
 
-from achql.stl import Expression
+from acql.stl import Expression
 
 
 class SpecificationRewardWrapper(Wrapper):

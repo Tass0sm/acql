@@ -3,7 +3,7 @@ import jax.numpy as jnp
 
 from brax.envs.base import Env, State, Wrapper
 
-from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
+from acql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper
 
 
 class AutomatonGoalWrapper(Wrapper):

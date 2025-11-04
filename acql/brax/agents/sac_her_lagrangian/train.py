@@ -43,9 +43,9 @@ import optax
 from jaxgcrl.src.evaluator import CrlEvaluator
 from jaxgcrl.src.replay_buffer import QueueBase, Sample
 
-from achql.brax.agents.sac_her_lagrangian import losses as sac_lagrangian_losses
-from achql.brax.agents.sac_her_lagrangian import networks as sac_lagrangian_networks
-from achql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
+from acql.brax.agents.sac_her_lagrangian import losses as sac_lagrangian_losses
+from acql.brax.agents.sac_her_lagrangian import networks as sac_lagrangian_networks
+from acql.brax.training.evaluator_with_specification import EvaluatorWithSpecification
 
 
 Metrics = types.Metrics

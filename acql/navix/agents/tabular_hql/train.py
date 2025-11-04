@@ -24,16 +24,16 @@ import numpy as np
 from navix import Timestep
 
 
-from achql.brax.training.acme import running_statistics
-# from achql.brax.her import replay_buffers
-from achql.navix.envs.wrappers.training import wrap_for_training
+from acql.brax.training.acme import running_statistics
+# from acql.brax.her import replay_buffers
+from acql.navix.envs.wrappers.training import wrap_for_training
 
-from achql.navix.training.evaluator import NavixEvaluator
-from achql.navix.agents.tabular_hql import tables
-from achql.navix.training import hierarchical_acting
-from achql.hierarchy.training import types as h_types
+from acql.navix.training.evaluator import NavixEvaluator
+from acql.navix.agents.tabular_hql import tables
+from acql.navix.training import hierarchical_acting
+from acql.hierarchy.training import types as h_types
 
-from achql.navix.envs.wrappers.options_wrapper import OptionsWrapper
+from acql.navix.envs.wrappers.options_wrapper import OptionsWrapper
 
 
 Metrics = types.Metrics

@@ -9,7 +9,7 @@ from brax.training.types import PRNGKey
 import jax
 import jax.numpy as jnp
 
-from achql.brax.agents.acddpg import networks as acddpg_networks
+from acql.brax.agents.acddpg import networks as acddpg_networks
 
 
 Transition = types.Transition
@@ -25,7 +25,7 @@ def make_losses(
         use_sum_cost_critic: bool = False,
         actor_type: str = "argmax",
 ):
-  """Creates the ACHQL losses."""
+  """Creates the ACQL losses."""
 
   policy_network = acddpg_network.policy_network
   q_network = acddpg_network.q_network

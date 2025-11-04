@@ -8,13 +8,13 @@ from navix import Environment, observations
 from navix.spaces import Discrete
 from navix.actions import rotate_ccw, rotate_cw, forward
 
-from achql.navix.tasks.base import NavixTaskBase
-from achql.navix.tasks.mixins import *
-from achql.navix import observations as custom_observations
-from achql.hierarchy.option import Option, FixedLengthTerminationPolicy
+from acql.navix.tasks.base import NavixTaskBase
+from acql.navix.tasks.mixins import *
+from acql.navix import observations as custom_observations
+from acql.hierarchy.option import Option, FixedLengthTerminationPolicy
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 def make_tabular(env: Environment):

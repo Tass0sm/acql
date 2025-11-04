@@ -9,9 +9,9 @@ from brax import envs
 from brax.training.types import Params
 from brax.training.types import PRNGKey
 
-from achql.brax.agents.hdqn import networks as hdq_networks
-from achql.brax.agents.hdcqn import networks as hdcq_networks
-from achql.brax.agents.achql import networks as achql_networks
+from acql.brax.agents.hdqn import networks as hdq_networks
+from acql.brax.agents.hdcqn import networks as hdcq_networks
+from acql.brax.agents.acql import networks as acql_networks
 
 
 def plot_simple_maze_option_arrows(axs, X, Y, options, grid_size):
@@ -420,7 +420,7 @@ def make_plots_for_3d_hdcqn_aut(
     return (fig2, ax2)
 
 
-def make_plots_for_achql(
+def make_plots_for_acql(
         env: envs.Env,
         make_policy: Callable,
         network: hdq_networks.HDQNetworks,
@@ -455,11 +455,11 @@ def make_plots_for_achql(
     obs_batch = obs_batch.at[:, 0:2].set(positions)
 
     # qr
-    make_qr = achql_networks.make_option_qr_fn(network, env, 0.0)
+    make_qr = acql_networks.make_option_qr_fn(network, env, 0.0)
     qr_fn = make_qr(params)
 
     # qc
-    make_qc = achql_networks.make_option_qc_fn(network, env, 0.0)
+    make_qc = acql_networks.make_option_qc_fn(network, env, 0.0)
     qc_fn = make_qc(params)
 
     # policy

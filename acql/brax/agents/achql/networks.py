@@ -15,26 +15,26 @@ from brax.training.types import PRNGKey
 import flax
 from flax import linen
 
-from achql.stl import fold_spot_formula
-from achql.brax.training.acme import running_statistics
-from achql.hierarchy.training import networks as h_networks
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
-# from achql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
-from achql.brax.agents.achql.argmaxes import argmax_with_safest_tiebreak, argmax_with_random_tiebreak
+from acql.stl import fold_spot_formula
+from acql.brax.training.acme import running_statistics
+from acql.hierarchy.training import networks as h_networks
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
+# from acql.brax.agents.hdqn_automaton_her.networks import get_compiled_q_function_branches
+from acql.brax.agents.acql.argmaxes import argmax_with_safest_tiebreak, argmax_with_random_tiebreak
 
 
 
 
 @flax.struct.dataclass
-class ACHQLNetworks:
+class ACQLNetworks:
     option_q_network: networks.FeedForwardNetwork
     cost_q_network: networks.FeedForwardNetwork
     options: Sequence[Option]
 
 
 def make_option_qr_fn(
-    achql_networks: ACHQLNetworks,
+    acql_networks: ACQLNetworks,
     safety_threshold: float,
     use_sum_cost_critic: bool = False,
 ):
@@ -46,7 +46,7 @@ def make_option_qr_fn(
         normalizer_params, option_q_params, cost_q_params = params
 
         def qr(observation: types.Observation) -> jnp.ndarray:
-            double_qs = achql_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
+            double_qs = acql_networks.option_q_network.apply(normalizer_params, option_q_params, observation)
             qs = jnp.min(double_qs, axis=-1)
             return qs
 
@@ -56,7 +56,7 @@ def make_option_qr_fn(
 
 
 def make_option_qc_fn(
-    achql_networks: ACHQLNetworks,
+    acql_networks: ACQLNetworks,
     env: envs.Env,
     use_sum_cost_critic: bool = False,
 ):
@@ -68,7 +68,7 @@ def make_option_qc_fn(
         normalizer_params, option_q_params, cost_q_params = params
 
         def qc(observation: types.Observation) -> jnp.ndarray:
-            double_cqs = achql_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
+            double_cqs = acql_networks.cost_q_network.apply(normalizer_params, cost_q_params, observation)
 
             if use_sum_cost_critic:
                 cqs = jnp.max(double_cqs, axis=-1)
@@ -83,7 +83,7 @@ def make_option_qc_fn(
 
 
 def make_option_inference_fn(
-    achql_networks: ACHQLNetworks,
+    acql_networks: ACQLNetworks,
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
@@ -96,7 +96,7 @@ def make_option_inference_fn(
     ) -> types.Policy:
 
         normalizer_params, option_q_params, cost_q_params = params
-        options = achql_networks.options
+        options = acql_networks.options
         n_options = len(options)
 
         def random_option_policy(observation: types.Observation,
@@ -112,11 +112,11 @@ def make_option_inference_fn(
             # aut_state = env.automaton.one_hot_decode(aut_state_obs)
 
             qr_input = jnp.atleast_2d(observation)
-            double_qs = achql_networks.option_q_network.apply(normalizer_params, option_q_params, qr_input)
+            double_qs = acql_networks.option_q_network.apply(normalizer_params, option_q_params, qr_input)
             qs = jnp.min(double_qs, axis=-1)
 
             qc_input = jnp.atleast_2d(observation)
-            double_cqs = achql_networks.cost_q_network.apply(normalizer_params, cost_q_params, qc_input)
+            double_cqs = acql_networks.cost_q_network.apply(normalizer_params, cost_q_params, qc_input)
 
             if use_sum_cost_critic:
                 cqs = jnp.max(double_cqs, axis=-1)
@@ -153,14 +153,14 @@ def make_option_inference_fn(
 
 
 def make_inference_fn(
-    achql_networks: ACHQLNetworks,
+    acql_networks: ACQLNetworks,
     env: envs.Env,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
     actor_type : str = "argmax"
 ):
 
-    make_option_policy = make_option_inference_fn(achql_networks,
+    make_option_policy = make_option_inference_fn(acql_networks,
                                                   env,
                                                   safety_threshold,
                                                   use_sum_cost_critic=use_sum_cost_critic,
@@ -172,7 +172,7 @@ def make_inference_fn(
     ) -> types.Policy:
 
         option_policy = make_option_policy(params, deterministic=deterministic)
-        options = achql_networks.options
+        options = acql_networks.options
 
         def policy(
                 observations: types.Observation,
@@ -628,7 +628,7 @@ def make_residual_option_q_network(
     return FeedForwardNetwork(init=lambda key: q_module.init(key, dummy_obs), apply=apply)
 
 
-def make_achql_networks(
+def make_acql_networks(
         observation_size: int,
         cost_observation_size: int,
         num_aut_states: int,
@@ -643,7 +643,7 @@ def make_achql_networks(
         activation: networks.ActivationFn = linen.relu,
         options: Sequence[Option] = [],
         use_sum_cost_critic: bool = False,
-) -> ACHQLNetworks:
+) -> ACQLNetworks:
 
     assert len(options) > 0, "Must pass at least one option"
     # assert num_unique_safety_conditions == 1, "Only supporting 1 safety condition"
@@ -1119,7 +1119,7 @@ def make_achql_networks(
     #         final_activation=(lambda x: x) if use_sum_cost_critic else linen.tanh,
     # )
 
-    return ACHQLNetworks(
+    return ACQLNetworks(
             # policy_network=policy_network,
             option_q_network=option_q_network,
             cost_q_network=cost_q_network,

@@ -16,17 +16,17 @@ from flax import linen
 
 from navix.spaces import Space, Discrete
 
-from achql.brax.training.acme import running_statistics
-from achql.navix.tables import Table, make_q_table
-from achql.hierarchy.training import networks as h_networks
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
+from acql.brax.training.acme import running_statistics
+from acql.navix.tables import Table, make_q_table
+from acql.hierarchy.training import networks as h_networks
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
 
-from achql.stl import fold_spot_formula
+from acql.stl import fold_spot_formula
 
 
 @flax.struct.dataclass
-class ACHQLTables:
+class ACQLTables:
     option_q_table: Table
     cost_q_table: Table
     options: Sequence[Option]
@@ -44,7 +44,7 @@ def argmax_with_random_tiebreak(array, key, axis=-1):
     return jnp.argmax(perturbed_array, axis=axis)
 
 def make_option_q_fn(
-    achql_tables: ACHQLTables,
+    acql_tables: ACQLTables,
     safety_threshold: float,
     use_sum_cost_critic: bool = False,
 ):
@@ -56,7 +56,7 @@ def make_option_q_fn(
         option_q_params, cost_q_params = params
         
         def q(observation: types.Observation) -> jnp.ndarray:
-            double_qs = achql_tables.option_q_table(normalizer_params, option_q_params, observation)
+            double_qs = acql_tables.option_q_table(normalizer_params, option_q_params, observation)
             qs = jnp.min(double_qs, axis=-1)
             return qs
         
@@ -66,7 +66,7 @@ def make_option_q_fn(
 
 
 def make_option_inference_fn(
-    achql_tables: ACHQLTables,
+    acql_tables: ACQLTables,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
 ):
@@ -77,7 +77,7 @@ def make_option_inference_fn(
     ) -> types.Policy:
   
         option_q_params, cost_q_params = params
-        options = achql_tables.options
+        options = acql_tables.options
         n_options = len(options)
     
         def random_option_policy(observation: types.Observation,
@@ -87,8 +87,8 @@ def make_option_inference_fn(
     
         def greedy_safe_option_policy(observation: types.Observation,
                                       option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-            qs = achql_tables.option_q_table.apply(option_q_params, observation)
-            cqs = achql_tables.cost_q_table.apply(cost_q_params, observation)
+            qs = acql_tables.option_q_table.apply(option_q_params, observation)
+            cqs = acql_tables.cost_q_table.apply(cost_q_params, observation)
       
             if use_sum_cost_critic:
                 masked_q = jnp.where(cqs < safety_threshold, qs, -999.)
@@ -116,7 +116,7 @@ def make_option_inference_fn(
 
 
 def make_inference_fn(
-    achql_tables: ACHQLTables,
+    acql_tables: ACQLTables,
     safety_threshold: float,
     use_sum_cost_critic : bool = False,
 ):
@@ -127,7 +127,7 @@ def make_inference_fn(
     ) -> types.Policy:
     
         option_q_params, cost_q_params = params
-        options = achql_tables.options
+        options = acql_tables.options
         n_options = len(options)
     
         # TODO: Random option policy could still respect Cost Q
@@ -138,8 +138,8 @@ def make_inference_fn(
     
         def greedy_safe_option_policy(observation: types.Observation,
                                       option_key: PRNGKey) -> Tuple[types.Action, types.Extra]:
-            qs = achql_tables.option_q_table.apply(option_q_params, observation)
-            cqs = achql_tables.cost_q_table.apply(cost_q_params, observation)
+            qs = acql_tables.option_q_table.apply(option_q_params, observation)
+            cqs = acql_tables.cost_q_table.apply(cost_q_params, observation)
             
             if use_sum_cost_critic:
                 masked_q = jnp.where(cqs < safety_threshold, qs, -999.0)
@@ -198,12 +198,12 @@ def make_inference_fn(
     return make_policy
 
 
-def make_achql_tables(
+def make_acql_tables(
     observation_space: Discrete,
     action_space: Space,
     options: Sequence[Option] = [],
     use_sum_cost_critic: bool = False,
-) -> ACHQLTables:
+) -> ACQLTables:
 
     assert len(options) > 0, "Must pass at least one option"
     
@@ -216,7 +216,7 @@ def make_achql_tables(
         len(options),
     )
     
-    return ACHQLTables(
+    return ACQLTables(
         option_q_table=option_q_table,
         cost_q_table=cost_q_table,
         options=options,

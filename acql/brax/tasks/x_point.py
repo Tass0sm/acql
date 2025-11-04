@@ -3,15 +3,15 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from achql.brax.envs.x_point import XPoint
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
-from achql.brax.tasks.mixins import *
-from achql.hierarchy.x_point.load import load_hard_coded_x_point_options
+from acql.brax.envs.x_point import XPoint
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from acql.brax.tasks.mixins import *
+from acql.hierarchy.x_point.load import load_hard_coded_x_point_options
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class XPointTaskBase(BraxTaskBase):

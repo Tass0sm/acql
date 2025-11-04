@@ -6,7 +6,7 @@ import jax
 from jax import numpy as jp
 # import mujoco
 
-from achql.brax.envs.base import GoalConditionedEnv
+from acql.brax.envs.base import GoalConditionedEnv
 
 
 RESET = R = 'r'

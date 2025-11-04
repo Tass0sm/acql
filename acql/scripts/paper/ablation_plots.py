@@ -27,9 +27,9 @@ spec_rename_map = {
 }
 
 alg_rename_map = {
-    "ACHQL_ABLATION_ONE": "No HER",
-    "ACHQL_ABLATION_TWO": "No Min. Safety Critic",
-    "ACHQL": "ACQL",
+    "ACQL_ABLATION_ONE": "No HER",
+    "ACQL_ABLATION_TWO": "No Min. Safety Critic",
+    "ACQL": "ACQL",
 }
 
 def apply_smoothing(df, sigma=3):
@@ -93,9 +93,9 @@ def plot_grouped_success_rate_metrics(df):
 
             if alg == "HDCQN_AUTOMATON_HER":
                 color = 'green'
-            elif alg == "ACHQL_ABLATION_ONE":
+            elif alg == "ACQL_ABLATION_ONE":
                 color = 'blue'
-            elif alg == "ACHQL_ABLATION_TWO":
+            elif alg == "ACQL_ABLATION_TWO":
                 color = 'red'
             else:
                 color = None
@@ -156,9 +156,9 @@ def plot_grouped_reward_metrics(df):
 
             if alg == "HDCQN_AUTOMATON_HER":
                 color = 'green'
-            elif alg == "ACHQL_ABLATION_ONE":
+            elif alg == "ACQL_ABLATION_ONE":
                 color = 'blue'
-            elif alg == "ACHQL_ABLATION_TWO":
+            elif alg == "ACQL_ABLATION_TWO":
                 color = 'red'
             else:
                 color = None

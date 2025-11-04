@@ -3,16 +3,16 @@ import random
 import numpy as np
 import jax.numpy as jnp
 
-from achql.brax.envs.simple_maze import SimpleMaze
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
-from achql.brax.tasks.mixins import *
-from achql.hierarchy.xy_point.load import load_hard_coded_xy_point_options
-from achql.hierarchy.option import FixedLengthTerminationPolicy
+from acql.brax.envs.simple_maze import SimpleMaze
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from acql.brax.tasks.mixins import *
+from acql.hierarchy.xy_point.load import load_hard_coded_xy_point_options
+from acql.hierarchy.option import FixedLengthTerminationPolicy
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class SimpleMazeTaskBase(BraxTaskBase):
@@ -46,8 +46,8 @@ class SimpleMazeTaskBase(BraxTaskBase):
         return super().crm_hps | { "episode_length": 200 }
 
     @property
-    def achql_hps(self):
-        return super().achql_hps | { "episode_length": 200 }
+    def acql_hps(self):
+        return super().acql_hps | { "episode_length": 200 }
 
 
 class SimpleMazeNav(SimpleMazeTaskBase):

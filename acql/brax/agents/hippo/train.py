@@ -41,13 +41,13 @@ import numpy as np
 import optax
 from orbax import checkpoint as ocp
 
-from achql.brax.training.acme import running_statistics
+from acql.brax.training.acme import running_statistics
 
-from achql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
-from achql.hierarchy.option_critic import networks as oc_networks
-from achql.hierarchy.option_critic import losses as oc_losses
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.training import acting as hierarchical_acting
+from acql.hierarchy.training.evaluator import HierarchicalEvaluatorWithSpecification
+from acql.hierarchy.option_critic import networks as oc_networks
+from acql.hierarchy.option_critic import losses as oc_losses
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.training import acting as hierarchical_acting
 
 
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]

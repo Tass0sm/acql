@@ -19,13 +19,13 @@ Env = Union[envs.Env]
 
 from brax.training.acting import Evaluator
 
-import achql.stl as stl
+import acql.stl as stl
 
-from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import partition
+from acql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import partition
 
-from achql.hierarchy.training.acting import semimdp_generate_unroll
-from achql.hierarchy.state import OptionState
-from achql.hierarchy.option import Option
+from acql.hierarchy.training.acting import semimdp_generate_unroll
+from acql.hierarchy.state import OptionState
+from acql.hierarchy.option import Option
 
 
 def count_continuous_subsequences(xs):

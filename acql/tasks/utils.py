@@ -1,6 +1,6 @@
-from achql.brax import tasks as brax_tasks
-from achql.navix import tasks as navix_tasks
-from achql.tasks.base import TaskBase
+from acql.brax import tasks as brax_tasks
+from acql.navix import tasks as navix_tasks
+from acql.tasks.base import TaskBase
 
 
 def get_task(env_name: str, task_name: str, **kwargs) -> TaskBase:

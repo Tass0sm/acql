@@ -40,8 +40,8 @@ import jax
 import jax.numpy as jnp
 import optax
 
-from achql.brax.agents.sac_lagrangian import losses as sac_lagrangian_losses
-from achql.brax.agents.sac_lagrangian import networks as sac_lagrangian_networks
+from acql.brax.agents.sac_lagrangian import losses as sac_lagrangian_losses
+from acql.brax.agents.sac_lagrangian import networks as sac_lagrangian_networks
 
 
 Metrics = types.Metrics

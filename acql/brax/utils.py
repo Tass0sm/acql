@@ -1,9 +1,9 @@
-from achql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper # , AutomatonGoalConditionedWrapper
-from achql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
-from achql.brax.envs.wrappers.automaton_transition_rewards_wrapper import AutomatonTransitionRewardsWrapper
-from achql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
-from achql.brax.envs.wrappers.automaton_reward_wrapper import AutomatonRewardWrapper
-from achql.brax.envs.wrappers.automaton_cost_wrapper import AutomatonCostWrapper
+from acql.brax.envs.wrappers.automaton_wrapper import AutomatonWrapper # , AutomatonGoalConditionedWrapper
+from acql.brax.envs.wrappers.automaton_goal_conditioned_wrapper import AutomatonGoalConditionedWrapper
+from acql.brax.envs.wrappers.automaton_transition_rewards_wrapper import AutomatonTransitionRewardsWrapper
+from acql.brax.envs.wrappers.automaton_reward_machine_wrapper import AutomatonRewardMachineWrapper
+from acql.brax.envs.wrappers.automaton_reward_wrapper import AutomatonRewardWrapper
+from acql.brax.envs.wrappers.automaton_cost_wrapper import AutomatonCostWrapper
 
 
 def recursive_is_instance(env, t):

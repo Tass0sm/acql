@@ -1,6 +1,6 @@
 import jax
 
-from achql.tasks import get_task
+from acql.tasks import get_task
 
 import mediapy
 

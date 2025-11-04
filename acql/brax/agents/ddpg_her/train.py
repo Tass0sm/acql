@@ -39,8 +39,8 @@ from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
 from jaxgcrl.utils.evaluator import Evaluator
 from jaxgcrl.utils.replay_buffer import TrajectoryUniformSamplingQueue
 
-from achql.brax.agents.ddpg import losses as ddpg_losses
-from achql.brax.agents.ddpg import networks
+from acql.brax.agents.ddpg import losses as ddpg_losses
+from acql.brax.agents.ddpg import networks
 
 Metrics = types.Metrics
 Env = Union[envs.Env, envs_v1.Env, envs_v1.Wrapper]

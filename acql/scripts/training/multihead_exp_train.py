@@ -7,16 +7,16 @@ from brax.training import networks
 from brax.training import types
 from flax import linen
 
-from achql.hierarchy.training import networks as h_networks
-from achql.hierarchy.option import Option
+from acql.hierarchy.training import networks as h_networks
+from acql.hierarchy.option import Option
 
-from achql.baselines.reward_machines.qrm import train as qrm
-from achql.baselines.reward_machines.crm import train as crm
+from acql.baselines.reward_machines.qrm import train as qrm
+from acql.baselines.reward_machines.crm import train as crm
 
-from achql.brax.agents.hdqn.networks import HDQNetworks
+from acql.brax.agents.hdqn.networks import HDQNetworks
 
-from achql.scripts.train import train_for_all, training_run
-from achql.brax.utils import make_reward_machine_mdp
+from acql.scripts.train import train_for_all, training_run
+from acql.brax.utils import make_reward_machine_mdp
 
 
 def make_network_factory(env):

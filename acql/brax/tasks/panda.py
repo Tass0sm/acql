@@ -5,14 +5,14 @@ import jax.numpy as jnp
 
 from jaxgcrl.envs.wrappers import TrajectoryIdWrapper
 
-from achql.brax.envs.panda import PandaReach, PandaPushEasy
-from achql.brax.envs.base import GoalConditionedEnv
-from achql.brax.tasks.base import BraxTaskBase
-from achql.brax.tasks.mixins import *
-from achql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
+from acql.brax.envs.panda import PandaReach, PandaPushEasy
+from acql.brax.envs.base import GoalConditionedEnv
+from acql.brax.tasks.base import BraxTaskBase
+from acql.brax.tasks.mixins import *
+from acql.brax.tasks.templates import sequence, inside_circle, outside_circle, inside_box, true_exp
 
-from achql.stl import Expression, Var
-import achql.stl as stl
+from acql.stl import Expression, Var
+import acql.stl as stl
 
 
 class PandaTaskBase(BraxTaskBase):
