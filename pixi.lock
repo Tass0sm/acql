@@ -389,7 +389,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/2a/5a/04cde32b07a7431d4ed0553a76fdb7a61270e78c5fd5a603e190ac389f14/wrapt-1.17.2-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/d6/45/fc303eb433e8a2a271739c98e953728422fa61a3c1f36077a49e395c972e/xmltodict-0.14.2-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/1a/7e4798e9339adc931158c9d69ecc34f5e6791489d469f5e50ec15e35f458/zipp-3.21.0-py3-none-any.whl
-      - pypi: .
+      - pypi: ./
       - pypi: /home/tassos/phd/research/corallab-stl
       - pypi: /home/tassos/phd/research/second-project/brax
       - pypi: /home/tassos/phd/research/second-project/jaxgcrl
@@ -421,10 +421,10 @@ packages:
   version: 2.1.0
   sha256: 526a04eadab8b4ee719ce68f204172ead1027549089702d99b9059f129ff1308
   requires_python: '>=3.7'
-- pypi: .
-  name: achql
+- pypi: ./
+  name: acql
   version: 0.1.0
-  sha256: 9e6f018aa14bdf6d17a9e115f52c62d52e5311ee6db6e0aa7c4945ffbee453e7
+  sha256: 07566f2eeb8354f6c5f81a1fe8bb7ea01af0b471a47fff2e1cbe3947ec98daa7
   requires_python: '>=3.12,<4.0'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/noarch/adwaita-icon-theme-47.0-unix_0.conda
@@ -1993,46 +1993,46 @@ packages:
   requires_dist:
   - numpy>=1.18.0
   - cloudpickle>=1.2.0
-  - gym-notices>=0.0.4
   - importlib-metadata>=4.8.0 ; python_full_version < '3.10'
+  - gym-notices>=0.0.4
   - dataclasses==0.8 ; python_full_version == '3.6.*'
-  - autorom[accept-rom-license]~=0.4.2 ; extra == 'accept-rom-license'
-  - opencv-python>=3.0 ; extra == 'all'
-  - moviepy>=1.0.0 ; extra == 'all'
-  - pytest==7.0.1 ; extra == 'all'
-  - box2d-py==2.3.5 ; extra == 'all'
-  - mujoco==2.2 ; extra == 'all'
-  - matplotlib>=3.0 ; extra == 'all'
-  - imageio>=2.14.1 ; extra == 'all'
-  - lz4>=3.1.0 ; extra == 'all'
-  - ale-py~=0.8.0 ; extra == 'all'
-  - mujoco-py>=2.1,<2.2 ; extra == 'all'
-  - swig==4.* ; extra == 'all'
-  - pygame==2.1.0 ; extra == 'all'
   - ale-py~=0.8.0 ; extra == 'atari'
+  - autorom[accept-rom-license]~=0.4.2 ; extra == 'accept-rom-license'
   - box2d-py==2.3.5 ; extra == 'box2d'
   - pygame==2.1.0 ; extra == 'box2d'
   - swig==4.* ; extra == 'box2d'
   - pygame==2.1.0 ; extra == 'classic-control'
+  - mujoco-py>=2.1,<2.2 ; extra == 'mujoco-py'
   - mujoco==2.2 ; extra == 'mujoco'
   - imageio>=2.14.1 ; extra == 'mujoco'
-  - mujoco-py>=2.1,<2.2 ; extra == 'mujoco-py'
+  - pygame==2.1.0 ; extra == 'toy-text'
   - lz4>=3.1.0 ; extra == 'other'
   - opencv-python>=3.0 ; extra == 'other'
   - matplotlib>=3.0 ; extra == 'other'
   - moviepy>=1.0.0 ; extra == 'other'
-  - opencv-python>=3.0 ; extra == 'testing'
-  - moviepy>=1.0.0 ; extra == 'testing'
-  - box2d-py==2.3.5 ; extra == 'testing'
+  - mujoco-py>=2.1,<2.2 ; extra == 'testing'
+  - pygame==2.1.0 ; extra == 'testing'
   - mujoco==2.2 ; extra == 'testing'
   - matplotlib>=3.0 ; extra == 'testing'
-  - imageio>=2.14.1 ; extra == 'testing'
+  - box2d-py==2.3.5 ; extra == 'testing'
+  - opencv-python>=3.0 ; extra == 'testing'
+  - moviepy>=1.0.0 ; extra == 'testing'
   - lz4>=3.1.0 ; extra == 'testing'
-  - mujoco-py>=2.1,<2.2 ; extra == 'testing'
+  - imageio>=2.14.1 ; extra == 'testing'
   - swig==4.* ; extra == 'testing'
-  - pygame==2.1.0 ; extra == 'testing'
   - pytest==7.0.1 ; extra == 'testing'
-  - pygame==2.1.0 ; extra == 'toy-text'
+  - pygame==2.1.0 ; extra == 'all'
+  - ale-py~=0.8.0 ; extra == 'all'
+  - mujoco==2.2 ; extra == 'all'
+  - matplotlib>=3.0 ; extra == 'all'
+  - box2d-py==2.3.5 ; extra == 'all'
+  - opencv-python>=3.0 ; extra == 'all'
+  - swig==4.* ; extra == 'all'
+  - moviepy>=1.0.0 ; extra == 'all'
+  - lz4>=3.1.0 ; extra == 'all'
+  - pytest==7.0.1 ; extra == 'all'
+  - mujoco-py>=2.1,<2.2 ; extra == 'all'
+  - imageio>=2.14.1 ; extra == 'all'
   requires_python: '>=3.6'
 - pypi: https://files.pythonhosted.org/packages/25/26/d786c6bec30fe6110fd3d22c9a273a2a0e56c0b73b93e25ea1af5a53243b/gym_notices-0.0.8-py3-none-any.whl
   name: gym-notices

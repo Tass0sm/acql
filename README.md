@@ -17,14 +17,14 @@ To run all the experiments included in our paper, you can
 run the following scripts.
 
 ```shell
-python -m achql.scripts.training.train
-python -m achql.scripts.training.ablation_train
+python -m acql.scripts.training.train
+python -m acql.scripts.training.ablation_train
 ```
 
 ### Hyperparameters
 
 Hyperparameters are summarized for each experiment by dictionaries included with
-the definition of each task in the "achql/brax/tasks" subdirectory.
+the definition of each task in the "acql/brax/tasks" subdirectory.
 
 ### Acknowledgement
 

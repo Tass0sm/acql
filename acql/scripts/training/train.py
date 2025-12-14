@@ -492,23 +492,25 @@ def crl_train(run, task, seed, spec):
 
 
 def all_acql_runs(max_seed=5):
-    train_for_all(["SimpleMaze"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["ObligationConstraint1"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
+    max_seed += 1
 
-    train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["SimpleMaze3D"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze"], ["ObligationConstraint1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
 
-    train_for_all(["AntMaze"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["ObligationConstraint3"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
-    train_for_all(["AntMaze"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["ObligationConstraint2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["SimpleMaze3D"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
+
+    # train_for_all(["AntMaze"], ["TwoSubgoals"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["AntMaze"], ["Branching1"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["AntMaze"], ["ObligationConstraint3"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["AntMaze"], ["Until2"], acql_train, "ACQL", seed_range=(0, max_seed))
+    # train_for_all(["AntMaze"], ["LoopWithObs"], acql_train, "ACQL", seed_range=(0, max_seed))
 
 
 def all_crm_rs_runs(max_seed=5):
@@ -534,8 +536,10 @@ def all_crm_rs_runs(max_seed=5):
 
 
 def main():
-    print("hello")
-    # all_acql_runs(max_seed=5)
+
+    train_for_all(["SimpleMaze"], ["DemoObligation"], acql_train, "ACQL", seed_range=(0, 1))
+
+    # all_acql_runs(max_seed=0)
     # all_crm_rs_runs(max_seed=5)
 
 

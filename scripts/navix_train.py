@@ -11,11 +11,11 @@ import mlflow
 
 from brax.io import model
 
-from achql.navix.agents.tabular_hql import train as tabular_hql
-from achql.navix.agents.tabular_achql import train as tabular_achql
+from acql.navix.agents.tabular_hql import train as tabular_hql
+from acql.navix.agents.tabular_acql import train as tabular_acql
 
-from achql.tasks.utils import get_task
-from achql.navix.utils import make_cmdp
+from acql.tasks.utils import get_task
+from acql.navix.utils import make_cmdp
 
 
 mlflow.set_tracking_uri(f"file:///home/tassos/.local/share/mlflow")
@@ -28,7 +28,7 @@ def progress_fn(num_steps, metrics, **kwargs):
     mlflow.log_metrics(metrics, step=num_steps)
 
 
-def training_run(run_id, env, seed, train_fn=tabular_achql.train, progress_fn=progress_fn, hyperparameters={}, extras={}):
+def training_run(run_id, env, seed, train_fn=tabular_acql.train, progress_fn=progress_fn, hyperparameters={}, extras={}):
     hyperparameters = {
         **hyperparameters,
         "seed": seed,
@@ -85,16 +85,16 @@ def tabular_hql_train(run, task, seed, spec):
     )
 
 
-def tabular_achql_train(run, task, seed, spec, margin=0.0):
+def tabular_acql_train(run, task, seed, spec, margin=0.0):
     options = task.get_options()
 
     make_inference_fn, params = training_run(
         run.info.run_id,
         make_cmdp(task, margin=margin),
         seed,
-        train_fn=tabular_achql.train,
+        train_fn=tabular_acql.train,
         progress_fn=progress_fn,
-        hyperparameters=task.tabular_achql_hps,
+        hyperparameters=task.tabular_acql_hps,
         extras={
             # "eval_env": make_cmdp(task, margin=margin),
             "options": options,
@@ -112,8 +112,8 @@ if __name__ == "__main__":
     env_tag = type(task.env).__name__
 
     for seed in range(0, 1):
-        # with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACHQL"}) as run:
-        #     tabular_achql_train(run, task, seed, spec)
+        # with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_ACQL"}) as run:
+        #     tabular_acql_train(run, task, seed, spec)
 
         with mlflow.start_run(tags={"env": env_tag, "spec": spec_tag, "alg": "TABULAR_HQL"}) as run:
             tabular_hql_train(run, task, seed, spec)

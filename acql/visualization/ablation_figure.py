@@ -11,7 +11,7 @@ from brax.training.types import PRNGKey
 
 from acql.brax.agents.hdqn import networks as hdq_networks
 from acql.brax.agents.hdcqn import networks as hdcq_networks
-from acql.brax.agents.hdcqn_automaton_her import networks as hdcq_aut_networks
+from acql.brax.agents.acql import networks as acql_networks
 
 
 def fill_ax_with_function_grid(
@@ -106,7 +106,7 @@ def fill_axes_for_hdcqn_aut(
     #                              env.ith_goal(obs_batch, 0)), axis=-1)
     obs_batch = obs_batch.at[:, 0:2].set(positions)
 
-    make_q = hdcq_aut_networks.make_option_q_fn(network, env, 0.0)
+    make_q = acql_networks.make_option_q_fn(network, env, 0.0)
     q_fn = make_q(params)
 
     # policy
